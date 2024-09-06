@@ -1,0 +1,13 @@
+.ui-autocomplete {
+    max-height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.ui-autocomplete li {
+    white-space: nowrap;
+}
+
+.ui-helper-hidden-accessible {
+    display: none;
+}

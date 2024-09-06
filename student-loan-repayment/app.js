@@ -21,8 +21,8 @@ app.set('views', path.join(__dirname, 'views'));
 const indexRouter = require('./routes/index');
 app.use('/', indexRouter);
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   logger.info(`Server running at http://localhost:${port}`);
 });
 
-module.exports = app;
+module.exports = { app, server };
