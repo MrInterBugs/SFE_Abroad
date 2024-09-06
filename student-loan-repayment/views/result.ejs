@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculation Result</title>
+    <link rel="stylesheet" href="/styles.css">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Calculation Result</h1>
+
+        <div class="bg-light p-4 rounded shadow-sm">
+            <% if (monthlyRepayment !== undefined) { %>
+                <% if (monthlyRepayment > 0) { %>
+                    <p>Your monthly repayment in GBP: <strong>£<%= monthlyRepayment %></strong></p>
+                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : (selectedPlan === 'plan2' ? 'Plan 2' : 'Plan 4') %></p>
+                    <p>Country: <%= targetCountry %></p>
+                    <p>Original salary in local currency: <%= salaryLocalCurrency %></p>
+                    <p>Exchange rate used: <%= exchangeRate %></p>
+                    <p>Annual earnings threshold (GBP): £<%= thresholdGbp %></p>
+                <% } else { %>
+                    <p>Your salary is below the repayment threshold. No repayment required.</p>
+                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : (selectedPlan === 'plan2' ? 'Plan 2' : 'Plan 4') %></p>
+                    <p>Country: <%= targetCountry %></p>
+                    <p>Original salary in local currency: <%= salaryLocalCurrency %></p>
+                <% } %>
+            <% } %>
+
+            <% if (error) { %>
+                <p class="text-danger"><%= error %></p>
+            <% } %>
+
+            <a href="/" class="btn btn-secondary mt-3">Go Back</a>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS (including Popper.js for tooltips and popovers) -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+</body>
+</html>
