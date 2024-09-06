@@ -10,8 +10,13 @@ COPY ./student-loan-repayment/package.json ./package.json
 # Install the app dependencies.
 RUN npm install
 
+# Copy all other files.
 COPY ./student-loan-repayment ./
 
+# Make sure the tests pass.
+RUN npm test
+
+# Expose the main sever port.
 EXPOSE 3000
 
 # Specify the command to run the application.

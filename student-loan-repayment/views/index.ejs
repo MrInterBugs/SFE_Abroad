@@ -26,7 +26,8 @@
 
             <div class="mb-3">
                 <label for="targetCountry" class="form-label">Country:</label>
-                <input type="text" id="targetCountry" name="targetCountry" class="form-control" required>
+                <input type="text" id="targetCountry" name="targetCountry" class="form-control" required
+                    <% if (selectedCountry) { %> value="<%= selectedCountry %>" <% } %> >
             </div>
 
             <div class="mb-3">
@@ -71,14 +72,14 @@
                         return matcher.test(item);
                     }));
                 },
-                minLength: 0  // Show all options when focused
+                minLength: 0
             }).focus(function() {
-                $(this).autocomplete("search", ""); // Trigger search on focus
+                $(this).autocomplete("search", "");
             });
         }
 
         $(document).ready(function() {
-            updateCountryList(); // Initialize the autocomplete on page load
+            updateCountryList();
         });
     </script>
 </body>
