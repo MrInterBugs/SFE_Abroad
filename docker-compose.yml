@@ -11,7 +11,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.route-webapp.rule=Host(`sfe.aedanl.com`)"
       - "traefik.http.services.route-webapp.loadbalancer.server.port=3000"
-      - "traefik.http.routers.route-webapp.middlewares=homeass@file"
+      - "traefik.http.routers.route-webapp.middlewares=sfe@file"
 
 networks:
   traefik_default:
