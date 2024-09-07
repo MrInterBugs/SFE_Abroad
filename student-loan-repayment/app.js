@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -11,6 +12,7 @@ const port = 3000;
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser()); 
+app.use(helmet());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Views setup
