@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const csrfProtection = (req, res, next) => {
   const token = req.cookies.csrfToken || crypto.randomBytes(32).toString('hex');
   res.cookie('csrfToken', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-  res.locals.csrfToken = token;  // Make it accessible in templates
+  res.locals.csrfToken = token;
   next();
 };
 
