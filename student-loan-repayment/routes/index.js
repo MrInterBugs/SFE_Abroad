@@ -7,6 +7,9 @@ const fetchCountryData = require('../utils/fetchCountryData');
 
 const router = express.Router();
 
+// Define allowed plans to prevent SSRF
+const allowedPlans = ['plan1', 'plan2', 'plan4'];
+
 // Serve home page
 router.get('/', async (req, res) => {
   logger.info(`Handling GET request for '/'`);
@@ -44,6 +47,11 @@ router.get('/', async (req, res) => {
 router.post('/calculate', async (req, res) => {
   const { targetCountry, salaryLocalCurrency, selectedPlan } = req.body;
   logger.info(`Handling POST request for '/calculate' with targetCountry: ${targetCountry}, salaryLocalCurrency: ${salaryLocalCurrency}, and selectedPlan: ${selectedPlan}`);
+
+  if (!allowedPlans.includes(selectedPlan)) {
+    logger.info(`Invalid selectedPlan: ${selectedPlan}`);
+    return res.status(400).render('result', { error: 'Invalid repayment plan selected.' });
+  }
 
   res.cookie('selectedPlan', selectedPlan, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.NODE_ENV === 'production' });
   res.cookie('selectedCountry', targetCountry, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.NODE_ENV === 'production' });
