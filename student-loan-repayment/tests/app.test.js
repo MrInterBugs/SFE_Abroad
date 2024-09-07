@@ -2,7 +2,6 @@ const request = require('supertest');
 const { app, server } = require('../app');
 
 describe('Express App', () => {
-
   afterAll((done) => {
     server.close(done);
   });
@@ -19,18 +18,26 @@ describe('Express App', () => {
     expect(response.status).toBe(200);
   });
 
-  // Test to check if cookies are being set
-  it('should set selectedPlan and selectedCountry cookies on POST /calculate', async () => {
-    const response = await request(app)
+  // Test to check if cookies are being set, with CSRF token support
+  it('should set selectedPlan and selectedCountry cookies on POST /calculate with valid CSRF token', async () => {
+    // Step 1: Perform a GET request to retrieve the CSRF token
+    const getResponse = await request(app).get('/');
+    const csrfToken = getResponse.text.match(/name="csrfToken" value="(.+?)"/)[1];
+
+    // Step 2: Use the CSRF token in the POST request
+    const postResponse = await request(app)
       .post('/calculate')
+      .set('Cookie', getResponse.headers['set-cookie'])  // Pass cookies from the GET response
       .send({
         targetCountry: 'Germany',
         salaryLocalCurrency: 50000,
-        selectedPlan: 'plan1'
+        selectedPlan: 'plan1',
+        csrfToken  // Include the CSRF token in the form data
       });
-    
-    expect(response.status).toBe(200);
-    expect(response.headers['set-cookie']).toEqual(
+
+    // Step 3: Check for correct status and cookies
+    expect(postResponse.status).toBe(200);
+    expect(postResponse.headers['set-cookie']).toEqual(
       expect.arrayContaining([
         expect.stringContaining('selectedPlan=plan1'),
         expect.stringContaining('selectedCountry=Germany')

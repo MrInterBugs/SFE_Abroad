@@ -14,6 +14,8 @@
     <div class="container mt-5">
         <h1 class="text-center mb-4">SFE (Student Finance England) Repayment Calculator</h1>
         <form id="mainForm" action="/calculate" method="POST" class="bg-light p-4 rounded shadow-sm mb-4">
+            <input type="hidden" name="csrfToken" value="<%= csrfToken %>" />
+            
             <div class="mb-3">
                 <label for="selectedPlan" class="form-label">Select Plan:</label>
                 <select id="selectedPlan" name="selectedPlan" class="form-select" required onchange="updateCountryList()">

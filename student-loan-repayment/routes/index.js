@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const logger = require('../utils/logger');
+const { verifyCsrfToken } = require('../utils/csrf');
 const { urls } = require('../config/constants');
 const fetchCountryData = require('../utils/fetchCountryData');
 
@@ -44,7 +45,7 @@ router.get('/', async (req, res) => {
 });
 
 // Handle POST calculate request
-router.post('/calculate', async (req, res) => {
+router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const { targetCountry, salaryLocalCurrency, selectedPlan } = req.body;
   logger.info(`Handling POST request for '/calculate' with targetCountry: ${targetCountry}, salaryLocalCurrency: ${salaryLocalCurrency}, and selectedPlan: ${selectedPlan}`);
 

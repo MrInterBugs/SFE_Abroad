@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const { RateLimiterMemory } = require('rate-limiter-flexible');
 const helmet = require('helmet');
 const logger = require('./utils/logger');
+const { csrfProtection } = require('./utils/csrf');
 
 const app = express();
 const port = 3000;
@@ -51,6 +52,8 @@ app.use(
     },
   })
 );
+
+app.use(csrfProtection);
 
 // Views setup
 app.set('view engine', 'ejs');
