@@ -2,11 +2,31 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const { RateLimiterMemory } = require('rate-limiter-flexible');
 const helmet = require('helmet');
 const logger = require('./utils/logger');
 
 const app = express();
 const port = 3000;
+
+// Create a rate limiter configuration
+const rateLimiter = new RateLimiterMemory({
+  points: 5,
+  duration: 1,
+});
+
+// Middleware to apply rate limiting to a route
+const rateLimiterMiddleware = (req, res, next) => {
+  rateLimiter.consume(req.ip)
+    .then(() => {
+      next();
+    })
+    .catch(() => {
+      res.status(429).send('Too many requests, please try again later.');
+    });
+};
+
+app.use(rateLimiterMiddleware);
 
 // Middleware setup
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -31,7 +51,6 @@ app.use(
     },
   })
 );
-
 
 // Views setup
 app.set('view engine', 'ejs');
