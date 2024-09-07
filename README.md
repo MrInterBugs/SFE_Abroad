@@ -1,4 +1,4 @@
-# Student Loan Repayment Calculator(https://sfe.aedanl.com)
+# [Student Loan Repayment Calculator](https://sfe.aedanl.com)
 
 This project is a Student Loan Repayment Calculator that helps users estimate their monthly repayment amounts based on different country-specific salary thresholds and repayment plans. The application is built using Node.js, Express, and uses various middleware like Helmet for security, Rate Limiter for request throttling, and CSRF Protection to safeguard against cross-site request forgery.
 
