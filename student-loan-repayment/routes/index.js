@@ -45,8 +45,8 @@ router.post('/calculate', async (req, res) => {
   const { targetCountry, salaryLocalCurrency, selectedPlan } = req.body;
   logger.info(`Handling POST request for '/calculate' with targetCountry: ${targetCountry}, salaryLocalCurrency: ${salaryLocalCurrency}, and selectedPlan: ${selectedPlan}`);
 
-  res.cookie('selectedPlan', selectedPlan, { maxAge: 30 * 24 * 60 * 60 * 1000 });
-  res.cookie('selectedCountry', targetCountry, { maxAge: 30 * 24 * 60 * 60 * 1000 });
+  res.cookie('selectedPlan', selectedPlan, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+  res.cookie('selectedCountry', targetCountry, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.NODE_ENV === 'production' });
 
   try {
     const response = await axios.get(urls[selectedPlan]);
