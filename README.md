@@ -8,7 +8,6 @@ This project is a Student Loan Repayment Calculator that helps users estimate th
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Usage](#usage)
-- [API Endpoints](#api-endpoints)
 - [Security](#security)
 - [Technologies Used](#technologies-used)
 - [License](#license)
