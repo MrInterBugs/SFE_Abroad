@@ -15,23 +15,27 @@ router.get('/', async (req, res) => {
 
   const selectedPlan = req.cookies.selectedPlan || 'plan1';
   const selectedCountry = req.cookies.selectedCountry || '';
-  const queryYear = req.query.year;
-  const selectedYear = SUPPORTED_YEARS.includes(queryYear) ? queryYear
-    : (SUPPORTED_YEARS.includes(req.cookies.selectedYear) ? req.cookies.selectedYear : getCurrentTaxYear());
+  const selectedYear = SUPPORTED_YEARS.includes(req.cookies.selectedYear)
+    ? req.cookies.selectedYear
+    : getCurrentTaxYear();
+
+  const plans = ['plan1', 'plan2', 'plan4', 'plan5'];
 
   try {
-    const [countriesPlan1, countriesPlan2, countriesPlan4, countriesPlan5] = await Promise.all([
-      fetchCountryData('plan1', selectedYear),
-      fetchCountryData('plan2', selectedYear),
-      fetchCountryData('plan4', selectedYear),
-      fetchCountryData('plan5', selectedYear),
-    ]);
+    // Fetch country lists for every year so the client can switch year without a reload.
+    const countriesByYear = {};
+    await Promise.all(
+      SUPPORTED_YEARS.flatMap(year =>
+        plans.map(async plan => {
+          const list = await fetchCountryData(plan, year);
+          if (!countriesByYear[year]) countriesByYear[year] = {};
+          countriesByYear[year][plan] = list;
+        })
+      )
+    );
 
     res.render('index', {
-      countriesPlan1,
-      countriesPlan2,
-      countriesPlan4,
-      countriesPlan5,
+      countriesByYear,
       selectedPlan,
       selectedCountry,
       selectedYear,
@@ -39,11 +43,9 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     logger.error(`Error loading data: ${error.message}`);
+    const empty = Object.fromEntries(SUPPORTED_YEARS.map(y => [y, Object.fromEntries(plans.map(p => [p, []]))]));
     res.render('index', {
-      countriesPlan1: [],
-      countriesPlan2: [],
-      countriesPlan4: [],
-      countriesPlan5: [],
+      countriesByYear: empty,
       selectedPlan,
       selectedCountry,
       selectedYear,
