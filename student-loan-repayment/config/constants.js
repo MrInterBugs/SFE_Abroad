@@ -16,8 +16,25 @@ const urlsByYear = {
 };
 
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-const DEFAULT_YEAR = '2026-27';
 const SUPPORTED_YEARS = Object.keys(urlsByYear);
 
-module.exports = { urlsByYear, CACHE_DURATION, DEFAULT_YEAR, SUPPORTED_YEARS };
+// Latest supported year — used as the fallback for the "archived year" DB logic.
+const DEFAULT_YEAR = SUPPORTED_YEARS[SUPPORTED_YEARS.length - 1];
+
+// Returns the UK tax year string for today (e.g. '2026-27').
+// The UK tax year starts on 6 April, so before that date we're still in the
+// previous year. Falls back to DEFAULT_YEAR if the computed year isn't supported.
+function getCurrentTaxYear() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1; // 1-indexed
+  const day = now.getDate();
+  const afterTaxYearStart = month > 4 || (month === 4 && day >= 6);
+  const startYear = afterTaxYearStart ? year : year - 1;
+  const endYear = startYear + 1;
+  const computed = `${startYear}-${String(endYear).slice(2)}`;
+  return SUPPORTED_YEARS.includes(computed) ? computed : DEFAULT_YEAR;
+}
+
+module.exports = { urlsByYear, CACHE_DURATION, DEFAULT_YEAR, SUPPORTED_YEARS, getCurrentTaxYear };
   

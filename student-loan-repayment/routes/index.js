@@ -1,7 +1,7 @@
 const express = require('express');
 const logger = require('../utils/logger');
 const { verifyCsrfToken } = require('../utils/csrf');
-const { DEFAULT_YEAR, SUPPORTED_YEARS } = require('../config/constants');
+const { DEFAULT_YEAR, SUPPORTED_YEARS, getCurrentTaxYear } = require('../config/constants');
 const { fetchCountryData, getThresholdData } = require('../utils/fetchCountryData');
 const currencySymbol = require('../utils/currencySymbol');
 
@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
   const selectedCountry = req.cookies.selectedCountry || '';
   const queryYear = req.query.year;
   const selectedYear = SUPPORTED_YEARS.includes(queryYear) ? queryYear
-    : (SUPPORTED_YEARS.includes(req.cookies.selectedYear) ? req.cookies.selectedYear : DEFAULT_YEAR);
+    : (SUPPORTED_YEARS.includes(req.cookies.selectedYear) ? req.cookies.selectedYear : getCurrentTaxYear());
 
   try {
     const [countriesPlan1, countriesPlan2, countriesPlan4, countriesPlan5] = await Promise.all([
