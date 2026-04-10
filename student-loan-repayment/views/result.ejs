@@ -13,19 +13,21 @@
         <h1 class="text-center mb-4">Calculation Result</h1>
 
         <div class="bg-light p-4 rounded shadow-sm">
-            <% if (monthlyRepayment !== undefined) { %>
+            <% if (locals.monthlyRepayment !== undefined) { %>
                 <% if (monthlyRepayment > 0) { %>
                     <p>Your monthly repayment in GBP: <strong>£<%= monthlyRepayment %></strong></p>
-                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : (selectedPlan === 'plan2' ? 'Plan 2' : 'Plan 4') %></p>
+                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : selectedPlan === 'plan2' ? 'Plan 2' : selectedPlan === 'plan4' ? 'Plan 4' : 'Plan 5' %></p>
+                    <p>Tax year: <%= selectedYear %></p>
                     <p>Country: <%= targetCountry %></p>
-                    <p>Original salary in local currency: <%= salaryLocalCurrency %></p>
+                    <p>Original salary in local currency: <%= salaryCurrencySymbol %><%= salaryLocalCurrency %></p>
                     <p>Exchange rate used: <%= exchangeRate %></p>
                     <p>Annual earnings threshold (GBP): £<%= thresholdGbp %></p>
                 <% } else { %>
                     <p>Your salary is below the repayment threshold. No repayment required.</p>
-                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : (selectedPlan === 'plan2' ? 'Plan 2' : 'Plan 4') %></p>
+                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : selectedPlan === 'plan2' ? 'Plan 2' : selectedPlan === 'plan4' ? 'Plan 4' : 'Plan 5' %></p>
+                    <p>Tax year: <%= selectedYear %></p>
                     <p>Country: <%= targetCountry %></p>
-                    <p>Original salary in local currency: <%= salaryLocalCurrency %></p>
+                    <p>Original salary in local currency: <%= salaryCurrencySymbol %><%= salaryLocalCurrency %></p>
                 <% } %>
             <% } %>
 

@@ -1,5 +1,8 @@
 # Use the official Node.js image.
-FROM node:23-alpine
+FROM node:25-alpine
+
+# Build tools required for better-sqlite3 native compilation.
+RUN apk add --no-cache python3 make g++
 
 # Create and set the working directory.
 WORKDIR /usr/src/app
@@ -7,8 +10,8 @@ WORKDIR /usr/src/app
 # Copy the package.json and package-lock.json files.
 COPY ./student-loan-repayment/package.json ./package.json
 
-# Install the app dependencies.
-RUN npm install
+# Install the app dependencies and create the SQLite cache directory.
+RUN npm install && mkdir -p /usr/src/app/data
 
 # Copy all other files.
 COPY ./student-loan-repayment ./

@@ -1,3 +1,6 @@
+# SQLite cache database
+data/
+
 # Logs
 logs
 *.log

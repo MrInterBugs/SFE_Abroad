@@ -1,51 +1,117 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const logger = require('./logger');
-const { urls, CACHE_DURATION } = require('../config/constants');
+const { urlsByYear, CACHE_DURATION, DEFAULT_YEAR } = require('../config/constants');
+const db = require('./db');
 
-let cache = {
-  plan1: null,
-  plan2: null,
-  plan4: null
-};
+// In-memory cache keyed by "plan:year", stores full data dict
+const cache = {};
+const cacheTimestamp = {};
 
-let cacheTimestamp = {
-  plan1: 0,
-  plan2: 0,
-  plan4: 0,
-};
+function cacheKey(plan, year) {
+  return `${plan}:${year}`;
+}
 
-const fetchCountryData = async (plan) => {
-  const currentTime = Date.now();
+function parseTableData(html) {
+  const $ = cheerio.load(html);
+  const headers = [];
+  const countryDataDict = {};
 
-  logger.info(`Checking cache validity for ${plan}...`);
-  if (cache[plan] && (currentTime - cacheTimestamp[plan] < CACHE_DURATION)) {
-    logger.info(`Cache is valid for ${plan}. Returning cached data.`);
-    return cache[plan];
-  }
+  $('table th').each((i, el) => {
+    headers.push($(el).text().trim());
+  });
 
-  logger.info(`Cache is expired or missing for ${plan}. Fetching new data from URL...`);
-  try {
-    const response = await axios.get(urls[plan]);
-    if (response.status === 200) {
-      const $ = cheerio.load(response.data);
-      const countryList = [];
-      $('table tr').each((i, element) => {
-        if (i === 0) return; // Skip header row
-        const countryName = $(element).find('td').first().text().trim();
-        countryList.push(countryName);
-      });
-
-      cache[plan] = countryList;
-      cacheTimestamp[plan] = currentTime;
-
-      logger.info(`Data fetched and cache updated for ${plan}. Returning new data.`);
-      return countryList;
+  $('table tr').each((i, el) => {
+    if (i === 0) return;
+    const columns = $(el).find('td');
+    const countryName = $(columns[0]).text().trim();
+    if (!countryName) return;
+    const data = {};
+    for (let j = 1; j < headers.length; j++) {
+      data[headers[j]] = $(columns[j]).text().trim();
     }
-  } catch (error) {
-    logger.error(`Error fetching data for ${plan}: ${error.message}`);
-    throw new Error(`Error: ${error.message}`);
-  }
-};
+    countryDataDict[countryName] = data;
+  });
 
-module.exports = fetchCountryData;
+  return countryDataDict;
+}
+
+async function fetchFromWeb(plan, year) {
+  const url = urlsByYear[year][plan];
+  logger.info(`Fetching from gov.uk: ${plan} ${year}`);
+  const response = await axios.get(url);
+  if (response.status !== 200) {
+    throw new Error(`gov.uk returned status ${response.status}`);
+  }
+  const countryDataDict = parseTableData(response.data);
+
+  // Persist to DB and in-memory cache
+  db.saveThresholds(plan, year, countryDataDict);
+  const key = cacheKey(plan, year);
+  cache[key] = countryDataDict;
+  cacheTimestamp[key] = Date.now();
+
+  return countryDataDict;
+}
+
+/**
+ * Returns the full country data dict for a plan+year.
+ * For non-current years, serves from DB once cached — never re-fetches from gov.uk.
+ * For the current year, falls back to DB only if gov.uk is unreachable.
+ */
+async function getThresholdData(plan, year) {
+  const key = cacheKey(plan, year);
+  const now = Date.now();
+
+  if (cache[key] && (now - cacheTimestamp[key] < CACHE_DURATION)) {
+    logger.info(`Memory cache hit: ${plan} ${year}`);
+    return cache[key];
+  }
+
+  // Old year: if it's in the DB, use it permanently — gov.uk may remove the page.
+  if (year !== DEFAULT_YEAR) {
+    const dbData = db.loadThresholds(plan, year);
+    if (dbData) {
+      logger.info(`DB cache hit (archived year): ${plan} ${year}`);
+      cache[key] = dbData;
+      cacheTimestamp[key] = now;
+      return dbData;
+    }
+  }
+
+  try {
+    return await fetchFromWeb(plan, year);
+  } catch (error) {
+    logger.warn(`gov.uk fetch failed for ${plan} ${year}: ${error.message} — trying DB cache`);
+    const dbData = db.loadThresholds(plan, year);
+    if (dbData) return dbData;
+    throw new Error(`Data unavailable for ${plan} ${year}: ${error.message}`);
+  }
+}
+
+/**
+ * Returns just the list of country names for autocomplete.
+ */
+async function fetchCountryData(plan, year) {
+  const key = cacheKey(plan, year);
+  const now = Date.now();
+
+  if (cache[key] && (now - cacheTimestamp[key] < CACHE_DURATION)) {
+    return Object.keys(cache[key]);
+  }
+
+  // Old year: serve from DB only, never re-fetch.
+  if (year !== DEFAULT_YEAR) {
+    const dbList = db.loadCountryList(plan, year);
+    if (dbList.length > 0) {
+      logger.info(`DB country list hit (archived year): ${plan} ${year}`);
+      return dbList;
+    }
+  }
+
+  // Current year or not yet in DB — do a full fetch.
+  const data = await getThresholdData(plan, year);
+  return Object.keys(data);
+}
+
+module.exports = { fetchCountryData, getThresholdData };

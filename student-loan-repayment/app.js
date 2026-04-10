@@ -65,6 +65,25 @@ app.use('/', indexRouter);
 
 const server = app.listen(port, () => {
   logger.info(`Server running at http://localhost:${port}`);
+  prefetchAllData();
 });
+
+// Eagerly fetch and cache all plan+year combinations on startup so that
+// the SQLite DB is populated before gov.uk potentially removes older pages.
+async function prefetchAllData() {
+  const { getThresholdData } = require('./utils/fetchCountryData');
+  const { SUPPORTED_YEARS } = require('./config/constants');
+  const plans = ['plan1', 'plan2', 'plan4', 'plan5'];
+  for (const year of SUPPORTED_YEARS) {
+    for (const plan of plans) {
+      try {
+        await getThresholdData(plan, year);
+        logger.info(`Prefetch complete: ${plan} ${year}`);
+      } catch (err) {
+        logger.warn(`Prefetch failed: ${plan} ${year} — ${err.message}`);
+      }
+    }
+  }
+}
 
 module.exports = { app, server };

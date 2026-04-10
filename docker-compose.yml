@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+    volumes:
+      - ./data:/usr/src/app/data
     networks:
       - traefik_default
     labels:
