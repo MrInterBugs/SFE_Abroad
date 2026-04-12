@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 const { verifyCsrfToken } = require('../utils/csrf');
 const {
   DEFAULT_YEAR, SUPPORTED_YEARS, getCurrentTaxYear,
-  ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, MONTHS_PER_YEAR,
+  ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
 } = require('../config/constants');
 const { fetchCountryData, getThresholdData } = require('../utils/fetchCountryData');
 const currencySymbol = require('../utils/currencySymbol');
@@ -28,6 +28,7 @@ router.get('/', async (req, res) => {
   const selectedYear = SUPPORTED_YEARS.includes(req.cookies.selectedYear)
     ? req.cookies.selectedYear
     : getCurrentTaxYear();
+  const includePg = req.cookies.includePg === 'true';
 
   try {
     // Fetch country lists for every year so the client can switch year without a reload.
@@ -47,6 +48,7 @@ router.get('/', async (req, res) => {
       selectedPlan,
       selectedCountry,
       selectedYear,
+      includePg,
       supportedYears: SUPPORTED_YEARS,
     });
   } catch (error) {
@@ -59,6 +61,7 @@ router.get('/', async (req, res) => {
       selectedPlan,
       selectedCountry,
       selectedYear,
+      includePg,
       supportedYears: SUPPORTED_YEARS,
       error: error.message,
     });
@@ -68,9 +71,10 @@ router.get('/', async (req, res) => {
 // Handle POST calculate request
 router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const { targetCountry, selectedPlan, selectedYear } = req.body;
+  const includePg = req.body.includePg === 'on';
   const year = SUPPORTED_YEARS.includes(selectedYear) ? selectedYear : DEFAULT_YEAR;
 
-  logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}`);
+  logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}`);
 
   if (!ALLOWED_PLANS.includes(selectedPlan)) {
     return res.status(400).render('result', { error: 'Invalid repayment plan selected.' });
@@ -85,6 +89,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS(req));
   res.cookie('selectedCountry', targetCountry, COOKIE_OPTS(req));
   res.cookie('selectedYear', year, COOKIE_OPTS(req));
+  res.cookie('includePg', String(includePg), COOKIE_OPTS(req));
 
   try {
     const countryDataDict = await getThresholdData(selectedPlan, year);
@@ -112,9 +117,29 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       ? (amountOverThreshold * REPAYMENT_RATE) / MONTHS_PER_YEAR
       : 0;
 
+    // Postgraduate loan calculation (optional)
+    let pglMonthlyRepayment = null;
+    let pglThresholdGbp = null;
+    if (includePg) {
+      const pgDataDict = await getThresholdData('planPg', year);
+      const pgCountryData = pgDataDict[targetCountry];
+      if (pgCountryData) {
+        const pgThresholdRaw = pgCountryData['Earnings threshold (GBP)'];
+        if (pgThresholdRaw) {
+          pglThresholdGbp = parseFloat(pgThresholdRaw.replace(/[£,]/g, ''));
+          const pgAmountOver = salaryGbp - pglThresholdGbp;
+          pglMonthlyRepayment = pgAmountOver > 0
+            ? (pgAmountOver * PGL_REPAYMENT_RATE) / MONTHS_PER_YEAR
+            : 0;
+        }
+      }
+    }
+
     res.render('result', {
       error: null,
       monthlyRepayment: monthlyRepayment.toFixed(2),
+      pglMonthlyRepayment: pglMonthlyRepayment !== null ? pglMonthlyRepayment.toFixed(2) : null,
+      pglThresholdGbp: pglThresholdGbp !== null ? pglThresholdGbp.toFixed(2) : null,
       targetCountry,
       salaryLocalCurrency: salary.toFixed(2),
       salaryCurrencySymbol: currencySymbol(countryData['Currency']),

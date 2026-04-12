@@ -36,6 +36,11 @@
                 </select>
             </div>
 
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="includePg" name="includePg" <%= includePg ? 'checked' : '' %>>
+                <label class="form-check-label" for="includePg">I also have a Postgraduate Loan</label>
+            </div>
+
             <div class="mb-3">
                 <label for="targetCountry" class="form-label">Country:</label>
                 <input type="text" id="targetCountry" name="targetCountry" class="form-control" required

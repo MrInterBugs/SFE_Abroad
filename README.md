@@ -1,100 +1,96 @@
 # [Student Loan Repayment Calculator](https://sfe.aedanl.com)
 
-This project is a Student Loan Repayment Calculator that helps users estimate their monthly repayment amounts based on different country-specific salary thresholds and repayment plans. The application is built using Node.js, Express, and uses various middleware like Helmet for security, Rate Limiter for request throttling, and CSRF Protection to safeguard against cross-site request forgery.
-
-## Table of Contents
-
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Security](#security)
-- [Technologies Used](#technologies-used)
-- [License](#license)
+A web app for UK student loan borrowers living abroad to estimate their monthly repayment based on their country of residence, salary, and repayment plan. Exchange rates and earnings thresholds are sourced directly from gov.uk and cached locally so the calculator continues to work even if older tax year pages are removed.
 
 ## Features
 
-- **Multiple Repayment Plans**: Supports different repayment plans (Plan 1, Plan 2, Plan 4).
-- **Country-Specific Calculations**: Retrieves country-specific exchange rates and salary thresholds.
-- **Rate Limiting**: Prevents abuse by limiting requests per IP address.
-- **CSRF Protection**: Secure form submissions using CSRF tokens.
-- **Cookie Management**: Persist user preferences for plan and country using cookies.
-- **Security Best Practices**: Helmet for setting security-related HTTP headers.
+- **Plans 1, 2, 4 and 5** — covers all active overseas repayment plans, with an optional Postgraduate Loan add-on
+- **Multi-year support** — switch between tax years (currently 2025-26 and 2026-27); defaults to the current UK tax year automatically
+- **Offline cache** — thresholds are scraped from gov.uk and persisted to a local SQLite database; archived years are served entirely from the database once cached
+- **Currency formatting** — salary is displayed with the correct local currency symbol
+- **Remembers preferences** — selected plan, country, and year are stored in cookies and restored on next visit
+- **Form protection** — CSRF tokens on all submissions; rate limiting to prevent abuse.
+
+## How it works
+
+On startup the app fetches earnings threshold tables from gov.uk for all supported plans and tax years, parses them with Cheerio, and stores the results in a SQLite database. Subsequent requests are served from an in-memory cache (7-day TTL) with the database as a fallback. For archived tax years the database is used exclusively — gov.uk is never re-fetched.
+
+Repayments are calculated as:
+
+```
+monthly repayment = ((annual salary in GBP − threshold) × rate%) ÷ 12
+```
+
+- Undergraduate plans (1, 2, 4, 5): **9%** above threshold
+- Postgraduate Loan: **6%** above threshold
+
+If the salary is below the threshold, no repayment is due. When both are selected, the result shows each repayment separately and as a combined total.
 
 ## Prerequisites
 
-Ensure you have the following installed:
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
-- **Node.js** (v14 or higher)
-- **npm** (v6 or higher)
+No local Node.js installation is required — everything runs inside Docker.
 
-## Installation
-
-- **Clone the repository:**
+## Running locally
 
 ```bash
-git clone https://github.com/your-username/loan-repayment-calculator.git
-cd loan-repayment-calculator
+git clone https://github.com/MrInterBugs/SFE_Abroad.git
+cd SFE_Abroad
+docker compose up --build
 ```
 
-- **Install dependencies:**
+The app will be available at `http://localhost:3000`.
+
+> **Note:** The first build compiles `better-sqlite3` from source and may take a couple of minutes.
+
+### Data persistence
+
+Country data is stored in `./data/thresholds.db` on the host machine (mounted as a Docker volume). This means cached threshold data — including archived tax years — survives container restarts and rebuilds.
+
+### Running tests
+
+Tests run automatically as part of the Docker build. To run them manually inside a container:
 
 ```bash
-npm install
+docker run --rm sfe_abroad-student-loan-app npm test
 ```
-
-- **Configure environment variables:** Create a .env file in the root directory and add any required environment variables (e.g., NODE_ENV, PORT).
-
-- **Run the application:**
-
-```bash
-npm start
-```
-
-The application will be running at `http://localhost:3000`.
-
 
 ## Usage
-### Home Page
 
-When you visit the home page (/), you will see a form where you can select:
+1. Select a **tax year** and **repayment plan**
+2. Tick **I also have a Postgraduate Loan** if applicable
+3. Type your **country of residence** — the field autocompletes from the gov.uk threshold table
+4. Enter your **annual salary in local currency**
+5. Click **Calculate**
 
-    Target Country: The country for which you want to calculate repayment.
-    Salary in Local Currency: Your salary in the local currency of the selected country.
-    Repayment Plan: Select from Plan 1, Plan 2, or Plan 4.
+The result shows your estimated monthly repayment in GBP, along with the exchange rate and earnings threshold used. If the Postgraduate Loan option is selected, undergraduate and PGL repayments are shown separately alongside a combined total.
 
-The form submits the data and returns the estimated monthly repayment.
-### Calculate Loan Repayment
+## Data source
 
-The /calculate endpoint handles POST requests. It calculates the monthly repayment based on the country's exchange rate, threshold salary, and the user's salary.
-API Endpoints
+Threshold data is published by the UK government:
 
-    GET /: Displays the home page with the loan calculation form.
-    POST /calculate: Processes the loan calculation and renders the result.
-        Parameters:
-            targetCountry: The selected country.
-            salaryLocalCurrency: Salary in the local currency.
-            selectedPlan: Chosen repayment plan (Plan 1, Plan 2, Plan 4).
+- [Plan 1](https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-1-student-loans)
+- [Plan 2](https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-2-student-loans)
+- [Plan 4](https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-4-student-loans)
+- [Plan 5](https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-5-student-loans)
+- [Postgraduate Loan](https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-postgraduate-student-loans)
 
-## Security
+> **Note:** The 2025-26 pages for Plans 1, 2, and 4 have a typo in their URL (the path reads `2024-25`). This is a gov.uk error — the data is correct. Plan 5 2026-27 uses a different URL format (`2026-to-2027`). Both quirks are handled in [config/constants.js](student-loan-repayment/config/constants.js).
 
-- Rate Limiting: Each IP is limited to 5 requests per second to prevent abuse.
-- Helmet: Security headers are set using Helmet's contentSecurityPolicy.
-- CSRF Protection: All form submissions are protected using CSRF tokens.
-- Cookies: Preferences for selected country and repayment plan are stored in HTTP-only, secure cookies.
+## Tech stack
 
-## Technologies Used
-
-- Node.js: JavaScript runtime.
-- Express.js: Web framework for building the API and serving views.
-- Axios: For making HTTP requests to retrieve country-specific data.
-- Cheerio: For scraping and parsing the HTML from external sites.
-- Rate Limiter Flexible: To prevent abuse through rate limiting.
-- Helmet: Secures HTTP headers to prevent various web vulnerabilities.
-- EJS: Templating engine for rendering HTML views.
-- CSRF Protection: Ensures safe form submissions.
-- Logger: Custom logger for logging server events and errors.
+| | |
+|---|---|
+| Runtime | Node.js 25 (Alpine) |
+| Framework | Express |
+| Templating | EJS |
+| Data fetching | Axios + Cheerio |
+| Database | SQLite via better-sqlite3 |
+| Security | Helmet (CSP), CSRF tokens, rate-limiter-flexible |
+| Containerisation | Docker + Docker Compose |
+| Reverse proxy (production) | Traefik |
 
 ## License
 
-This project is licensed under the Apache 2.0 License.
+Licensed under the [Apache 2.0 License](LICENSE).

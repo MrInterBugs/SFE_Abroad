@@ -14,20 +14,39 @@
 
         <div class="bg-light p-4 rounded shadow-sm">
             <% if (locals.monthlyRepayment !== undefined) { %>
+                <%
+                  const planLabel = selectedPlan === 'plan1' ? 'Plan 1'
+                    : selectedPlan === 'plan2' ? 'Plan 2'
+                    : selectedPlan === 'plan4' ? 'Plan 4'
+                    : 'Plan 5';
+                  const hasPgl = locals.pglMonthlyRepayment !== null && locals.pglMonthlyRepayment !== undefined;
+                  const totalMonthly = hasPgl
+                    ? (parseFloat(monthlyRepayment) + parseFloat(pglMonthlyRepayment)).toFixed(2)
+                    : null;
+                %>
+                <p>Plan: <%= planLabel %></p>
+                <p>Tax year: <%= selectedYear %></p>
+                <p>Country: <%= targetCountry %></p>
+                <p>Original salary in local currency: <%= salaryCurrencySymbol %><%= salaryLocalCurrency %></p>
+                <p>Exchange rate used: <%= exchangeRate %></p>
+
                 <% if (monthlyRepayment > 0) { %>
-                    <p>Your monthly repayment in GBP: <strong>£<%= monthlyRepayment %></strong></p>
-                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : selectedPlan === 'plan2' ? 'Plan 2' : selectedPlan === 'plan4' ? 'Plan 4' : 'Plan 5' %></p>
-                    <p>Tax year: <%= selectedYear %></p>
-                    <p>Country: <%= targetCountry %></p>
-                    <p>Original salary in local currency: <%= salaryCurrencySymbol %><%= salaryLocalCurrency %></p>
-                    <p>Exchange rate used: <%= exchangeRate %></p>
-                    <p>Annual earnings threshold (GBP): £<%= thresholdGbp %></p>
+                    <p>Annual earnings threshold (<%= planLabel %>, GBP): £<%= thresholdGbp %></p>
+                    <p><%= planLabel %> monthly repayment: <strong>£<%= monthlyRepayment %></strong></p>
                 <% } else { %>
-                    <p>Your salary is below the repayment threshold. No repayment required.</p>
-                    <p>Plan: <%= selectedPlan === 'plan1' ? 'Plan 1' : selectedPlan === 'plan2' ? 'Plan 2' : selectedPlan === 'plan4' ? 'Plan 4' : 'Plan 5' %></p>
-                    <p>Tax year: <%= selectedYear %></p>
-                    <p>Country: <%= targetCountry %></p>
-                    <p>Original salary in local currency: <%= salaryCurrencySymbol %><%= salaryLocalCurrency %></p>
+                    <p>Your salary is below the <%= planLabel %> repayment threshold (£<%= thresholdGbp %>). No undergraduate repayment due.</p>
+                <% } %>
+
+                <% if (hasPgl) { %>
+                    <hr>
+                    <% if (pglMonthlyRepayment > 0) { %>
+                        <p>Annual earnings threshold (Postgraduate Loan, GBP): £<%= pglThresholdGbp %></p>
+                        <p>Postgraduate Loan monthly repayment: <strong>£<%= pglMonthlyRepayment %></strong></p>
+                    <% } else { %>
+                        <p>Your salary is below the Postgraduate Loan repayment threshold (£<%= pglThresholdGbp %>). No PGL repayment due.</p>
+                    <% } %>
+                    <hr>
+                    <p>Total monthly repayment: <strong>£<%= totalMonthly %></strong></p>
                 <% } %>
             <% } %>
 
