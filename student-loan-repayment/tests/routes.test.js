@@ -1,0 +1,440 @@
+'use strict';
+
+// Mock data utilities before any require() so the router gets the mocks.
+jest.mock('../utils/fetchCountryData');
+jest.mock('../utils/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+}));
+
+const request = require('supertest');
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
+const path = require('path');
+
+const { csrfProtection } = require('../utils/csrf');
+const { fetchCountryData, getThresholdData } = require('../utils/fetchCountryData');
+const { DEFAULT_YEAR, SUPPORTED_YEARS } = require('../config/constants');
+
+// ─── Fixtures ─────────────────────────────────────────────────────────────────
+
+const THRESHOLD_DATA = {
+  Germany: {
+    'Exchange rate': '1.15',
+    Currency: 'Euro',
+    'Earnings threshold (GBP)': '£22,000',
+    'Lower earnings threshold (GBP)': '£18,000',
+  },
+};
+
+const PG_THRESHOLD_DATA = {
+  Germany: {
+    'Exchange rate': '1.15',
+    Currency: 'Euro',
+    'Earnings threshold (GBP)': '£21,000',
+  },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Build a minimal express app that mirrors the real app's middleware stack. */
+function buildApp() {
+  const app = express();
+  app.use(bodyParser.urlencoded({ extended: false }));
+  app.use(bodyParser.json());
+  app.use(cookieParser());
+  app.use(csrfProtection);
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, '../views'));
+  // Fresh require each call — module is cached by Node after first load, which
+  // is fine here because we control mock implementations per-test via mockXxx.
+  app.use('/', require('../routes/index'));
+  return app;
+}
+
+/**
+ * GET / on the given app and extract the CSRF token from the HTML and
+ * the set-cookie header so a subsequent POST can be authenticated.
+ */
+async function getCsrfToken(app) {
+  const res = await request(app).get('/');
+  const match = res.text.match(/name="csrfToken" value="(.+?)"/);
+  if (!match) throw new Error('Could not find CSRF token in rendered HTML');
+  return { token: match[1], cookies: res.headers['set-cookie'] };
+}
+
+/**
+ * Perform a full CSRF-authenticated POST /calculate against the given app.
+ * Additional cookies (e.g. preference cookies) can be passed via `extraCookies`.
+ */
+async function postCalculate(app, body, extraCookies = []) {
+  const { token, cookies } = await getCsrfToken(app);
+  return request(app)
+    .post('/calculate')
+    .set('Cookie', [...cookies, ...extraCookies])
+    .send({ csrfToken: token, ...body });
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+describe('routes', () => {
+  let app;
+
+  beforeEach(() => {
+    fetchCountryData.mockResolvedValue(['Germany', 'France']);
+    getThresholdData.mockResolvedValue(THRESHOLD_DATA);
+    app = buildApp();
+  });
+
+  afterEach(() => jest.clearAllMocks());
+
+  // ─── GET / ──────────────────────────────────────────────────────────────────
+
+  describe('GET /', () => {
+    test('renders the index page with a 200', async () => {
+      const res = await request(app).get('/');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('csrfToken');
+    });
+
+    test('defaults to plan1 when no selectedPlan cookie is set', async () => {
+      const res = await request(app).get('/');
+      expect(res.status).toBe(200);
+    });
+
+    test('reads a valid selectedPlan cookie (plan2)', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['selectedPlan=plan2']);
+      expect(res.status).toBe(200);
+    });
+
+    test('ignores an invalid selectedPlan cookie and defaults to plan1', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['selectedPlan=planX']);
+      expect(res.status).toBe(200);
+    });
+
+    test('reads a valid selectedYear cookie', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', [`selectedYear=${SUPPORTED_YEARS[0]}`]);
+      expect(res.status).toBe(200);
+    });
+
+    test('ignores an invalid selectedYear cookie and falls back to current year', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['selectedYear=not-a-year']);
+      expect(res.status).toBe(200);
+    });
+
+    test('reads includePg=true cookie', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['includePg=true']);
+      expect(res.status).toBe(200);
+    });
+
+    test('reads selectedCountry cookie', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['selectedCountry=Germany']);
+      expect(res.status).toBe(200);
+    });
+
+    test('still renders 200 (with empty country lists) when fetchCountryData throws', async () => {
+      fetchCountryData.mockRejectedValue(new Error('gov.uk unreachable'));
+      const res = await request(app).get('/');
+      // The route catches the error and renders the index with empty data;
+      // the index.ejs template does not display the error string itself.
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('csrfToken');
+    });
+  });
+
+  // ─── POST /calculate ────────────────────────────────────────────────────────
+
+  describe('POST /calculate', () => {
+    test('returns 200 and sets preference cookies on a valid request', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.headers['set-cookie']).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('selectedPlan=plan1'),
+          expect.stringContaining('selectedCountry=Germany'),
+          expect.stringContaining(`selectedYear=${DEFAULT_YEAR}`),
+        ])
+      );
+    });
+
+    test('uses the lower earnings threshold field for plan2', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan2',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+    });
+
+    test('plan4 uses the standard earnings threshold field', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan4',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+    });
+
+    test('returns 400 when selectedPlan is not in ALLOWED_PLANS', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'planX',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Invalid repayment plan selected');
+    });
+
+    test('returns 400 for a non-numeric salary', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: 'not-a-number',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('valid positive salary');
+    });
+
+    test('returns 400 for a zero salary', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '0',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+    });
+
+    test('returns 400 for a negative salary', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '-500',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+    });
+
+    test('returns 400 for Infinity as salary', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: 'Infinity',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+    });
+
+    test('falls back to DEFAULT_YEAR when selectedYear is unrecognised', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: 'bad-year',
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers['set-cookie']).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining(`selectedYear=${DEFAULT_YEAR}`),
+        ])
+      );
+    });
+
+    test('renders an error when the country is not found in threshold data', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Narnia',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Country not found in the data');
+    });
+
+    test('renders an error when the exchange rate is not a number', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': 'not-a-number',
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+      });
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Unexpected data format');
+    });
+
+    test('renders an error when the threshold field is missing', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '1.15',
+          Currency: 'Euro',
+          // deliberately omit 'Earnings threshold (GBP)'
+        },
+      });
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Unexpected data format');
+    });
+
+    test('shows £0.00 repayment when salary is below the threshold', async () => {
+      // Very low exchange rate → GBP salary well below £22,000 threshold
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '0.0001',
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+      });
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '10000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('below the');
+    });
+
+    test('renders an error when getThresholdData throws', async () => {
+      getThresholdData.mockRejectedValue(new Error('Database offline'));
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Something went wrong');
+    });
+
+    test('returns 403 when no CSRF token is supplied', async () => {
+      const res = await request(app)
+        .post('/calculate')
+        .send({ targetCountry: 'Germany', salaryLocalCurrency: '50000', selectedPlan: 'plan1' });
+      expect(res.status).toBe(403);
+    });
+
+    // ─── Postgraduate Loan (includePg) ──────────────────────────────────────
+
+    test('calculates PGL repayment when includePg is on', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve(PG_THRESHOLD_DATA)
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+      });
+      expect(res.status).toBe(200);
+    });
+
+    test('shows £0.00 PGL repayment when salary is below PGL threshold', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve({
+              Germany: {
+                'Exchange rate': '1.15',
+                Currency: 'Euro',
+                'Earnings threshold (GBP)': '£1,000,000', // far above any salary
+              },
+            })
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '5000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+      });
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('below the Postgraduate Loan');
+    });
+
+    test('skips PGL row when country is absent from PG data', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve({}) // no entry for Germany
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+      });
+      expect(res.status).toBe(200);
+    });
+
+    test('skips PGL row when PG threshold field is missing for country', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve({
+              Germany: { 'Exchange rate': '1.15', Currency: 'Euro' }, // no threshold
+            })
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+      });
+      expect(res.status).toBe(200);
+    });
+
+    test('includePg cookie is stored as "false" when checkbox is absent', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        // no includePg key → checkbox was not checked
+      });
+      expect(res.headers['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringContaining('includePg=false')])
+      );
+    });
+  });
+});

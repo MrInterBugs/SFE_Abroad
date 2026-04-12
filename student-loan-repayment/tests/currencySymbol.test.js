@@ -53,3 +53,28 @@ describe('currencySymbol', () => {
     expect(currencySymbol('Imaginary Coin')).toBe('Imaginary Coin');
   });
 });
+
+// ─── Final || name fallback (line 169) ───────────────────────────────────────
+// Covers the branch where the ISO code is in NAME_TO_ISO and not in
+// CODE_OVERRIDES, but currency-symbol-map returns nothing for it.
+describe('currencySymbol — package-returns-nothing fallback', () => {
+  let mockedCurrencySymbol;
+
+  beforeAll(() => {
+    jest.resetModules();
+    // Make currency-symbol-map always return undefined so every lookup
+    // falls through to the final `|| name` arm.
+    jest.doMock('currency-symbol-map', () => () => undefined);
+    mockedCurrencySymbol = require('../utils/currencySymbol');
+  });
+
+  afterAll(() => {
+    jest.resetModules();
+  });
+
+  test('returns the currency name when the package has no symbol for the ISO code', () => {
+    // 'Euro' → ISO 'EUR', no CODE_OVERRIDE entry, package mocked to return
+    // undefined → final fallback returns the original name 'Euro'.
+    expect(mockedCurrencySymbol('Euro')).toBe('Euro');
+  });
+});

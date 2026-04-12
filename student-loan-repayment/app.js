@@ -74,4 +74,4 @@ async function prefetchAllData() {
   }
 }
 
-module.exports = { app, server };
+module.exports = { app, server, prefetchAllData };

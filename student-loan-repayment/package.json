@@ -4,7 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "app.js",
+      "config/**/*.js",
+      "routes/**/*.js",
+      "utils/**/*.js"
+    ],
+    "coverageReporters": ["text", "lcov"]
   },
   "keywords": [],
   "author": "",
