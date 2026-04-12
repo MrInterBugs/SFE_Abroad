@@ -51,5 +51,3 @@ describe('Express App', () => {
     expect(response.status).toBe(404);
   });
 });
-
-module.exports = app;

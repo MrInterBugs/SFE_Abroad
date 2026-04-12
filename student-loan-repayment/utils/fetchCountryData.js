@@ -39,11 +39,14 @@ function parseTableData(html) {
 async function fetchFromWeb(plan, year) {
   const url = urlsByYear[year][plan];
   logger.info(`Fetching from gov.uk: ${plan} ${year}`);
-  const response = await axios.get(url);
+  const response = await axios.get(url, { timeout: 10000 });
   if (response.status !== 200) {
     throw new Error(`gov.uk returned status ${response.status}`);
   }
   const countryDataDict = parseTableData(response.data);
+  if (Object.keys(countryDataDict).length === 0) {
+    throw new Error(`No country data parsed from gov.uk for ${plan} ${year} — page structure may have changed`);
+  }
 
   // Persist to DB and in-memory cache
   db.saveThresholds(plan, year, countryDataDict);

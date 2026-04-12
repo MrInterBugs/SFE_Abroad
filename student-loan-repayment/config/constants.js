@@ -16,6 +16,12 @@ const urlsByYear = {
 };
 
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+const REPAYMENT_RATE = 0.09;  // 9% above threshold
+const MONTHS_PER_YEAR = 12;
+
+const ALLOWED_PLANS = ['plan1', 'plan2', 'plan4', 'plan5'];
 const SUPPORTED_YEARS = Object.keys(urlsByYear);
 
 // Latest supported year — used as the fallback for the "archived year" DB logic.
@@ -36,5 +42,15 @@ function getCurrentTaxYear() {
   return SUPPORTED_YEARS.includes(computed) ? computed : DEFAULT_YEAR;
 }
 
-module.exports = { urlsByYear, CACHE_DURATION, DEFAULT_YEAR, SUPPORTED_YEARS, getCurrentTaxYear };
+module.exports = {
+  urlsByYear,
+  CACHE_DURATION,
+  COOKIE_MAX_AGE,
+  REPAYMENT_RATE,
+  MONTHS_PER_YEAR,
+  ALLOWED_PLANS,
+  DEFAULT_YEAR,
+  SUPPORTED_YEARS,
+  getCurrentTaxYear,
+};
   

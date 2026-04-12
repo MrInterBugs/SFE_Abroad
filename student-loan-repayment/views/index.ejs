@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SFE Calculator</title>
     <link rel="stylesheet" href="/styles.css">
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- jQuery UI CSS for autocomplete widget -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 </head>
 <body>
+    <!-- Server data for the autocomplete — not executable, exempt from script-src CSP -->
+    <script type="application/json" id="app-data"><%- JSON.stringify(countriesByYear) %></script>
+
     <div class="container mt-5">
         <h1 class="text-center mb-4">SFE (Student Finance England) Repayment Calculator</h1>
         <form id="mainForm" action="/calculate" method="POST" class="bg-light p-4 rounded shadow-sm mb-4">
@@ -18,7 +19,7 @@
 
             <div class="mb-3">
                 <label for="selectedYear" class="form-label">Tax Year:</label>
-                <select id="selectedYear" name="selectedYear" class="form-select" required onchange="updateCountryList()">
+                <select id="selectedYear" name="selectedYear" class="form-select" required>
                     <% supportedYears.forEach(function(year) { %>
                         <option value="<%= year %>" <% if (selectedYear === year) { %> selected <% } %>><%= year %></option>
                     <% }); %>
@@ -27,7 +28,7 @@
 
             <div class="mb-3">
                 <label for="selectedPlan" class="form-label">Select Plan:</label>
-                <select id="selectedPlan" name="selectedPlan" class="form-select" required onchange="updateCountryList()">
+                <select id="selectedPlan" name="selectedPlan" class="form-select" required>
                     <option value="plan1" <% if (selectedPlan === 'plan1') { %> selected <% } %>>Plan 1 (Pre 2012)</option>
                     <option value="plan2" <% if (selectedPlan === 'plan2') { %> selected <% } %>>Plan 2 (2012 - 2023)</option>
                     <option value="plan4" <% if (selectedPlan === 'plan4') { %> selected <% } %>>Plan 4 (Scotland)</option>
@@ -38,52 +39,22 @@
             <div class="mb-3">
                 <label for="targetCountry" class="form-label">Country:</label>
                 <input type="text" id="targetCountry" name="targetCountry" class="form-control" required
-                    <% if (selectedCountry) { %> value="<%= selectedCountry %>" <% } %> >
+                    <% if (selectedCountry) { %> value="<%= selectedCountry %>" <% } %>>
             </div>
 
             <div class="mb-3">
                 <label for="salaryLocalCurrency" class="form-label">Annual Salary (in local currency):</label>
-                <input type="number" step="0.01" class="form-control" id="salaryLocalCurrency" name="salaryLocalCurrency" required>
+                <input type="number" step="0.01" min="0" class="form-control" id="salaryLocalCurrency" name="salaryLocalCurrency" required>
             </div>
 
             <button type="submit" class="btn btn-primary w-100">Calculate</button>
         </form>
     </div>
 
-    <!-- Include jQuery before any jQuery-based script -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Include jQuery UI for autocomplete widget -->
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-
-    <!-- Bootstrap JS and dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-
-    <script>
-        const countriesByYear = <%- JSON.stringify(countriesByYear) %>;
-
-        function updateCountryList() {
-            const year = $('#selectedYear').val();
-            const plan = $('#selectedPlan').val();
-            const countryList = (countriesByYear[year] && countriesByYear[year][plan]) || [];
-
-            $("#targetCountry").autocomplete({
-                source: function(request, response) {
-                    const matcher = new RegExp($.ui.autocomplete.escapeRegex(request.term), "i");
-                    response($.grep(countryList, function(item) {
-                        return matcher.test(item);
-                    }));
-                },
-                minLength: 0
-            }).focus(function() {
-                $(this).autocomplete("search", "");
-            });
-        }
-
-        $(document).ready(function() {
-            updateCountryList();
-            $('#selectedYear, #selectedPlan').on('change', updateCountryList);
-        });
-    </script>
+    <script src="/main.js"></script>
 </body>
 </html>
