@@ -1,65 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculation Result</title>
-    <link rel="stylesheet" href="/styles.css">
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Student Loan Overseas Repayment Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="text-center mb-4">Calculation Result</h1>
+<div class="page">
 
-        <div class="bg-light p-4 rounded shadow-sm">
-            <% if (locals.monthlyRepayment !== undefined) { %>
-                <%
-                  const planLabel = selectedPlan === 'plan1' ? 'Plan 1'
-                    : selectedPlan === 'plan2' ? 'Plan 2'
-                    : selectedPlan === 'plan4' ? 'Plan 4'
-                    : 'Plan 5';
-                  const hasPgl = locals.pglMonthlyRepayment !== null && locals.pglMonthlyRepayment !== undefined;
-                  const totalMonthly = hasPgl
-                    ? (parseFloat(monthlyRepayment) + parseFloat(pglMonthlyRepayment)).toFixed(2)
-                    : null;
-                %>
-                <p>Plan: <%= planLabel %></p>
-                <p>Tax year: <%= selectedYear %></p>
-                <p>Country: <%= targetCountry %></p>
-                <p>Original salary in local currency: <%= salaryCurrencySymbol %><%= salaryLocalCurrency %></p>
-                <p>Exchange rate used: <%= exchangeRate %></p>
-
-                <% if (monthlyRepayment > 0) { %>
-                    <p>Annual earnings threshold (<%= planLabel %>, GBP): £<%= thresholdGbp %></p>
-                    <p><%= planLabel %> monthly repayment: <strong>£<%= monthlyRepayment %></strong></p>
-                <% } else { %>
-                    <p>Your salary is below the <%= planLabel %> repayment threshold (£<%= thresholdGbp %>). No undergraduate repayment due.</p>
-                <% } %>
-
-                <% if (hasPgl) { %>
-                    <hr>
-                    <% if (pglMonthlyRepayment > 0) { %>
-                        <p>Annual earnings threshold (Postgraduate Loan, GBP): £<%= pglThresholdGbp %></p>
-                        <p>Postgraduate Loan monthly repayment: <strong>£<%= pglMonthlyRepayment %></strong></p>
-                    <% } else { %>
-                        <p>Your salary is below the Postgraduate Loan repayment threshold (£<%= pglThresholdGbp %>). No PGL repayment due.</p>
-                    <% } %>
-                    <hr>
-                    <p>Total monthly repayment: <strong>£<%= totalMonthly %></strong></p>
-                <% } %>
-            <% } %>
-
-            <% if (error) { %>
-                <p class="text-danger"><%= error %></p>
-            <% } %>
-
-            <a href="/" class="btn btn-secondary mt-3">Go Back</a>
-        </div>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-crown">
+        <svg class="crown-icon" viewBox="0 0 32 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M16 2L4 10V26H28V10L16 2Z" fill="#1d70b8" opacity="0.15"/>
+          <path d="M16 4L6 11V24H26V11L16 4Z" stroke="#1d70b8" stroke-width="1.5" fill="none"/>
+          <circle cx="16" cy="8" r="2" fill="#1d70b8"/>
+          <circle cx="7" cy="13" r="2" fill="#1d70b8"/>
+          <circle cx="25" cy="13" r="2" fill="#1d70b8"/>
+          <path d="M6 24H26" stroke="#1d70b8" stroke-width="2"/>
+        </svg>
+        <span class="header-title">Student Finance</span>
+      </div>
+      <div class="header-divider"></div>
+      <span class="header-sub">Overseas Repayment Calculator</span>
     </div>
+  </header>
 
-    <!-- Bootstrap JS (including Popper.js for tooltips and popovers) -->
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+  <main class="main">
+    <div class="container">
+
+      <div class="page-heading">
+        <h1>Calculation Result</h1>
+      </div>
+
+      <% if (error) { %>
+        <div class="card">
+          <p style="color:#d4351c;font-weight:500;"><%= error %></p>
+        </div>
+      <% } %>
+
+      <% if (locals.monthlyRepayment !== undefined) { %>
+        <%
+          const planLabel = selectedPlan === 'plan1' ? 'Plan 1'
+            : selectedPlan === 'plan2' ? 'Plan 2'
+            : selectedPlan === 'plan4' ? 'Plan 4'
+            : 'Plan 5';
+          const hasPgl = locals.pglMonthlyRepayment !== null && locals.pglMonthlyRepayment !== undefined;
+          const totalMonthly = hasPgl
+            ? (parseFloat(monthlyRepayment) + parseFloat(pglMonthlyRepayment)).toFixed(2)
+            : monthlyRepayment;
+        %>
+
+        <!-- Results card -->
+        <div class="results-card visible animate-in">
+          <div class="results-header">
+            <div>
+              <div class="results-header-label">Monthly repayment</div>
+              <div class="results-main-amount">£<%= totalMonthly %></div>
+              <div class="results-main-period">per month</div>
+            </div>
+            <div class="results-badge">
+              <div class="results-badge-label">Annual</div>
+              <div class="results-badge-val">£<%= (parseFloat(totalMonthly) * 12).toFixed(0) %>/yr</div>
+            </div>
+          </div>
+
+          <div class="results-body">
+            <div class="results-meta">
+              <div class="meta-item">
+                <div class="meta-label">Earnings threshold</div>
+                <div class="meta-value">£<%= thresholdGbp %></div>
+                <div class="meta-sub">per year (GBP)</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Exchange rate</div>
+                <div class="meta-value"><%= exchangeRate %></div>
+                <div class="meta-sub">GBP per local unit</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">GBP equivalent</div>
+                <div class="meta-value">£<%= Math.round(parseFloat(salaryLocalCurrency) * parseFloat(exchangeRate)).toLocaleString() %></div>
+                <div class="meta-sub">gross annual salary</div>
+              </div>
+            </div>
+
+            <% if (parseFloat(monthlyRepayment) === 0 && (!hasPgl || parseFloat(pglMonthlyRepayment) === 0)) { %>
+              <div class="no-repayment show">
+                <span class="no-rep-icon">✓</span>
+                <div class="no-rep-text">
+                  No repayment required
+                  <span>Your salary is below the <%= planLabel %> repayment threshold (£<%= thresholdGbp %>).</span>
+                </div>
+              </div>
+            <% } %>
+
+            <% if (hasPgl) { %>
+              <div class="breakdown-grid show">
+                <div class="breakdown-item">
+                  <div class="breakdown-item-label">Undergraduate</div>
+                  <div class="breakdown-item-amount">£<%= monthlyRepayment %></div>
+                  <div class="breakdown-item-rate"><%= planLabel %> · 9%</div>
+                </div>
+                <div class="breakdown-item">
+                  <div class="breakdown-item-label">Postgraduate Loan</div>
+                  <div class="breakdown-item-amount">£<%= pglMonthlyRepayment %></div>
+                  <div class="breakdown-item-rate">PGL · 6%</div>
+                </div>
+                <div class="breakdown-item combined">
+                  <div class="breakdown-item-label">Combined Total</div>
+                  <div class="breakdown-item-amount">£<%= totalMonthly %></div>
+                  <div class="breakdown-item-rate">per month</div>
+                </div>
+              </div>
+            <% } %>
+
+            <% if (hasPgl && pglMonthlyRepayment !== null && parseFloat(pglMonthlyRepayment) === 0) { %>
+              <p style="font-size:13px;color:var(--text-secondary);margin-top:12px;">
+                Your salary is below the Postgraduate Loan repayment threshold (£<%= pglThresholdGbp %>). No PGL repayment due.
+              </p>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:0;">
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">
+            <strong>Plan:</strong> <%= planLabel %> &nbsp;·&nbsp;
+            <strong>Tax year:</strong> <%= selectedYear %> &nbsp;·&nbsp;
+            <strong>Country:</strong> <%= targetCountry %><br>
+            <strong>Salary:</strong> <%= salaryCurrencySymbol %><%= salaryLocalCurrency %>
+          </p>
+        </div>
+      <% } %>
+
+      <a href="/" class="btn-calculate" style="display:block;text-align:center;text-decoration:none;margin-top:8px;">← Back to calculator</a>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-note">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6.5" stroke="#8a9198"/>
+          <path d="M7 6v4M7 4.5v.5" stroke="#8a9198" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        This is an estimate only — verify with the
+        <a href="https://www.gov.uk/repaying-your-student-loan/living-or-working-overseas" target="_blank" rel="noopener">Student Loans Company</a>.
+      </div>
+    </div>
+  </footer>
+
+</div>
 </body>
 </html>

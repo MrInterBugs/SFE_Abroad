@@ -1,65 +1,271 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SFE Calculator</title>
-    <link rel="stylesheet" href="/styles.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Student Loan Overseas Repayment Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <!-- Server data for the autocomplete — not executable, exempt from script-src CSP -->
-    <script type="application/json" id="app-data"><%- JSON.stringify(countriesByYear) %></script>
 
-    <div class="container mt-5">
-        <h1 class="text-center mb-4">SFE (Student Finance England) Repayment Calculator</h1>
-        <form id="mainForm" action="/calculate" method="POST" class="bg-light p-4 rounded shadow-sm mb-4">
-            <input type="hidden" name="csrfToken" value="<%= csrfToken %>" />
+<!-- Server data for autocomplete -->
+<script type="application/json" id="app-data"><%- JSON.stringify({ countries: countries }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %></script>
 
-            <div class="mb-3">
-                <label for="selectedYear" class="form-label">Tax Year:</label>
-                <select id="selectedYear" name="selectedYear" class="form-select" required>
-                    <% supportedYears.forEach(function(year) { %>
-                        <option value="<%= year %>" <% if (selectedYear === year) { %> selected <% } %>><%= year %></option>
-                    <% }); %>
-                </select>
-            </div>
+<div class="page">
 
-            <div class="mb-3">
-                <label for="selectedPlan" class="form-label">Select Plan:</label>
-                <select id="selectedPlan" name="selectedPlan" class="form-select" required>
-                    <option value="plan1" <% if (selectedPlan === 'plan1') { %> selected <% } %>>Plan 1 (Pre 2012)</option>
-                    <option value="plan2" <% if (selectedPlan === 'plan2') { %> selected <% } %>>Plan 2 (2012 - 2023)</option>
-                    <option value="plan4" <% if (selectedPlan === 'plan4') { %> selected <% } %>>Plan 4 (Scotland)</option>
-                    <option value="plan5" <% if (selectedPlan === 'plan5') { %> selected <% } %>>Plan 5 (2023 - Present)</option>
-                </select>
-            </div>
-
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="includePg" name="includePg" <%= includePg ? 'checked' : '' %>>
-                <label class="form-check-label" for="includePg">I also have a Postgraduate Loan</label>
-            </div>
-
-            <div class="mb-3">
-                <label for="targetCountry" class="form-label">Country:</label>
-                <input type="text" id="targetCountry" name="targetCountry" class="form-control" required
-                    <% if (selectedCountry) { %> value="<%= selectedCountry %>" <% } %>>
-            </div>
-
-            <div class="mb-3">
-                <label for="salaryLocalCurrency" class="form-label">Annual Salary (in local currency):</label>
-                <input type="number" step="0.01" min="0" class="form-control" id="salaryLocalCurrency" name="salaryLocalCurrency" required>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100">Calculate</button>
-        </form>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-crown">
+        <svg class="crown-icon" viewBox="0 0 32 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M16 2L4 10V26H28V10L16 2Z" fill="#1d70b8" opacity="0.15"/>
+          <path d="M16 4L6 11V24H26V11L16 4Z" stroke="#1d70b8" stroke-width="1.5" fill="none"/>
+          <circle cx="16" cy="8" r="2" fill="#1d70b8"/>
+          <circle cx="7" cy="13" r="2" fill="#1d70b8"/>
+          <circle cx="25" cy="13" r="2" fill="#1d70b8"/>
+          <path d="M6 24H26" stroke="#1d70b8" stroke-width="2"/>
+        </svg>
+        <span class="header-title">Student Finance</span>
+      </div>
+      <div class="header-divider"></div>
+      <span class="header-sub">Overseas Repayment Calculator</span>
     </div>
+  </header>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-    <script src="/main.js"></script>
+  <!-- Main -->
+  <main class="main">
+    <div class="container">
+
+      <div class="page-heading">
+        <h1>Estimate your overseas repayments</h1>
+        <p>For UK graduates living abroad. Enter your salary in local currency to see your monthly obligation.</p>
+      </div>
+
+      <div class="calc-layout">
+      <!-- Left: form -->
+      <div class="calc-col-form">
+      <div class="card" id="form-card">
+        <form id="calc-form" action="/calculate" method="POST" novalidate>
+          <input type="hidden" name="csrfToken" value="<%= csrfToken %>" id="csrf-input">
+
+          <!-- Tax year -->
+          <div class="form-group">
+            <span class="field-label">Tax Year</span>
+            <div class="seg-control" role="radiogroup" aria-label="Tax year">
+              <% supportedYears.forEach(function(year) { %>
+                <input type="radio" name="selectedYear" id="ty-<%= year.replace('-','') %>" value="<%= year %>" <%= year === selectedYear ? 'checked' : '' %>>
+                <label for="ty-<%= year.replace('-','') %>"><%= year %></label>
+              <% }); %>
+            </div>
+          </div>
+
+          <hr class="form-divider">
+
+          <!-- Repayment plan -->
+          <div class="form-group">
+            <span class="field-label">Repayment Plan</span>
+            <div class="plan-grid" role="radiogroup" aria-label="Repayment plan">
+
+              <div class="plan-card">
+                <input type="radio" name="selectedPlan" id="plan1" value="plan1" <%= selectedPlan === 'plan1' ? 'checked' : '' %>>
+                <label for="plan1">
+                  <span class="plan-name">Plan 1</span>
+                  <span class="plan-era">Pre-2012 England &amp; Wales, all NI</span>
+                  <span class="plan-rate">9% above threshold</span>
+                </label>
+              </div>
+
+              <div class="plan-card">
+                <input type="radio" name="selectedPlan" id="plan2" value="plan2" <%= selectedPlan === 'plan2' ? 'checked' : '' %>>
+                <label for="plan2">
+                  <span class="plan-name">Plan 2</span>
+                  <span class="plan-era">2012–2023 England &amp; Wales</span>
+                  <span class="plan-rate">9% above threshold</span>
+                </label>
+              </div>
+
+              <div class="plan-card">
+                <input type="radio" name="selectedPlan" id="plan4" value="plan4" <%= selectedPlan === 'plan4' ? 'checked' : '' %>>
+                <label for="plan4">
+                  <span class="plan-name">Plan 4</span>
+                  <span class="plan-era">Scotland (SAAS)</span>
+                  <span class="plan-rate">9% above threshold</span>
+                </label>
+              </div>
+
+              <div class="plan-card">
+                <input type="radio" name="selectedPlan" id="plan5" value="plan5" <%= selectedPlan === 'plan5' ? 'checked' : '' %>>
+                <label for="plan5">
+                  <span class="plan-name">Plan 5</span>
+                  <span class="plan-era">2023–present England &amp; Wales</span>
+                  <span class="plan-rate">9% above threshold</span>
+                </label>
+              </div>
+
+            </div>
+          </div>
+
+          <hr class="form-divider">
+
+          <!-- PGL checkbox -->
+          <div class="form-group">
+            <label class="checkbox-row <%= includePg ? 'checked' : '' %>" id="pgl-row" for="pgl-check">
+              <input type="checkbox" id="pgl-check" name="includePg" <%= includePg ? 'checked' : '' %>>
+              <div>
+                <div class="cb-text">I also have a Postgraduate Loan (PGL)</div>
+                <div class="cb-sub">6% of income above the PGL threshold</div>
+              </div>
+            </label>
+          </div>
+
+          <hr class="form-divider">
+
+          <!-- Country -->
+          <div class="form-group">
+            <label class="field-label" for="country-input">Country of Residence</label>
+            <div class="autocomplete-wrap">
+              <div class="input-wrap">
+                <input type="text" id="country-input" name="targetCountry" placeholder="e.g. Germany, Australia, Canada…" autocomplete="off" value="<%= selectedCountry %>">
+              </div>
+              <div class="autocomplete-list" id="ac-list" role="listbox"></div>
+            </div>
+            <span class="field-error" id="country-error">Please select a country from the list</span>
+          </div>
+
+          <!-- Salary -->
+          <div class="form-group">
+            <label class="field-label" for="salary-input">Annual Salary</label>
+            <span class="field-hint">Enter your gross salary in local currency, not GBP</span>
+            <div class="input-wrap input-with-currency">
+              <span class="currency-badge" id="currency-badge">—</span>
+              <input type="number" id="salary-input" name="salaryLocalCurrency" placeholder="0" min="0" step="1000">
+            </div>
+            <span class="field-error" id="salary-error">Please enter your annual salary</span>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="btn-calculate" id="calc-btn">
+            Calculate monthly repayment
+          </button>
+
+        </form>
+      </div>
+      </div><!-- /calc-col-form -->
+
+      <!-- Right: results -->
+      <div class="calc-col-results">
+
+      <!-- Empty state -->
+      <div class="results-placeholder" id="results-placeholder">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true" style="margin-bottom:12px;opacity:0.35;">
+          <rect x="4" y="4" width="28" height="28" rx="4" stroke="#1d70b8" stroke-width="2"/>
+          <path d="M11 18h14M11 13h8M11 23h5" stroke="#1d70b8" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <p>Fill in the form and click <strong>Calculate</strong> to see your estimated monthly repayment here.</p>
+      </div>
+
+      <div class="results-card" id="results-card" aria-live="polite">
+        <div class="results-header">
+          <div>
+            <div class="results-header-label">Monthly repayment</div>
+            <div class="results-main-amount" id="res-monthly">£0</div>
+            <div class="results-main-period" id="res-period">per month</div>
+          </div>
+          <div class="results-badge">
+            <div class="results-badge-label">Annual</div>
+            <div class="results-badge-val" id="res-annual">£0</div>
+          </div>
+        </div>
+
+        <div class="results-body">
+
+          <!-- Meta row -->
+          <div class="results-meta">
+            <div class="meta-item">
+              <div class="meta-label">Earnings threshold</div>
+              <div class="meta-value" id="res-threshold">—</div>
+              <div class="meta-sub">per year (GBP)</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Exchange rate</div>
+              <div class="meta-value" id="res-rate">—</div>
+              <div class="meta-sub" id="res-rate-sub">per GBP</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">GBP equivalent</div>
+              <div class="meta-value" id="res-gbp">—</div>
+              <div class="meta-sub">gross annual salary</div>
+            </div>
+          </div>
+
+          <!-- No repayment notice -->
+          <div class="no-repayment" id="no-rep-notice">
+            <span class="no-rep-icon">✓</span>
+            <div class="no-rep-text">
+              No repayment required
+              <span id="no-rep-sub">Your salary is below the repayment threshold.</span>
+            </div>
+          </div>
+
+          <!-- PGL breakdown -->
+          <div class="breakdown-grid" id="breakdown-grid">
+            <div class="breakdown-item">
+              <div class="breakdown-item-label">Undergraduate</div>
+              <div class="breakdown-item-amount" id="bd-ug">£—</div>
+              <div class="breakdown-item-rate" id="bd-ug-rate">Plan — · 9%</div>
+            </div>
+            <div class="breakdown-item">
+              <div class="breakdown-item-label">Postgraduate Loan</div>
+              <div class="breakdown-item-amount" id="bd-pgl">£—</div>
+              <div class="breakdown-item-rate">PGL · 6%</div>
+            </div>
+            <div class="breakdown-item combined">
+              <div class="breakdown-item-label">Combined Total</div>
+              <div class="breakdown-item-amount" id="bd-total">£—</div>
+              <div class="breakdown-item-rate">per month</div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /results-card -->
+
+      </div><!-- /calc-col-results -->
+      </div><!-- /calc-layout -->
+
+      <!-- Footer note -->
+      <p style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:8px;">
+        Thresholds and rates sourced from
+        <a href="https://www.gov.uk/repaying-your-student-loan" target="_blank" rel="noopener"
+           style="color:var(--blue);text-decoration:none;">GOV.UK</a>.
+        Exchange rates are indicative — SLC may use different rates for official notices.
+      </p>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-note">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6.5" stroke="#8a9198"/>
+          <path d="M7 6v4M7 4.5v.5" stroke="#8a9198" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        This is an estimate only. Your actual repayments may differ — verify with the
+        <a href="https://www.gov.uk/repaying-your-student-loan/living-or-working-overseas" target="_blank" rel="noopener">Student Loans Company</a>.
+      </div>
+      <div class="footer-links">
+        <a href="https://www.gov.uk/repaying-your-student-loan" target="_blank" rel="noopener">GOV.UK guidance</a>
+        <a href="https://www.studentfinance.direct" target="_blank" rel="noopener">SLC contact</a>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script src="/main.js"></script>
 </body>
 </html>

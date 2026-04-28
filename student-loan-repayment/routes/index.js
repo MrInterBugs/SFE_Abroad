@@ -5,7 +5,7 @@ const {
   DEFAULT_YEAR, SUPPORTED_YEARS, getCurrentTaxYear,
   ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
 } = require('../config/constants');
-const { fetchCountryData, getThresholdData } = require('../utils/fetchCountryData');
+const { getThresholdData } = require('../utils/fetchCountryData');
 const currencySymbol = require('../utils/currencySymbol');
 
 const router = express.Router();
@@ -16,6 +16,17 @@ const COOKIE_OPTS = (req) => ({
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'Strict',
 });
+
+function buildCountriesList(fullData) {
+  return Object.entries(fullData).map(([name, data]) => {
+    const rawCurrency = (data['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
+    return {
+      name,
+      currency: currencySymbol.NAME_TO_ISO[rawCurrency] || '',
+      symbol: currencySymbol(data['Currency'] || ''),
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
 
 // Serve home page
 router.get('/', async (req, res) => {
@@ -31,20 +42,11 @@ router.get('/', async (req, res) => {
   const includePg = req.cookies.includePg === 'true';
 
   try {
-    // Fetch country lists for every year so the client can switch year without a reload.
-    const countriesByYear = {};
-    await Promise.all(
-      SUPPORTED_YEARS.flatMap(year =>
-        ALLOWED_PLANS.map(async plan => {
-          const list = await fetchCountryData(plan, year);
-          if (!countriesByYear[year]) countriesByYear[year] = {};
-          countriesByYear[year][plan] = list;
-        })
-      )
-    );
+    const fullData = await getThresholdData('plan1', getCurrentTaxYear());
+    const countries = buildCountriesList(fullData);
 
     res.render('index', {
-      countriesByYear,
+      countries,
       selectedPlan,
       selectedCountry,
       selectedYear,
@@ -53,17 +55,13 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     logger.error(`Error loading data: ${error.message}`);
-    const empty = Object.fromEntries(
-      SUPPORTED_YEARS.map(y => [y, Object.fromEntries(ALLOWED_PLANS.map(p => [p, []]))])
-    );
     res.render('index', {
-      countriesByYear: empty,
+      countries: [],
       selectedPlan,
       selectedCountry,
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
-      error: error.message,
     });
   }
 });
@@ -73,17 +71,23 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const { targetCountry, selectedPlan, selectedYear } = req.body;
   const includePg = req.body.includePg === 'on';
   const year = SUPPORTED_YEARS.includes(selectedYear) ? selectedYear : DEFAULT_YEAR;
+  const isJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
 
   logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}`);
 
+  function sendError(status, message) {
+    if (isJson) return res.status(status).json({ error: message });
+    return res.status(status).render('result', { error: message });
+  }
+
   if (!ALLOWED_PLANS.includes(selectedPlan)) {
-    return res.status(400).render('result', { error: 'Invalid repayment plan selected.' });
+    return sendError(400, 'Invalid repayment plan selected.');
   }
 
   // Validate salary: must be a finite positive number
   const salary = parseFloat(req.body.salaryLocalCurrency);
   if (!isFinite(salary) || salary <= 0) {
-    return res.status(400).render('result', { error: 'Please enter a valid positive salary.' });
+    return sendError(400, 'Please enter a valid positive salary.');
   }
 
   res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS(req));
@@ -96,7 +100,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     const countryData = countryDataDict[targetCountry];
 
     if (!countryData) {
-      return res.render('result', { error: 'Country not found in the data.' });
+      return sendError(200, 'Country not found in the data.');
     }
 
     const exchangeRate = parseFloat(countryData['Exchange rate']);
@@ -106,7 +110,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     const thresholdRaw = countryData[thresholdField];
 
     if (!isFinite(exchangeRate) || !thresholdRaw) {
-      return res.render('result', { error: 'Unexpected data format for this country. Please try again later.' });
+      return sendError(200, 'Unexpected data format for this country. Please try again later.');
     }
 
     const thresholdGbp = parseFloat(thresholdRaw.replace(/[£,]/g, ''));
@@ -135,6 +139,22 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       }
     }
 
+    const salaryCurrencySymbol = currencySymbol(countryData['Currency']);
+
+    if (isJson) {
+      return res.json({
+        monthlyRepayment: monthlyRepayment.toFixed(2),
+        pglMonthlyRepayment: pglMonthlyRepayment !== null ? pglMonthlyRepayment.toFixed(2) : null,
+        pglThresholdGbp: pglThresholdGbp !== null ? pglThresholdGbp.toFixed(2) : null,
+        thresholdGbp: thresholdGbp.toFixed(2),
+        localPerGbp: (1 / exchangeRate).toFixed(4),
+        salaryGbp: salaryGbp.toFixed(2),
+        selectedPlan,
+        selectedYear: year,
+        salaryCurrencySymbol,
+      });
+    }
+
     res.render('result', {
       error: null,
       monthlyRepayment: monthlyRepayment.toFixed(2),
@@ -142,7 +162,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       pglThresholdGbp: pglThresholdGbp !== null ? pglThresholdGbp.toFixed(2) : null,
       targetCountry,
       salaryLocalCurrency: salary.toFixed(2),
-      salaryCurrencySymbol: currencySymbol(countryData['Currency']),
+      salaryCurrencySymbol,
       exchangeRate: exchangeRate.toFixed(2),
       thresholdGbp: thresholdGbp.toFixed(2),
       selectedPlan,
@@ -150,6 +170,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     });
   } catch (error) {
     logger.error(`POST /calculate error: ${error.message}`);
+    if (isJson) return res.status(500).json({ error: 'Something went wrong. Please try again.' });
     res.render('result', { error: `Something went wrong. Please try again.` });
   }
 });

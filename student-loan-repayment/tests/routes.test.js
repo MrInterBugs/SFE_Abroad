@@ -21,6 +21,12 @@ const { DEFAULT_YEAR, SUPPORTED_YEARS } = require('../config/constants');
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const THRESHOLD_DATA = {
+  Australia: {
+    'Exchange rate': '0.52',
+    Currency: 'Australian Dollar',
+    'Earnings threshold (GBP)': '£19,084',
+    'Lower earnings threshold (GBP)': '£15,000',
+  },
   Germany: {
     'Exchange rate': '1.15',
     Currency: 'Euro',
@@ -74,6 +80,19 @@ async function postCalculate(app, body, extraCookies = []) {
   return request(app)
     .post('/calculate')
     .set('Cookie', [...cookies, ...extraCookies])
+    .send({ csrfToken: token, ...body });
+}
+
+/**
+ * Like postCalculate but sends Accept: application/json so the route returns
+ * JSON instead of rendering result.ejs.
+ */
+async function postCalculateJson(app, body, extraCookies = []) {
+  const { token, cookies } = await getCsrfToken(app);
+  return request(app)
+    .post('/calculate')
+    .set('Cookie', [...cookies, ...extraCookies])
+    .set('Accept', 'application/json')
     .send({ csrfToken: token, ...body });
 }
 
@@ -146,13 +165,43 @@ describe('routes', () => {
       expect(res.status).toBe(200);
     });
 
-    test('still renders 200 (with empty country lists) when fetchCountryData throws', async () => {
-      fetchCountryData.mockRejectedValue(new Error('gov.uk unreachable'));
+    test('still renders 200 (with empty country list) when getThresholdData throws', async () => {
+      getThresholdData.mockRejectedValue(new Error('gov.uk unreachable'));
       const res = await request(app).get('/');
-      // The route catches the error and renders the index with empty data;
-      // the index.ejs template does not display the error string itself.
       expect(res.status).toBe(200);
       expect(res.text).toContain('csrfToken');
+    });
+
+    test('includes sorted countries with currency data in the page', async () => {
+      const res = await request(app).get('/');
+      expect(res.status).toBe(200);
+      // Both countries from THRESHOLD_DATA should appear in the app-data JSON
+      expect(res.text).toContain('Australia');
+      expect(res.text).toContain('Germany');
+    });
+
+    test('handles countries with missing or unmapped currency without throwing', async () => {
+      getThresholdData.mockResolvedValue({
+        Narnia: {
+          // No Currency field — exercises the `data['Currency'] || ''` fallback
+          'Exchange rate': '1.00',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+        Fantasia: {
+          // Currency not in NAME_TO_ISO map — exercises the `NAME_TO_ISO[x] || ''` fallback
+          Currency: 'Frobozian Groat',
+          'Exchange rate': '1.00',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+        Germany: {
+          Currency: 'Euro',
+          'Exchange rate': '1.15',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+      });
+      const res = await request(app).get('/');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Germany');
     });
   });
 
@@ -435,6 +484,126 @@ describe('routes', () => {
       expect(res.headers['set-cookie']).toEqual(
         expect.arrayContaining([expect.stringContaining('includePg=false')])
       );
+    });
+  });
+
+  // ─── POST /calculate – JSON responses ───────────────────────────────────────
+
+  describe('POST /calculate - JSON responses', () => {
+    test('returns JSON repayment data on a valid request', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.monthlyRepayment).toBeDefined();
+      expect(res.body.thresholdGbp).toBeDefined();
+      expect(res.body.localPerGbp).toBeDefined();
+      expect(res.body.salaryGbp).toBeDefined();
+      expect(res.body.selectedPlan).toBe('plan1');
+      expect(res.body.pglMonthlyRepayment).toBeNull();
+      expect(res.body.pglThresholdGbp).toBeNull();
+    });
+
+    test('returns zero monthlyRepayment in JSON when salary is below threshold', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '0.0001',
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+      });
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '10000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.monthlyRepayment).toBe('0.00');
+    });
+
+    test('includes non-null PGL fields in JSON when includePg is on', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve(PG_THRESHOLD_DATA)
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.pglMonthlyRepayment).not.toBeNull();
+      expect(res.body.pglThresholdGbp).not.toBeNull();
+    });
+
+    test('returns JSON 400 for an invalid plan', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'planX',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Invalid repayment plan');
+    });
+
+    test('returns JSON 400 for an invalid salary', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: 'not-a-number',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('valid positive salary');
+    });
+
+    test('returns JSON error for country not found', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Narnia',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.error).toContain('Country not found');
+    });
+
+    test('returns JSON error for unexpected data format', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': 'not-a-number',
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+      });
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.error).toContain('Unexpected data format');
+    });
+
+    test('returns JSON 500 when getThresholdData throws', async () => {
+      getThresholdData.mockRejectedValue(new Error('Database offline'));
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(500);
+      expect(res.body.error).toContain('Something went wrong');
     });
   });
 });

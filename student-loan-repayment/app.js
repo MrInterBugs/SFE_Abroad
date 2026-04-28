@@ -33,12 +33,9 @@ app.use(
   helmet.contentSecurityPolicy({
     directives: {
       'default-src': ["'self'"],
-      'script-src': [
-        "'self'",
-        'https://code.jquery.com',
-        'https://cdn.jsdelivr.net',
-      ],
-      'style-src': ["'self'", 'https://cdn.jsdelivr.net', 'https://code.jquery.com'],
+      'script-src': ["'self'"],
+      'style-src': ["'self'", 'https://fonts.googleapis.com'],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
       'img-src': ["'self'", 'data:'],
       'connect-src': ["'self'"],
     },
