@@ -33,11 +33,12 @@ app.use(
   helmet.contentSecurityPolicy({
     directives: {
       'default-src': ["'self'"],
-      'script-src': ["'self'"],
+      'script-src': ["'self'", 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google'],
       'style-src': ["'self'", 'https://fonts.googleapis.com'],
       'font-src': ["'self'", 'https://fonts.gstatic.com'],
-      'img-src': ["'self'", 'data:'],
-      'connect-src': ["'self'"],
+      'img-src': ["'self'", 'data:', 'https:'],
+      'frame-src': ["'self'", 'https://googleads.g.doubleclick.net', 'https://tpc.googlesyndication.com', 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google'],
+      'connect-src': ["'self'", 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google'],
     },
   })
 );

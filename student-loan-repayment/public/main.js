@@ -239,3 +239,5 @@
     resultsCard.classList.add('animate-in');
   }
 })();
+
+(window.adsbygoogle = window.adsbygoogle || []).push({});
