@@ -1,4 +1,18 @@
 services:
+  landing:
+    image: nginx:alpine
+    container_name: sfe_landing
+    restart: unless-stopped
+    volumes:
+      - ./landing/ads.txt:/usr/share/nginx/html/ads.txt:ro
+      - ./landing/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - traefik_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.route-landing.rule=Host(`aedanl.com`) || Host(`www.aedanl.com`)"
+      - "traefik.http.services.route-landing.loadbalancer.server.port=80"
+
   student-loan-app:
     build: .
     container_name: sfe_web_app
