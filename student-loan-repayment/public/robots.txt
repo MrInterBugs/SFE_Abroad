@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /calculate
+
+Sitemap: https://sfe.aedanl.com/sitemap.xml

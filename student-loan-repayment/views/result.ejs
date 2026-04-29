@@ -3,7 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UK Student Loan Overseas Repayment Calculator</title>
+<%
+  const planLabel = locals.selectedPlan === 'plan1' ? 'Plan 1'
+    : locals.selectedPlan === 'plan2' ? 'Plan 2'
+    : locals.selectedPlan === 'plan4' ? 'Plan 4'
+    : locals.selectedPlan === 'plan5' ? 'Plan 5'
+    : 'Result';
+  const pageTitle = locals.targetCountry && locals.selectedPlan
+    ? `${planLabel} · ${locals.targetCountry} — UK Student Loan Repayment`
+    : 'Calculation Result — UK Student Loan Overseas Repayment';
+%>
+<title><%= pageTitle %></title>
+<meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
