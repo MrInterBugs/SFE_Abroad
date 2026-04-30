@@ -13,6 +13,17 @@
     return { writeOffYear: firstRepayYear + years, firstRepayYear, years, plan };
   }
 
+  function timeUntilApril(targetYear) {
+    const now = new Date();
+    const totalMonths = (targetYear - now.getFullYear()) * 12 + (4 - (now.getMonth() + 1));
+    const clipped = Math.max(0, totalMonths);
+    const yrs = Math.floor(clipped / 12);
+    const mos = clipped % 12;
+    if (yrs === 0) return `${mos} month${mos !== 1 ? 's' : ''}`;
+    if (mos === 0) return `${yrs} year${yrs !== 1 ? 's' : ''}`;
+    return `${yrs} year${yrs !== 1 ? 's' : ''} and ${mos} month${mos !== 1 ? 's' : ''}`;
+  }
+
   // ─── STATE ────────────────────────────────────────────────────────────────
   let selectedCountry = null;
   let acHighlightIdx = -1;
@@ -242,11 +253,11 @@
       const pglWriteOffYear = wo.firstRepayYear + 30;
       let text;
       if (hasPGL && pglWriteOffYear === wo.writeOffYear) {
-        text = `Your ${planLabel} and Postgraduate loans will both be written off in April ${wo.writeOffYear} — ${wo.years} years after your first repayment in April ${wo.firstRepayYear}${caveat}.`;
+        text = `Your ${planLabel} and Postgraduate loans will both be written off in April ${wo.writeOffYear} — ${timeUntilApril(wo.writeOffYear)} from now${caveat}.`;
       } else if (hasPGL) {
-        text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} (${wo.years} years after April ${wo.firstRepayYear}${caveat}), and your Postgraduate Loan in April ${pglWriteOffYear} (30 years after April ${wo.firstRepayYear}).`;
+        text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} (${timeUntilApril(wo.writeOffYear)} from now${caveat}), and your Postgraduate Loan in April ${pglWriteOffYear} (${timeUntilApril(pglWriteOffYear)} from now).`;
       } else {
-        text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} — ${wo.years} years after your first repayment in April ${wo.firstRepayYear}${caveat}.`;
+        text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} — ${timeUntilApril(wo.writeOffYear)} from now${caveat}.`;
       }
       writeoffText.textContent = text;
       writeoffEl.style.display = 'flex';
