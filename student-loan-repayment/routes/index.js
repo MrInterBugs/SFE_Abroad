@@ -6,6 +6,7 @@ const {
   ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
 } = require('../config/constants');
 const { getThresholdData } = require('../utils/fetchCountryData');
+const { getProfile } = require('../utils/db');
 const currencySymbol = require('../utils/currencySymbol');
 
 const router = express.Router();
@@ -45,6 +46,9 @@ router.get('/', async (req, res) => {
     const fullData = await getThresholdData('plan1', getCurrentTaxYear());
     const countries = buildCountriesList(fullData);
 
+    const profile = req.session.userId ? getProfile(req.session.userId) : null;
+    const graduationDate = profile ? profile.graduation_date : null;
+
     res.render('index', {
       countries,
       selectedPlan,
@@ -52,6 +56,7 @@ router.get('/', async (req, res) => {
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
+      graduationDate,
     });
   } catch (error) {
     logger.error(`Error loading data: ${error.message}`);
@@ -62,6 +67,7 @@ router.get('/', async (req, res) => {
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
+      graduationDate: null,
     });
   }
 });

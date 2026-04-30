@@ -1,6 +1,17 @@
 (function () {
   const appData = JSON.parse(document.getElementById('app-data').textContent);
   const COUNTRIES = appData.countries;
+  const GRADUATION_DATE = appData.graduationDate || null;
+
+  const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
+
+  function calcWriteOff(graduationDate, plan) {
+    const years = WRITE_OFF_YEARS[plan];
+    if (!years || !graduationDate) return null;
+    const [gradYear, gradMonth] = graduationDate.split('-').map(Number);
+    const firstRepayYear = gradMonth <= 3 ? gradYear : gradYear + 1;
+    return { writeOffYear: firstRepayYear + years, firstRepayYear, years, plan };
+  }
 
   // ─── STATE ────────────────────────────────────────────────────────────────
   let selectedCountry = null;
@@ -218,6 +229,29 @@
       document.getElementById('bd-total').textContent = fmt(totalMonthly);
     } else {
       breakdown.classList.remove('show');
+    }
+
+    // Write-off notice
+    const writeoffEl = document.getElementById('writeoff-notice');
+    const writeoffText = document.getElementById('writeoff-text');
+    const wo = calcWriteOff(GRADUATION_DATE, r.selectedPlan);
+    if (wo && writeoffEl) {
+      const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5' };
+      const planLabel = planLabels[wo.plan] || wo.plan;
+      const caveat = wo.plan === 'plan1' ? ' (or when you turn 65, whichever is sooner)' : '';
+      const pglWriteOffYear = wo.firstRepayYear + 30;
+      let text;
+      if (hasPGL && pglWriteOffYear === wo.writeOffYear) {
+        text = `Your ${planLabel} and Postgraduate loans will both be written off in April ${wo.writeOffYear} — ${wo.years} years after your first repayment in April ${wo.firstRepayYear}${caveat}.`;
+      } else if (hasPGL) {
+        text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} (${wo.years} years after April ${wo.firstRepayYear}${caveat}), and your Postgraduate Loan in April ${pglWriteOffYear} (30 years after April ${wo.firstRepayYear}).`;
+      } else {
+        text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} — ${wo.years} years after your first repayment in April ${wo.firstRepayYear}${caveat}.`;
+      }
+      writeoffText.textContent = text;
+      writeoffEl.style.display = 'flex';
+    } else if (writeoffEl) {
+      writeoffEl.style.display = 'none';
     }
 
     // Hide placeholder, show results card
