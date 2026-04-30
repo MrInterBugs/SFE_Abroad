@@ -51,15 +51,15 @@ describe('Express App', () => {
     expect(response.status).toBe(404);
   });
 
-  // Rate-limiter: 10 concurrent requests from the same IP must trigger 429.
+  // Rate-limiter: 15 concurrent requests from the same IP must trigger 429.
   // A 1.1 s pause beforehand ensures points from the earlier sequential tests
   // have fully replenished so this test is self-contained.
   describe('rate limiting', () => {
     beforeAll(() => new Promise((resolve) => setTimeout(resolve, 1100)));
 
-    it('should return 429 when more than 5 requests/second arrive from one IP', async () => {
+    it('should return 429 when more than 15 requests/second arrive from one IP', async () => {
       const responses = await Promise.all(
-        Array.from({ length: 10 }, () => request(app).get('/'))
+        Array.from({ length: 20 }, () => request(app).get('/'))
       );
       expect(responses.some((r) => r.status === 429)).toBe(true);
     });
