@@ -18,6 +18,12 @@ const COOKIE_OPTS = (req) => ({
   sameSite: 'Strict',
 });
 
+function hasPreferenceConsent(req) {
+  const raw = req.cookies.CookieConsent;
+  if (!raw) return false;
+  return decodeURIComponent(raw).includes('preferences:true');
+}
+
 function buildCountriesList(fullData) {
   return Object.entries(fullData).map(([name, data]) => {
     const rawCurrency = (data['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
@@ -36,6 +42,14 @@ router.get('/privacy', (req, res) => {
 // Serve home page
 router.get('/', async (req, res) => {
   logger.info(`Handling GET request for '/'`);
+
+  if (!hasPreferenceConsent(req)) {
+    const clearOpts = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' };
+    res.clearCookie('selectedPlan', clearOpts);
+    res.clearCookie('selectedCountry', clearOpts);
+    res.clearCookie('selectedYear', clearOpts);
+    res.clearCookie('includePg', clearOpts);
+  }
 
   const selectedYear = SUPPORTED_YEARS.includes(req.cookies.selectedYear)
     ? req.cookies.selectedYear
@@ -103,10 +117,12 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     return sendError(400, 'Please enter a valid positive salary.');
   }
 
-  res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS(req));
-  res.cookie('selectedCountry', targetCountry, COOKIE_OPTS(req));
-  res.cookie('selectedYear', year, COOKIE_OPTS(req));
-  res.cookie('includePg', String(includePg), COOKIE_OPTS(req));
+  if (hasPreferenceConsent(req)) {
+    res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS(req));
+    res.cookie('selectedCountry', targetCountry, COOKIE_OPTS(req));
+    res.cookie('selectedYear', year, COOKIE_OPTS(req));
+    res.cookie('includePg', String(includePg), COOKIE_OPTS(req));
+  }
 
   try {
     const countryDataDict = await getThresholdData(selectedPlan, year);
