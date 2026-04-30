@@ -18,8 +18,8 @@ const port = 3000;
 // which makes rate limiting per-user rather than per-proxy.
 app.set('trust proxy', 1);
 
-// Rate limiter: 5 requests/second per IP
-const rateLimiter = new RateLimiterMemory({ points: 5, duration: 1 });
+// Rate limiter: 15 requests/second per IP
+const rateLimiter = new RateLimiterMemory({ points: 15, duration: 1 });
 app.use((req, res, next) => {
   rateLimiter.consume(req.ip)
     .then(() => next())
