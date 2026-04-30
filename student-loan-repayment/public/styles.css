@@ -507,6 +507,39 @@ html, body {
   font-family: 'Space Grotesk', sans-serif;
 }
 .input-with-currency input { padding-left: 52px; }
+.select-wrap { position: relative; }
+.select-wrap select {
+  width: 100%;
+  padding: 11px 36px 11px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.select-wrap select:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(29,112,184,0.12);
+}
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%238a9198' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+}
 
 /* Autocomplete */
 .autocomplete-wrap { position: relative; }

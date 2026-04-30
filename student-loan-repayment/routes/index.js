@@ -33,21 +33,21 @@ function buildCountriesList(fullData) {
 router.get('/', async (req, res) => {
   logger.info(`Handling GET request for '/'`);
 
-  const selectedPlan = ALLOWED_PLANS.includes(req.cookies.selectedPlan)
-    ? req.cookies.selectedPlan
-    : 'plan1';
-  const selectedCountry = req.cookies.selectedCountry || '';
   const selectedYear = SUPPORTED_YEARS.includes(req.cookies.selectedYear)
     ? req.cookies.selectedYear
     : getCurrentTaxYear();
-  const includePg = req.cookies.includePg === 'true';
 
   try {
     const fullData = await getThresholdData('plan1', getCurrentTaxYear());
     const countries = buildCountriesList(fullData);
 
     const profile = req.session.userId ? getProfile(req.session.userId) : null;
-    const graduationDate = profile ? profile.graduation_date : null;
+
+    const selectedPlan = (profile?.default_plan && ALLOWED_PLANS.includes(profile.default_plan))
+      ? profile.default_plan
+      : (ALLOWED_PLANS.includes(req.cookies.selectedPlan) ? req.cookies.selectedPlan : 'plan1');
+    const selectedCountry = profile?.default_country || req.cookies.selectedCountry || '';
+    const includePg = profile ? !!profile.include_pg : req.cookies.includePg === 'true';
 
     res.render('index', {
       countries,
@@ -56,10 +56,13 @@ router.get('/', async (req, res) => {
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
-      graduationDate,
+      graduationDate: profile?.graduation_date || null,
     });
   } catch (error) {
     logger.error(`Error loading data: ${error.message}`);
+    const selectedPlan = ALLOWED_PLANS.includes(req.cookies.selectedPlan) ? req.cookies.selectedPlan : 'plan1';
+    const selectedCountry = req.cookies.selectedCountry || '';
+    const includePg = req.cookies.includePg === 'true';
     res.render('index', {
       countries: [],
       selectedPlan,
