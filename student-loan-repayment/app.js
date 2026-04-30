@@ -51,39 +51,41 @@ app.use(session({
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      'default-src': ["'self'"],
-      'script-src': [
-        "'self'", 
-        'https://pagead2.googlesyndication.com', 
-        'https://*.adtrafficquality.google', 
-        'https://consent.cookiebot.com', 
-        'https://consentcdn.cookiebot.com',
-        'https://static.cloudflareinsights.com'
-      ],
-      'style-src': [
-        "'self'", 
-        "'unsafe-inline'"
-      ],
-      'font-src': ["'self'"],
-      'img-src': ["'self'", 'data:', 'https:'],
-      'frame-src': [
-        "'self'", 
-        'https://googleads.g.doubleclick.net', 
-        'https://tpc.googlesyndication.com', 
-        'https://pagead2.googlesyndication.com', 
-        'https://*.adtrafficquality.google',
-        'https://consentcdn.cookiebot.com'
-      ],
-      'connect-src': [
-        "'self'", 
-        'https://pagead2.googlesyndication.com', 
-        'https://*.adtrafficquality.google',
-        'https://consent.cookiebot.com',
-        'https://consentcdn.cookiebot.com'
-      ],
-      'upgrade-insecure-requests': [],
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        'default-src': ["'self'"],
+        'script-src': [
+          "'self'",
+          'https://pagead2.googlesyndication.com',
+          'https://*.adtrafficquality.google',
+          'https://consent.cookiebot.com',
+          'https://consentcdn.cookiebot.com',
+          'https://static.cloudflareinsights.com'
+        ],
+        'style-src': [
+          "'self'",
+          "'unsafe-inline'"
+        ],
+        'font-src': ["'self'"],
+        'img-src': ["'self'", 'data:', 'https:'],
+        'frame-src': [
+          "'self'",
+          'https://googleads.g.doubleclick.net',
+          'https://tpc.googlesyndication.com',
+          'https://pagead2.googlesyndication.com',
+          'https://*.adtrafficquality.google',
+          'https://consentcdn.cookiebot.com'
+        ],
+        'connect-src': [
+          "'self'",
+          'https://pagead2.googlesyndication.com',
+          'https://*.adtrafficquality.google',
+          'https://consent.cookiebot.com',
+          'https://consentcdn.cookiebot.com'
+        ],
+        'upgrade-insecure-requests': [],
+      },
     },
   })
 );

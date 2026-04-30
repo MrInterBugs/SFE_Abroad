@@ -23,6 +23,9 @@ router.get('/register', (req, res) => {
 router.post('/register', authRateLimit, verifyCsrfToken, async (req, res) => {
   const { email, password, confirmPassword } = req.body;
 
+  if (typeof email !== 'string' || typeof password !== 'string' || typeof confirmPassword !== 'string') {
+    return res.status(400).render('register', { error: 'Invalid input.', csrfToken: res.locals.csrfToken });
+  }
   if (!EMAIL_RE.test(email)) {
     return res.status(400).render('register', { error: 'Please enter a valid email address.', csrfToken: res.locals.csrfToken });
   }
@@ -57,6 +60,9 @@ router.get('/login', (req, res) => {
 router.post('/login', authRateLimit, verifyCsrfToken, async (req, res) => {
   const { email, password } = req.body;
 
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    return res.status(400).render('login', { error: 'Email and password are required.', csrfToken: res.locals.csrfToken });
+  }
   if (!email || !password) {
     return res.status(400).render('login', { error: 'Email and password are required.', csrfToken: res.locals.csrfToken });
   }
