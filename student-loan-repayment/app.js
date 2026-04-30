@@ -54,7 +54,7 @@ app.use(
   helmet.contentSecurityPolicy({
     directives: {
       'default-src': ["'self'"],
-      'script-src': ["'self'", 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google'],
+      'script-src': ["'self'", 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google', "https://consent.cookiebot.com/uc.js"],
       'style-src': ["'self'"],
       'font-src': ["'self'"],
       'img-src': ["'self'", 'data:', 'https:'],
