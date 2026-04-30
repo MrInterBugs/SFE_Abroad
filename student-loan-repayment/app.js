@@ -32,11 +32,11 @@ app.use(bodyParser.json({ limit: '10kb' }));
 app.use(cookieParser());
 
 const sessionSecret = process.env.SESSION_SECRET;
-if (!sessionSecret && process.env.NODE_ENV === 'production') {
-  throw new Error('SESSION_SECRET environment variable must be set in production');
+if (!sessionSecret) {
+  throw new Error('SESSION_SECRET environment variable must be set');
 }
 app.use(session({
-  secret: sessionSecret || 'dev-only-secret-change-in-production',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   store: new SqliteSessionStore(db),
