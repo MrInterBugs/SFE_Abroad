@@ -80,13 +80,25 @@
 
           <hr class="form-divider">
 
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="profile-field-label" for="loanValueGbp">Total loan balance</label>
+          <div class="form-group">
+            <label class="profile-field-label" for="loanValueGbp">Undergraduate loan balance</label>
             <span class="profile-field-hint">Outstanding balance as reported by the Student Loans Company</span>
             <div class="input-wrap input-with-currency">
               <span class="currency-badge">£</span>
               <input type="number" id="loanValueGbp" name="loanValueGbp" min="0" step="100" placeholder="0"
                 value="<%= profile.loan_value_gbp != null ? profile.loan_value_gbp : '' %>">
+            </div>
+          </div>
+
+          <hr class="form-divider">
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="profile-field-label" for="loanValuePglGbp">Postgraduate loan balance</label>
+            <span class="profile-field-hint">Leave blank if you don't have a Postgraduate Loan</span>
+            <div class="input-wrap input-with-currency">
+              <span class="currency-badge">£</span>
+              <input type="number" id="loanValuePglGbp" name="loanValuePglGbp" min="0" step="100" placeholder="0"
+                value="<%= profile.loan_value_pgl_gbp != null ? profile.loan_value_pgl_gbp : '' %>">
             </div>
           </div>
 

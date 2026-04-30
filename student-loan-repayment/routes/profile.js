@@ -13,13 +13,17 @@ router.get('/profile', requireAuth, (req, res) => {
 });
 
 router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
-  const { graduationDate, loanValueGbp } = req.body;
+  const { graduationDate, loanValueGbp, loanValuePglGbp } = req.body;
   const user = getUserById(req.session.userId);
 
   const parsedLoan = loanValueGbp !== '' ? parseFloat(loanValueGbp) : null;
+  const parsedPglLoan = loanValuePglGbp !== '' ? parseFloat(loanValuePglGbp) : null;
 
   if (parsedLoan !== null && (!isFinite(parsedLoan) || parsedLoan < 0)) {
-    return res.status(400).render('profile', { user, profile: req.body, error: 'Please enter a valid loan value.', success: false, csrfToken: res.locals.csrfToken });
+    return res.status(400).render('profile', { user, profile: req.body, error: 'Please enter a valid undergraduate loan value.', success: false, csrfToken: res.locals.csrfToken });
+  }
+  if (parsedPglLoan !== null && (!isFinite(parsedPglLoan) || parsedPglLoan < 0)) {
+    return res.status(400).render('profile', { user, profile: req.body, error: 'Please enter a valid postgraduate loan value.', success: false, csrfToken: res.locals.csrfToken });
   }
   if (graduationDate && !/^\d{4}-\d{2}$/.test(graduationDate)) {
     return res.status(400).render('profile', { user, profile: req.body, error: 'Please enter a valid graduation date.', success: false, csrfToken: res.locals.csrfToken });
@@ -29,6 +33,7 @@ router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
     upsertProfile(req.session.userId, {
       graduationDate: graduationDate || null,
       loanValueGbp: parsedLoan,
+      loanValuePglGbp: parsedPglLoan,
     });
     logger.info(`Profile updated for user id=${req.session.userId}`);
     const updatedProfile = getProfile(req.session.userId);

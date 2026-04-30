@@ -29,6 +29,7 @@ db.exec(`
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     graduation_date TEXT,
     loan_value_gbp REAL,
+    loan_value_pgl_gbp REAL,
     updated_at INTEGER NOT NULL
   );
 
@@ -38,6 +39,11 @@ db.exec(`
     expires INTEGER NOT NULL
   );
 `);
+
+const profileCols = db.prepare('PRAGMA table_info(profiles)').all().map(c => c.name);
+if (!profileCols.includes('loan_value_pgl_gbp')) {
+  db.exec('ALTER TABLE profiles ADD COLUMN loan_value_pgl_gbp REAL');
+}
 
 function saveThresholds(plan, year, countryDataDict) {
   const insert = db.prepare(`
@@ -100,15 +106,16 @@ function deleteUser(userId) {
   db.prepare('DELETE FROM users WHERE id = ?').run(userId);
 }
 
-function upsertProfile(userId, { graduationDate, loanValueGbp }) {
+function upsertProfile(userId, { graduationDate, loanValueGbp, loanValuePglGbp }) {
   db.prepare(`
-    INSERT INTO profiles (user_id, graduation_date, loan_value_gbp, updated_at)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO profiles (user_id, graduation_date, loan_value_gbp, loan_value_pgl_gbp, updated_at)
+    VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(user_id) DO UPDATE SET
       graduation_date = excluded.graduation_date,
       loan_value_gbp = excluded.loan_value_gbp,
+      loan_value_pgl_gbp = excluded.loan_value_pgl_gbp,
       updated_at = excluded.updated_at
-  `).run(userId, graduationDate || null, loanValueGbp || null, Date.now());
+  `).run(userId, graduationDate || null, loanValueGbp ?? null, loanValuePglGbp ?? null, Date.now());
 }
 
 module.exports = { saveThresholds, loadThresholds, loadCountryList, db, createUser, getUserByEmail, getUserById, getProfile, upsertProfile, deleteUser };
