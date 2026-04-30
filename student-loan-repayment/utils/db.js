@@ -16,7 +16,27 @@ db.exec(`
     data TEXT NOT NULL,
     fetched_at INTEGER NOT NULL,
     PRIMARY KEY (plan, year, country_name)
-  )
+  );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS profiles (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    graduation_date TEXT,
+    loan_value_gbp REAL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    expires INTEGER NOT NULL
+  );
 `);
 
 function saveThresholds(plan, year, countryDataDict) {
@@ -58,4 +78,37 @@ function loadCountryList(plan, year) {
   return rows.map(r => r.country_name);
 }
 
-module.exports = { saveThresholds, loadThresholds, loadCountryList };
+function createUser(email, passwordHash) {
+  const stmt = db.prepare('INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)');
+  const result = stmt.run(email.toLowerCase(), passwordHash, Date.now());
+  return result.lastInsertRowid;
+}
+
+function getUserByEmail(email) {
+  return db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
+}
+
+function getUserById(id) {
+  return db.prepare('SELECT id, email, created_at FROM users WHERE id = ?').get(id);
+}
+
+function getProfile(userId) {
+  return db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
+}
+
+function deleteUser(userId) {
+  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+}
+
+function upsertProfile(userId, { graduationDate, loanValueGbp }) {
+  db.prepare(`
+    INSERT INTO profiles (user_id, graduation_date, loan_value_gbp, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      graduation_date = excluded.graduation_date,
+      loan_value_gbp = excluded.loan_value_gbp,
+      updated_at = excluded.updated_at
+  `).run(userId, graduationDate || null, loanValueGbp || null, Date.now());
+}
+
+module.exports = { saveThresholds, loadThresholds, loadCountryList, db, createUser, getUserByEmail, getUserById, getProfile, upsertProfile, deleteUser };

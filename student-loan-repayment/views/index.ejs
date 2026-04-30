@@ -94,8 +94,17 @@
         </svg>
         <span class="header-title">Student Finance Overseas Repayment Calculator</span>
       </div>
-      <div class="header-divider"></div>
-      <span class="header-sub">By Aedan L</span>
+      <nav class="header-nav">
+        <% if (locals.userId) { %>
+          <a href="/profile" class="header-nav-user">
+            <span class="header-nav-avatar-sm"><%= (locals.userEmail || '?').charAt(0).toUpperCase() %></span>
+            My profile
+          </a>
+        <% } else { %>
+          <a href="/login" class="header-nav-link">Sign in</a>
+          <a href="/register" class="header-nav-pill">Register</a>
+        <% } %>
+      </nav>
     </div>
   </header>
 
