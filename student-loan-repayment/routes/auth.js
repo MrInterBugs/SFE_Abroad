@@ -78,7 +78,7 @@ router.post('/login', authRateLimit, verifyCsrfToken, async (req, res) => {
       req.session.userId = user.id;
       req.session.userEmail = user.email;
       logger.info(`User logged in: id=${user.id}`);
-      res.redirect('/profile');
+      res.redirect('/');
     });
   } catch (err) {
     logger.error(`Login error: ${err.message}`);
