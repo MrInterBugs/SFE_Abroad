@@ -8,6 +8,7 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFiles": ["./tests/setup.js"],
     "collectCoverageFrom": [
       "app.js",
       "config/**/*.js",

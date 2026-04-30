@@ -27,7 +27,7 @@ describe('Express App', () => {
     // Step 2: Use the CSRF token in the POST request
     const postResponse = await request(app)
       .post('/calculate')
-      .set('Cookie', getResponse.headers['set-cookie'])  // Pass cookies from the GET response
+      .set('Cookie', [...getResponse.headers['set-cookie'], 'CookieConsent=preferences%3Atrue'])
       .send({
         targetCountry: 'Germany',
         salaryLocalCurrency: 50000,

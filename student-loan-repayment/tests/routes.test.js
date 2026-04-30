@@ -214,7 +214,7 @@ describe('routes', () => {
         salaryLocalCurrency: '50000',
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
-      });
+      }, ['CookieConsent=preferences%3Atrue']);
 
       expect(res.status).toBe(200);
       expect(res.headers['set-cookie']).toEqual(
@@ -304,7 +304,7 @@ describe('routes', () => {
         salaryLocalCurrency: '50000',
         selectedPlan: 'plan1',
         selectedYear: 'bad-year',
-      });
+      }, ['CookieConsent=preferences%3Atrue']);
       expect(res.status).toBe(200);
       expect(res.headers['set-cookie']).toEqual(
         expect.arrayContaining([
@@ -480,7 +480,7 @@ describe('routes', () => {
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
         // no includePg key → checkbox was not checked
-      });
+      }, ['CookieConsent=preferences%3Atrue']);
       expect(res.headers['set-cookie']).toEqual(
         expect.arrayContaining([expect.stringContaining('includePg=false')])
       );
