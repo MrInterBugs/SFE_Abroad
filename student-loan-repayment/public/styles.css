@@ -48,7 +48,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 56px;
+  min-height: 56px;
+  padding: 10px 0;
 }
 .header-crown {
   display: flex;
@@ -69,9 +70,6 @@ html, body {
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.01em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .header-divider {
   width: 1px; height: 20px;
@@ -822,6 +820,7 @@ html, body {
   .results-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .header-sub { display: none; }
   .header-divider { display: none; }
+  .header-nav-email { display: none; }
 }
 
 /* Privacy policy page */
