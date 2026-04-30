@@ -29,6 +29,10 @@ function buildCountriesList(fullData) {
   }).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+router.get('/privacy', (req, res) => {
+  res.render('privacy');
+});
+
 // Serve home page
 router.get('/', async (req, res) => {
   logger.info(`Handling GET request for '/'`);

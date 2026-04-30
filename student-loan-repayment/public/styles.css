@@ -818,3 +818,43 @@ html, body {
   .header-sub { display: none; }
   .header-divider { display: none; }
 }
+
+/* Privacy policy page */
+.header-title-link { text-decoration: none; color: inherit; }
+
+.pp-container { max-width: 700px; }
+
+.pp-content h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.pp-content h2:not(:first-child) { margin-top: 4px; }
+.pp-content p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.pp-content p:last-child { margin-bottom: 0; }
+.pp-content ul {
+  padding-left: 20px;
+  margin: 0 0 12px;
+}
+.pp-content li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.pp-content code {
+  font-family: monospace;
+  font-size: 13px;
+  background: var(--blue-light);
+  color: var(--blue-dark);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+.pp-content a { color: var(--blue); }

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Student Finance Overseas</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-crown">
+        <svg class="crown-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="22" cy="22" r="12" fill="#e8f0fb" stroke="#1d70b8" stroke-width="1.5"/>
+          <ellipse cx="22" cy="22" rx="5.5" ry="12" stroke="#1d70b8" stroke-width="1" opacity="0.5"/>
+          <line x1="10" y1="22" x2="34" y2="22" stroke="#1d70b8" stroke-width="1" opacity="0.5"/>
+          <rect x="4" y="11" width="18" height="3" rx="1.5" fill="#1d70b8"/>
+          <polygon points="13,5 4,11 22,11" fill="#1d70b8"/>
+          <line x1="22" y1="11" x2="22" y2="17" stroke="#1d70b8" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="22" cy="18" r="1.5" fill="#1d70b8"/>
+        </svg>
+        <a href="/" class="header-title-link"><span class="header-title">Student Finance Overseas Repayment Calculator</span></a>
+      </div>
+      <nav class="header-nav">
+        <% if (locals.userId) { %>
+          <a href="/profile" class="header-nav-user">
+            <span class="header-nav-avatar-sm"><%= (locals.userEmail || '?').charAt(0).toUpperCase() %></span>
+            My profile
+          </a>
+        <% } else { %>
+          <a href="/login" class="header-nav-link">Sign in</a>
+          <a href="/register" class="header-nav-pill">Register</a>
+        <% } %>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container pp-container">
+
+      <div class="page-heading">
+        <h1>Privacy Policy</h1>
+        <p>Last updated: 30 April 2026</p>
+      </div>
+
+      <div class="card pp-content">
+        <p>
+          We keep this short and plain. Here&rsquo;s what <strong>Student Finance Overseas Repayment Calculator</strong> collects, why we need it, and what you can do with it.
+        </p>
+        <p>
+          <strong>The short version:</strong> we only collect what&rsquo;s needed to run the calculator. We don&rsquo;t sell your data. The only third party involved is Google AdSense, and only if you opt in.
+        </p>
+        <p>
+          Operated by an individual based in Bayern, Germany &mdash; <a href="mailto:aedan@mrinterbugs.uk">aedan@mrinterbugs.uk</a>.
+        </p>
+
+        <hr class="form-divider">
+
+        <h2>1. What we collect and why</h2>
+        <p><strong>Account data</strong> (registered users only):</p>
+        <ul>
+          <li><strong>Email address</strong> &mdash; identifies your account and lets you sign in.</li>
+          <li><strong>Graduation date</strong> (optional) &mdash; pre-fills the calculator.</li>
+          <li><strong>Outstanding loan value</strong> (optional) &mdash; pre-fills the calculator.</li>
+        </ul>
+        <p><strong>Legal basis:</strong> Contract performance (Art.&nbsp;6(1)(b) GDPR) &mdash; needed to provide the account you signed up for.</p>
+
+        <p><strong>IP address</strong> (all visitors): used only to rate-limit requests and block abuse. Never written to a persistent log.</p>
+        <p><strong>Legal basis:</strong> Legitimate interest (Art.&nbsp;6(1)(f) GDPR) &mdash; rate limiting keeps the service available and secure.</p>
+
+        <p><strong>Strictly necessary cookies:</strong></p>
+        <ul>
+          <li><code>connect.sid</code> &mdash; keeps you signed in (30 days).</li>
+          <li><code>csrfToken</code> &mdash; prevents cross-site request forgery (session).</li>
+          <li><code>selectedPlan</code>, <code>selectedCountry</code>, <code>selectedYear</code>, <code>includePg</code> &mdash; remember your calculator preferences (6 months).</li>
+        </ul>
+        <p>These cookies do not track you across other websites.</p>
+
+        <p><strong>Advertising cookies</strong> (Google AdSense): ads are served by Google AdSense. Advertising and tracking cookies are <strong>only set after you give consent</strong> via the banner on your first visit. You can change or withdraw consent at any time from the link in the footer.</p>
+        <p><strong>Legal basis:</strong> Consent (Art.&nbsp;6(1)(a) GDPR) &mdash; withdrawing consent doesn&rsquo;t affect anything that happened before.</p>
+
+        <hr class="form-divider">
+
+        <h2>2. Who we share data with</h2>
+        <p>Only one third party, and only if you opt in:</p>
+        <ul>
+          <li><strong>Google LLC (AdSense)</strong> &mdash; advertising cookies, consented via the banner. Google may transfer data to the US under Standard Contractual Clauses. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google&rsquo;s Privacy Policy</a>.</li>
+        </ul>
+        <p>We do not sell your data. Your account data (email, loan details) is never shared with advertisers or anyone else.</p>
+
+        <hr class="form-divider">
+
+        <h2>3. How long we keep data</h2>
+        <ul>
+          <li><strong>Account data</strong> &mdash; until you delete your account.</li>
+          <li><strong>Session data</strong> &mdash; 30 days from last activity.</li>
+          <li><strong>Preference cookies</strong> &mdash; 6 months.</li>
+          <li><strong>IP addresses</strong> &mdash; not stored (in-memory only).</li>
+        </ul>
+
+        <hr class="form-divider">
+
+        <h2>4. Your rights</h2>
+        <ul>
+          <li><strong>Access</strong> &mdash; request a copy of the data we hold about you.</li>
+          <li><strong>Rectification</strong> &mdash; correct inaccurate data via your <a href="/profile">profile page</a>.</li>
+          <li><strong>Erasure</strong> &mdash; delete your account and all data via your <a href="/profile">profile page</a>.</li>
+          <li><strong>Portability</strong> &mdash; receive your data in a machine-readable format.</li>
+          <li><strong>Restriction</strong> &mdash; ask us to pause processing in certain circumstances.</li>
+          <li><strong>Object</strong> &mdash; object to processing based on legitimate interest.</li>
+        </ul>
+        <p>To exercise any of these rights, email <a href="mailto:aedan@mrinterbugs.uk">aedan@mrinterbugs.uk</a>. We will respond within one month.</p>
+
+        <hr class="form-divider">
+
+        <h2>5. Right to complain</h2>
+        <p>If you&rsquo;re not happy with how we handle your data, you can contact the relevant regulator:</p>
+        <ul>
+          <li><strong>Germany (Bayern):</strong> <a href="https://www.lda.bayern.de" target="_blank" rel="noopener">Bayerisches Landesamt f&uuml;r Datenschutzaufsicht (BayLDA)</a>.</li>
+          <li><strong>United Kingdom:</strong> <a href="https://ico.org.uk" target="_blank" rel="noopener">Information Commissioner&rsquo;s Office (ICO)</a>.</li>
+          <li><strong>Other EU countries:</strong> your national data protection authority.</li>
+        </ul>
+
+        <hr class="form-divider">
+
+        <h2>6. Children</h2>
+        <p>This service is not directed at anyone under 18. We do not knowingly collect data from children. If you believe a child has created an account, contact us and we will delete it promptly.</p>
+
+        <hr class="form-divider">
+
+        <h2>7. Changes to this policy</h2>
+        <p>If we make significant changes, we&rsquo;ll update the &ldquo;Last updated&rdquo; date at the top and email registered users to let them know.</p>
+
+        <hr class="form-divider">
+
+        <h2>8. Contact</h2>
+        <p>Questions about this policy, or want to exercise one of your rights? Drop us an email at <a href="mailto:aedan@mrinterbugs.uk">aedan@mrinterbugs.uk</a>.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-note">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6.5" stroke="#8a9198"/>
+          <path d="M7 6v4M7 4.5v.5" stroke="#8a9198" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        This is an estimate only. Verify with the <a href="https://www.gov.uk/government/organisations/student-loans-company" target="_blank" rel="noopener">Student Loans Company</a>.
+      </div>
+      <div class="footer-links">
+        <a href="/privacy">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

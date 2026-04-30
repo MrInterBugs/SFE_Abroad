@@ -55,8 +55,8 @@ app.use(
     directives: {
       'default-src': ["'self'"],
       'script-src': ["'self'", 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google'],
-      'style-src': ["'self'", 'https://fonts.googleapis.com'],
-      'font-src': ["'self'", 'https://fonts.gstatic.com'],
+      'style-src': ["'self'"],
+      'font-src': ["'self'"],
       'img-src': ["'self'", 'data:', 'https:'],
       'frame-src': ["'self'", 'https://googleads.g.doubleclick.net', 'https://tpc.googlesyndication.com', 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google'],
       'connect-src': ["'self'", 'https://pagead2.googlesyndication.com', 'https://*.adtrafficquality.google'],
