@@ -56,6 +56,8 @@ html, body {
   gap: 10px;
   text-decoration: none;
   color: var(--text);
+  min-width: 0;
+  flex: 1;
 }
 .crown-icon {
   width: 28px; height: 28px;
@@ -67,6 +69,9 @@ html, body {
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .header-divider {
   width: 1px; height: 20px;
