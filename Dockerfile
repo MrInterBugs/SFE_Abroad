@@ -16,8 +16,8 @@ RUN npm install && mkdir -p /usr/src/app/data
 # Copy all other files.
 COPY ./student-loan-repayment ./
 
-# Make sure the tests pass.
-RUN npm test
+# Make sure the tests pass (.env mounted as a secret — not stored in the image).
+RUN --mount=type=secret,id=env,dst=/usr/src/app/.env npm test
 
 # Expose the main sever port.
 EXPOSE 3000
