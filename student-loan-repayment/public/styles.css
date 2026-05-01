@@ -819,7 +819,6 @@ html, body {
   .breakdown-grid { grid-template-columns: 1fr; }
   .breakdown-item.combined { grid-column: 1; }
   .results-main-amount { font-size: 36px; }
-  .results-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .header-sub { display: none; }
   .header-divider { display: none; }
   .header-nav-email { display: none; }
