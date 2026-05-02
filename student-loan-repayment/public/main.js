@@ -182,7 +182,8 @@
 
     const ugBalance = parseFloat(balanceInput && balanceInput.value) || 0;
     const pglBalance = pglBalanceInput ? (parseFloat(pglBalanceInput.value) || 0) : 0;
-    const interestRate = parseFloat(rateSlider && rateSlider.value) || 6.5;
+    const interestRateParsed = parseFloat(rateSlider && rateSlider.value);
+    const interestRate = isFinite(interestRateParsed) ? interestRateParsed : 6.5;
 
     panel.style.display = 'block';
 
