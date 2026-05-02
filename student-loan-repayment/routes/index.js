@@ -75,6 +75,9 @@ router.get('/', async (req, res) => {
       includePg,
       supportedYears: SUPPORTED_YEARS,
       graduationDate: profile?.graduation_date || null,
+      loanValueGbp: profile?.loan_value_gbp || null,
+      loanValuePglGbp: profile?.loan_value_pgl_gbp || null,
+      defaultSalary: profile?.default_salary || null,
     });
   } catch (error) {
     logger.error(`Error loading data: ${error.message}`);
@@ -89,6 +92,9 @@ router.get('/', async (req, res) => {
       includePg,
       supportedYears: SUPPORTED_YEARS,
       graduationDate: null,
+      loanValueGbp: null,
+      loanValuePglGbp: null,
+      defaultSalary: null,
     });
   }
 });
@@ -99,6 +105,10 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const includePg = req.body.includePg === 'on';
   const year = SUPPORTED_YEARS.includes(selectedYear) ? selectedYear : DEFAULT_YEAR;
   const isJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
+
+  const profile = req.session.userId ? getProfile(req.session.userId) : null;
+  const loanValueGbp = profile?.loan_value_gbp || null;
+  const loanValuePglGbp = profile?.loan_value_pgl_gbp || null;
 
   logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}`);
 
@@ -181,6 +191,8 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
         selectedPlan,
         selectedYear: year,
         salaryCurrencySymbol,
+        loanValueGbp,
+        loanValuePglGbp,
       });
     }
 
@@ -196,6 +208,9 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       thresholdGbp: thresholdGbp.toFixed(2),
       selectedPlan,
       selectedYear: year,
+      loanValueGbp,
+      loanValuePglGbp,
+      graduationDate: profile?.graduation_date || null,
     });
   } catch (error) {
     logger.error(`POST /calculate error: ${error.message}`);

@@ -48,6 +48,7 @@ if (!profileCols.includes('loan_value_pgl_gbp')) db.exec('ALTER TABLE profiles A
 if (!profileCols.includes('default_country'))     db.exec('ALTER TABLE profiles ADD COLUMN default_country TEXT');
 if (!profileCols.includes('default_plan'))        db.exec('ALTER TABLE profiles ADD COLUMN default_plan TEXT');
 if (!profileCols.includes('include_pg'))          db.exec('ALTER TABLE profiles ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
+if (!profileCols.includes('default_salary'))      db.exec('ALTER TABLE profiles ADD COLUMN default_salary REAL');
 
 function saveThresholds(plan, year, countryDataDict) {
   const insert = db.prepare(`
@@ -110,10 +111,10 @@ function deleteUser(userId) {
   db.prepare('DELETE FROM users WHERE id = ?').run(userId);
 }
 
-function upsertProfile(userId, { graduationDate, loanValueGbp, loanValuePglGbp, defaultCountry, defaultPlan, includePg }) {
+function upsertProfile(userId, { graduationDate, loanValueGbp, loanValuePglGbp, defaultCountry, defaultPlan, includePg, defaultSalary }) {
   db.prepare(`
-    INSERT INTO profiles (user_id, graduation_date, loan_value_gbp, loan_value_pgl_gbp, default_country, default_plan, include_pg, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO profiles (user_id, graduation_date, loan_value_gbp, loan_value_pgl_gbp, default_country, default_plan, include_pg, default_salary, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id) DO UPDATE SET
       graduation_date = excluded.graduation_date,
       loan_value_gbp = excluded.loan_value_gbp,
@@ -121,8 +122,9 @@ function upsertProfile(userId, { graduationDate, loanValueGbp, loanValuePglGbp, 
       default_country = excluded.default_country,
       default_plan = excluded.default_plan,
       include_pg = excluded.include_pg,
+      default_salary = excluded.default_salary,
       updated_at = excluded.updated_at
-  `).run(userId, graduationDate || null, loanValueGbp ?? null, loanValuePglGbp ?? null, defaultCountry || null, defaultPlan || null, includePg ? 1 : 0, Date.now());
+  `).run(userId, graduationDate || null, loanValueGbp ?? null, loanValuePglGbp ?? null, defaultCountry || null, defaultPlan || null, includePg ? 1 : 0, defaultSalary ?? null, Date.now());
 }
 
 module.exports = { saveThresholds, loadThresholds, loadCountryList, db, createUser, getUserByEmail, getUserById, getProfile, upsertProfile, deleteUser };

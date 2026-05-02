@@ -57,6 +57,7 @@ app.use(
         'default-src': ["'self'"],
         'script-src': [
           "'self'",
+          'https://cdn.jsdelivr.net',
           'https://pagead2.googlesyndication.com',
           'https://*.adtrafficquality.google',
           'https://consent.cookiebot.com',

@@ -20,17 +20,19 @@ router.get('/profile', requireAuth, (req, res) => {
 });
 
 router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
-  const { graduationDate, loanValueGbp, loanValuePglGbp, defaultCountry, defaultPlan, includePg } = req.body;
+  const { graduationDate, loanValueGbp, loanValuePglGbp, defaultCountry, defaultPlan, includePg, defaultSalary } = req.body;
   const user = getUserById(req.session.userId);
   const countries = getCountries();
 
   const parsedLoan    = loanValueGbp    !== '' ? parseFloat(loanValueGbp)    : null;
   const parsedPglLoan = loanValuePglGbp !== '' ? parseFloat(loanValuePglGbp) : null;
+  const parsedSalary  = defaultSalary   !== '' ? parseFloat(defaultSalary)   : null;
 
   const renderError = (msg) => res.status(400).render('profile', { user, profile: req.body, countries, ugPlans: UG_PLANS, error: msg, success: false, csrfToken: res.locals.csrfToken });
 
   if (parsedLoan    !== null && (!isFinite(parsedLoan)    || parsedLoan    < 0)) return renderError('Please enter a valid undergraduate loan value.');
   if (parsedPglLoan !== null && (!isFinite(parsedPglLoan) || parsedPglLoan < 0)) return renderError('Please enter a valid postgraduate loan value.');
+  if (parsedSalary  !== null && (!isFinite(parsedSalary)  || parsedSalary  < 0)) return renderError('Please enter a valid salary.');
   if (graduationDate && !/^\d{4}-\d{2}$/.test(graduationDate))                  return renderError('Please enter a valid graduation date.');
   if (defaultPlan && !UG_PLANS.includes(defaultPlan))                            return renderError('Invalid repayment plan selected.');
 
@@ -42,6 +44,7 @@ router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
       defaultCountry:  defaultCountry  || null,
       defaultPlan:     defaultPlan     || null,
       includePg:       includePg === 'on',
+      defaultSalary:   parsedSalary,
     });
     logger.info(`Profile updated for user id=${req.session.userId}`);
     const updatedProfile = getProfile(req.session.userId);

@@ -20,6 +20,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" data-cookieconsent="ignore"></script>
 </head>
 <body>
 <div class="page">
@@ -147,6 +148,53 @@
             <strong>Salary:</strong> <%= salaryCurrencySymbol %><%= salaryLocalCurrency %>
           </p>
         </div>
+
+        <!-- Repayment projection graph -->
+        <div class="graph-panel">
+          <div class="graph-panel-header">
+            <span class="graph-panel-title">Repayment projection</span>
+          </div>
+          <div class="graph-controls">
+            <div class="graph-control-row">
+              <label class="graph-label" for="loan-balance-input"><%= planLabel %> loan balance</label>
+              <div class="graph-balance-wrap">
+                <span class="graph-balance-prefix">£</span>
+                <input type="number" id="loan-balance-input" class="graph-balance-input"
+                  placeholder="e.g. 45000" min="0" step="100"
+                  value="<%= locals.loanValueGbp ? locals.loanValueGbp : '' %>">
+              </div>
+            </div>
+            <% if (hasPgl) { %>
+            <div class="graph-control-row" id="pgl-balance-row">
+              <label class="graph-label" for="pgl-balance-input">PGL balance</label>
+              <div class="graph-balance-wrap">
+                <span class="graph-balance-prefix">£</span>
+                <input type="number" id="pgl-balance-input" class="graph-balance-input"
+                  placeholder="e.g. 12000" min="0" step="100"
+                  value="<%= locals.loanValuePglGbp ? locals.loanValuePglGbp : '' %>">
+              </div>
+            </div>
+            <% } %>
+            <div class="graph-control-row graph-control-row--slider">
+              <label class="graph-label" for="rate-slider">Interest rate: <strong id="rate-display">6.5%</strong></label>
+              <input type="range" id="rate-slider" class="graph-slider" min="0" max="15" step="0.1" value="6.5">
+            </div>
+          </div>
+          <div class="graph-canvas-wrap">
+            <canvas id="repayment-chart"></canvas>
+          </div>
+          <div class="graph-stats">
+            <div class="graph-stat">
+              <div class="graph-stat-label">Total interest from today</div>
+              <div class="graph-stat-value" id="stat-interest">—</div>
+            </div>
+            <div class="graph-stat">
+              <div class="graph-stat-label">Total paid from today</div>
+              <div class="graph-stat-value" id="stat-paid">—</div>
+            </div>
+          </div>
+          <p class="graph-disclaimer">Assumes constant salary and interest rate. Actual repayments will vary.</p>
+        </div>
       <% } %>
 
       <a href="/" class="btn-calculate" style="display:block;text-align:center;text-decoration:none;margin-top:8px;">← Back to calculator</a>
@@ -168,5 +216,176 @@
   </footer>
 
 </div>
+
+<% if (locals.monthlyRepayment !== undefined) { %>
+<script>
+(function () {
+  const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
+  const GRADUATION_DATE = <%- JSON.stringify(locals.graduationDate || null) %>;
+  const SELECTED_PLAN = <%- JSON.stringify(locals.selectedPlan) %>;
+  const UG_MONTHLY = parseFloat(<%- JSON.stringify(locals.monthlyRepayment) %>);
+  const PGL_MONTHLY = <%- JSON.stringify(locals.pglMonthlyRepayment || null) %> !== null
+    ? parseFloat(<%- JSON.stringify(locals.pglMonthlyRepayment || '0') %>) : null;
+
+  function calcWriteOffYear(graduationDate, plan) {
+    const years = WRITE_OFF_YEARS[plan];
+    if (!years || !graduationDate) return null;
+    const [gradYear, gradMonth] = graduationDate.split('-').map(Number);
+    const firstRepayYear = gradMonth <= 3 ? gradYear : gradYear + 1;
+    return firstRepayYear + years;
+  }
+
+  function buildBalanceOverTime(startBalance, monthlyPayment, annualRatePct, maxYears) {
+    const monthlyRate = annualRatePct / 100 / 12;
+    let balance = startBalance;
+    const data = [parseFloat(startBalance.toFixed(2))];
+    let totalPaid = 0;
+    let paidOff = false;
+    let payoffYear = null;
+    for (let yr = 1; yr <= maxYears; yr++) {
+      if (!paidOff) {
+        for (let m = 0; m < 12; m++) {
+          const interest = balance * monthlyRate;
+          const newBalance = Math.max(0, balance + interest - monthlyPayment);
+          totalPaid += balance + interest - newBalance;
+          balance = newBalance;
+          if (balance === 0 && !paidOff) { paidOff = true; payoffYear = yr; }
+        }
+        balance = parseFloat(balance.toFixed(2));
+      }
+      data.push(paidOff ? 0 : balance);
+    }
+    const finalBalance = paidOff ? 0 : balance;
+    const totalInterest = Math.max(0, totalPaid + finalBalance - startBalance);
+    return { data, totalPaid: Math.round(totalPaid), totalInterest: Math.round(totalInterest), paidOff, payoffYear };
+  }
+
+  let chartInstance = null;
+
+  function renderChart() {
+    const balanceInput = document.getElementById('loan-balance-input');
+    const pglBalanceInput = document.getElementById('pgl-balance-input');
+    const rateSlider = document.getElementById('rate-slider');
+
+    const ugBalance = parseFloat(balanceInput && balanceInput.value) || 0;
+    const pglBalance = pglBalanceInput ? (parseFloat(pglBalanceInput.value) || 0) : 0;
+    const interestRate = parseFloat(rateSlider && rateSlider.value) || 6.5;
+
+    if (ugBalance <= 0) return;
+
+    const currentYear = new Date().getFullYear();
+    const writeOffCalYear = calcWriteOffYear(GRADUATION_DATE, SELECTED_PLAN)
+      || (currentYear + (WRITE_OFF_YEARS[SELECTED_PLAN] || 30));
+    const maxYears = Math.max(1, writeOffCalYear - currentYear);
+
+    const ugResult = buildBalanceOverTime(ugBalance, UG_MONTHLY, interestRate, maxYears);
+    let pglResult = null;
+    if (PGL_MONTHLY !== null && pglBalance > 0) {
+      pglResult = buildBalanceOverTime(pglBalance, PGL_MONTHLY, interestRate, maxYears);
+    }
+
+    const ugPaidOff = ugResult.paidOff && ugResult.payoffYear !== null;
+    const pglPaidOff = !pglResult || (pglResult.paidOff && pglResult.payoffYear !== null);
+    let displayYears = maxYears;
+    if (ugPaidOff && pglPaidOff) {
+      displayYears = Math.max(ugResult.payoffYear, pglResult ? pglResult.payoffYear : 0);
+    }
+    const labels = Array.from({ length: displayYears + 1 }, (_, i) => String(currentYear + i));
+
+    let combinedPaid = ugResult.totalPaid;
+    let combinedInterest = ugResult.totalInterest;
+
+    const datasets = [{
+      label: '<%- planLabel %> Loan',
+      data: ugResult.data.slice(0, displayYears + 1),
+      borderColor: '#1d70b8',
+      backgroundColor: 'rgba(29,112,184,0.07)',
+      fill: true, tension: 0.2, pointRadius: 0, borderWidth: 2,
+    }];
+
+    if (pglResult) {
+      combinedPaid += pglResult.totalPaid;
+      combinedInterest += pglResult.totalInterest;
+      datasets.push({
+        label: 'Postgraduate Loan',
+        data: pglResult.data.slice(0, displayYears + 1),
+        borderColor: '#00703c',
+        backgroundColor: 'rgba(0,112,60,0.05)',
+        fill: true, tension: 0.2, pointRadius: 0, borderWidth: 2, spanGaps: false,
+      });
+    }
+
+    const fmtStat = v => '£' + v.toLocaleString('en-GB');
+    const elInterest = document.getElementById('stat-interest');
+    const elPaid = document.getElementById('stat-paid');
+    if (elInterest) elInterest.textContent = fmtStat(combinedInterest);
+    if (elPaid) elPaid.textContent = fmtStat(combinedPaid);
+
+    const writeOffLinePlugin = {
+      id: 'writeOffLine',
+      afterDraw(chart) {
+        const wLabel = String(writeOffCalYear);
+        const wIdx = labels.indexOf(wLabel);
+        if (wIdx < 0) return;
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        const x = xScale.getPixelForValue(wLabel);
+        const c = chart.ctx;
+        c.save();
+        c.beginPath();
+        c.setLineDash([5, 4]);
+        c.strokeStyle = 'rgba(212,53,28,0.55)';
+        c.lineWidth = 1.5;
+        c.moveTo(x, yScale.top);
+        c.lineTo(x, yScale.bottom);
+        c.stroke();
+        c.font = '10px DM Sans, sans-serif';
+        c.fillStyle = '#d4351c';
+        c.textAlign = x > chart.width / 2 ? 'right' : 'left';
+        c.fillText('Written off', x > chart.width / 2 ? x - 4 : x + 4, yScale.top - 6);
+        c.restore();
+      }
+    };
+
+    const ctx = document.getElementById('repayment-chart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      plugins: [writeOffLinePlugin],
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        layout: { padding: { top: 18 } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: datasets.length > 1, position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12, padding: 16 } },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: £${Math.round(ctx.raw ?? 0).toLocaleString('en-GB')}` } },
+        },
+        scales: {
+          x: { ticks: { font: { family: 'DM Sans', size: 11 }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+          y: { min: 0, ticks: { font: { family: 'DM Sans', size: 11 }, callback: v => '£' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v), maxTicksLimit: 6 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        },
+      },
+    });
+  }
+
+  const rateSlider = document.getElementById('rate-slider');
+  const rateDisplay = document.getElementById('rate-display');
+  if (rateSlider) {
+    rateSlider.addEventListener('input', () => {
+      rateDisplay.textContent = parseFloat(rateSlider.value).toFixed(1) + '%';
+      renderChart();
+    });
+  }
+  ['loan-balance-input', 'pgl-balance-input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', renderChart);
+  });
+
+  renderChart();
+})();
+</script>
+<% } %>
 </body>
 </html>

@@ -119,6 +119,15 @@
           </div>
 
           <div class="form-group">
+            <label class="profile-field-label" for="defaultSalary">Default annual salary</label>
+            <span class="profile-field-hint">In your local currency — pre-fills the salary field on the calculator</span>
+            <div class="input-wrap">
+              <input type="number" id="defaultSalary" name="defaultSalary" min="0" step="1000" placeholder="0"
+                value="<%= profile.default_salary != null ? profile.default_salary : '' %>">
+            </div>
+          </div>
+
+          <div class="form-group">
             <span class="profile-field-label">Default repayment plan</span>
             <div class="plan-grid">
               <% const planMeta = { plan1: { name: 'Plan 1', era: 'Pre-2012 England & Wales, all NI' }, plan2: { name: 'Plan 2', era: '2012–2023 England & Wales' }, plan4: { name: 'Plan 4', era: 'Scotland (SAAS)' }, plan5: { name: 'Plan 5', era: '2023–present England & Wales' } }; %>

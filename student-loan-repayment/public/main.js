@@ -2,6 +2,8 @@
   const appData = JSON.parse(document.getElementById('app-data').textContent);
   const COUNTRIES = appData.countries;
   const GRADUATION_DATE = appData.graduationDate || null;
+  const PROFILE_LOAN_GBP = appData.loanValueGbp || null;
+  const PROFILE_PGL_GBP = appData.loanValuePglGbp || null;
 
   const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
 
@@ -139,6 +141,217 @@
     return '£' + Math.round(parseFloat(n)).toLocaleString('en-GB');
   }
 
+  // ─── GRAPH ────────────────────────────────────────────────────────────────
+  let chartInstance = null;
+  let lastResult = null;
+  let lastWriteoffText = null;
+
+  function buildBalanceOverTime(startBalance, monthlyPayment, annualRatePct, maxYears) {
+    const monthlyRate = annualRatePct / 100 / 12;
+    let balance = startBalance;
+    const data = [parseFloat(startBalance.toFixed(2))];
+    let totalPaid = 0;
+    let paidOff = false;
+    let payoffYear = null;
+    for (let yr = 1; yr <= maxYears; yr++) {
+      if (!paidOff) {
+        for (let m = 0; m < 12; m++) {
+          const interest = balance * monthlyRate;
+          const newBalance = Math.max(0, balance + interest - monthlyPayment);
+          totalPaid += balance + interest - newBalance;
+          balance = newBalance;
+          if (balance === 0 && !paidOff) { paidOff = true; payoffYear = yr; }
+        }
+        balance = parseFloat(balance.toFixed(2));
+      }
+      data.push(paidOff ? 0 : balance);
+    }
+    const finalBalance = paidOff ? 0 : balance;
+    const totalInterest = Math.max(0, totalPaid + finalBalance - startBalance);
+    return { data, totalPaid: Math.round(totalPaid), totalInterest: Math.round(totalInterest), paidOff, payoffYear };
+  }
+
+  function renderRepaymentGraph() {
+    if (!lastResult) return;
+    const panel = document.getElementById('repayment-graph-panel');
+    if (!panel) return;
+
+    const balanceInput = document.getElementById('loan-balance-input');
+    const pglBalanceInput = document.getElementById('pgl-balance-input');
+    const rateSlider = document.getElementById('rate-slider');
+
+    const ugBalance = parseFloat(balanceInput && balanceInput.value) || 0;
+    const pglBalance = pglBalanceInput ? (parseFloat(pglBalanceInput.value) || 0) : 0;
+    const interestRate = parseFloat(rateSlider && rateSlider.value) || 6.5;
+
+    panel.style.display = 'block';
+
+    const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5' };
+    const planLabel = planLabels[lastResult.selectedPlan] || 'UG';
+    const balanceLabel = document.querySelector('label[for="loan-balance-input"]');
+    if (balanceLabel) balanceLabel.textContent = planLabel + ' loan balance';
+
+    const ugMonthly = parseFloat(lastResult.monthlyRepayment);
+    const hasPGL = lastResult.pglMonthlyRepayment !== null && lastResult.pglMonthlyRepayment !== undefined;
+    const pglMonthly = hasPGL ? parseFloat(lastResult.pglMonthlyRepayment) : 0;
+
+    const currentYear = new Date().getFullYear();
+    const wo = calcWriteOff(GRADUATION_DATE, lastResult.selectedPlan);
+    const writeOffCalYear = wo
+      ? wo.writeOffYear
+      : currentYear + (WRITE_OFF_YEARS[lastResult.selectedPlan] || 30);
+    const maxYears = Math.max(1, writeOffCalYear - currentYear);
+
+    const writeoffEl = document.getElementById('writeoff-notice');
+
+    if (ugBalance <= 0) {
+      if (writeoffEl && wo) writeoffEl.style.display = 'flex';
+      return;
+    }
+
+    const ugResult = buildBalanceOverTime(ugBalance, ugMonthly, interestRate, maxYears);
+    let pglResult = null;
+    if (hasPGL && pglBalance > 0) {
+      pglResult = buildBalanceOverTime(pglBalance, pglMonthly, interestRate, maxYears);
+    }
+
+    // Trim chart to payoff year if every displayed loan is paid off before write-off
+    const ugPaidOff = ugResult.paidOff && ugResult.payoffYear !== null;
+    const pglPaidOff = !pglResult || (pglResult.paidOff && pglResult.payoffYear !== null);
+    let displayYears = maxYears;
+    if (ugPaidOff && pglPaidOff) {
+      displayYears = Math.max(ugResult.payoffYear, pglResult ? pglResult.payoffYear : 0);
+    }
+    const labels = Array.from({ length: displayYears + 1 }, (_, i) => String(currentYear + i));
+
+    // Update write-off notice
+    const writeoffText = document.getElementById('writeoff-text');
+    if (writeoffEl && writeoffText) {
+      const ugPO = ugResult.paidOff && ugResult.payoffYear !== null;
+      const pglPO = pglResult && pglResult.paidOff && pglResult.payoffYear !== null;
+
+      if (ugPO || pglPO) {
+        const ugPOYear  = ugPO  ? currentYear + ugResult.payoffYear  : null;
+        const pglPOYear = pglPO ? currentYear + pglResult.payoffYear : null;
+        const pglWOYear = wo ? wo.firstRepayYear + 30 : null;
+        let text;
+
+        if (!pglResult) {
+          text = `Based on your current balance, your ${planLabel} loan will be fully repaid by ${ugPOYear}.`;
+        } else if (ugPO && pglPO) {
+          text = ugPOYear === pglPOYear
+            ? `Based on your current balance, your ${planLabel} and Postgraduate loans will both be fully repaid by ${ugPOYear}.`
+            : `Based on your current balance, your ${planLabel} loan will be fully repaid by ${ugPOYear} and your Postgraduate Loan by ${pglPOYear}.`;
+        } else if (ugPO) {
+          const pglWO = pglWOYear ? ` Your Postgraduate Loan will be written off in April ${pglWOYear}.` : '';
+          text = `Based on your current balance, your ${planLabel} loan will be fully repaid by ${ugPOYear}.${pglWO}`;
+        } else {
+          const ugWO = wo ? `Your ${planLabel} loan will be written off in April ${wo.writeOffYear}. ` : '';
+          text = `${ugWO}Based on your current balance, your Postgraduate Loan will be fully repaid by ${pglPOYear}.`;
+        }
+
+        writeoffText.textContent = text;
+        writeoffEl.style.display = 'flex';
+      } else if (lastWriteoffText) {
+        writeoffText.textContent = lastWriteoffText;
+        writeoffEl.style.display = wo ? 'flex' : 'none';
+      }
+    }
+
+    let combinedPaid = ugResult.totalPaid;
+    let combinedInterest = ugResult.totalInterest;
+
+    const datasets = [{
+      label: planLabel + ' Loan',
+      data: ugResult.data.slice(0, displayYears + 1),
+      borderColor: '#1d70b8',
+      backgroundColor: 'rgba(29,112,184,0.07)',
+      fill: true, tension: 0.2, pointRadius: 0, borderWidth: 2,
+    }];
+
+    if (pglResult) {
+      combinedPaid += pglResult.totalPaid;
+      combinedInterest += pglResult.totalInterest;
+      datasets.push({
+        label: 'Postgraduate Loan',
+        data: pglResult.data.slice(0, displayYears + 1),
+        borderColor: '#00703c',
+        backgroundColor: 'rgba(0,112,60,0.05)',
+        fill: true, tension: 0.2, pointRadius: 0, borderWidth: 2, spanGaps: false,
+      });
+    }
+
+    const fmtStat = v => '£' + v.toLocaleString('en-GB');
+    const elInterest = document.getElementById('stat-interest');
+    const elPaid = document.getElementById('stat-paid');
+    if (elInterest) elInterest.textContent = fmtStat(combinedInterest);
+    if (elPaid) elPaid.textContent = fmtStat(combinedPaid);
+
+    const writeOffLinePlugin = {
+      id: 'writeOffLine',
+      afterDraw(chart) {
+        const wLabel = String(writeOffCalYear);
+        const wIdx = labels.indexOf(wLabel);
+        if (wIdx < 0) return;
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        const x = xScale.getPixelForValue(wLabel);
+        const c = chart.ctx;
+        c.save();
+        c.beginPath();
+        c.setLineDash([5, 4]);
+        c.strokeStyle = 'rgba(212,53,28,0.55)';
+        c.lineWidth = 1.5;
+        c.moveTo(x, yScale.top);
+        c.lineTo(x, yScale.bottom);
+        c.stroke();
+        c.font = '10px DM Sans, sans-serif';
+        c.fillStyle = '#d4351c';
+        c.textAlign = x > chart.width / 2 ? 'right' : 'left';
+        c.fillText('Written off', x > chart.width / 2 ? x - 4 : x + 4, yScale.top - 6);
+        c.restore();
+      }
+    };
+
+    const ctx = document.getElementById('repayment-chart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      plugins: [writeOffLinePlugin],
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        layout: { padding: { top: 18 } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: datasets.length > 1, position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12, padding: 16 } },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: £${Math.round(ctx.raw ?? 0).toLocaleString('en-GB')}` } },
+        },
+        scales: {
+          x: { ticks: { font: { family: 'DM Sans', size: 11 }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+          y: { min: 0, ticks: { font: { family: 'DM Sans', size: 11 }, callback: v => '£' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v), maxTicksLimit: 6 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        },
+      },
+    });
+  }
+
+  // Wire up graph controls once
+  (function setupGraphControls() {
+    const rateSlider = document.getElementById('rate-slider');
+    const rateDisplay = document.getElementById('rate-display');
+    if (rateSlider) {
+      rateSlider.addEventListener('input', () => {
+        rateDisplay.textContent = parseFloat(rateSlider.value).toFixed(1) + '%';
+        renderRepaymentGraph();
+      });
+    }
+    ['loan-balance-input', 'pgl-balance-input'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', renderRepaymentGraph);
+    });
+  })();
+
   // ─── FORM SUBMIT ──────────────────────────────────────────────────────────
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -260,6 +473,7 @@
         text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} — ${timeUntilApril(wo.writeOffYear)} from now${caveat}.`;
       }
       writeoffText.textContent = text;
+      lastWriteoffText = text;
       writeoffEl.style.display = 'flex';
     } else if (writeoffEl) {
       writeoffEl.style.display = 'none';
@@ -282,6 +496,25 @@
     resultsCard.classList.remove('animate-in');
     void resultsCard.offsetWidth;
     resultsCard.classList.add('animate-in');
+
+    // Graph
+    lastResult = r;
+
+    // Show/hide PGL balance row based on whether PGL is active
+    const pglRow = document.getElementById('pgl-balance-row');
+    if (pglRow) pglRow.style.display = hasPGL ? '' : 'none';
+
+    // Pre-populate balance inputs from profile on first use
+    const balanceInput = document.getElementById('loan-balance-input');
+    if (balanceInput && balanceInput.value === '' && r.loanValueGbp) {
+      balanceInput.value = r.loanValueGbp;
+    }
+    const pglBalanceInput = document.getElementById('pgl-balance-input');
+    if (pglBalanceInput && pglBalanceInput.value === '' && r.loanValuePglGbp) {
+      pglBalanceInput.value = r.loanValuePglGbp;
+    }
+
+    renderRepaymentGraph();
   }
 })();
 
