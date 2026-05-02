@@ -106,7 +106,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const year = SUPPORTED_YEARS.includes(selectedYear) ? selectedYear : DEFAULT_YEAR;
   const isJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
 
-  const profile = req.session.userId ? getProfile(req.session.userId) : null;
+  const profile = req.session?.userId ? getProfile(req.session.userId) : null;
   const loanValueGbp = profile?.loan_value_gbp || null;
   const loanValuePglGbp = profile?.loan_value_pgl_gbp || null;
 
