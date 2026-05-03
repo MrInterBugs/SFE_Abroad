@@ -6,6 +6,17 @@ describe('Express App', () => {
     server.close(done);
   });
 
+  it('throws during startup when SESSION_SECRET is missing', () => {
+    const originalSecret = process.env.SESSION_SECRET;
+    delete process.env.SESSION_SECRET;
+
+    jest.isolateModules(() => {
+      expect(() => require('../app')).toThrow('SESSION_SECRET environment variable must be set');
+    });
+
+    process.env.SESSION_SECRET = originalSecret;
+  });
+
   // Test to check if the server is running and responds with 200
   it('should respond to GET / with a 200 status code', async () => {
     const response = await request(app).get('/');

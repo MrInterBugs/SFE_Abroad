@@ -70,7 +70,8 @@ router.post('/login', authRateLimit, verifyCsrfToken, async (req, res) => {
   try {
     const user = getUserByEmail(email);
     const hashToVerify = user ? user.password_hash : await DUMMY_HASH;
-    const valid = user && await argon2.verify(hashToVerify, password);
+    const verified = await argon2.verify(hashToVerify, password);
+    const valid = Boolean(user && verified);
 
     if (!valid) {
       return res.status(401).render('login', { error: 'Incorrect email or password.', csrfToken: res.locals.csrfToken });

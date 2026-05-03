@@ -12,10 +12,12 @@ const request = require('supertest');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+const session = require('express-session');
 const path = require('path');
 
 const { csrfProtection } = require('../utils/csrf');
 const { fetchCountryData, getThresholdData } = require('../utils/fetchCountryData');
+const { createUser, upsertProfile } = require('../utils/db');
 const { DEFAULT_YEAR, SUPPORTED_YEARS } = require('../config/constants');
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -51,9 +53,15 @@ function buildApp() {
   app.use(bodyParser.urlencoded({ extended: false }));
   app.use(bodyParser.json());
   app.use(cookieParser());
+  app.use(session({ secret: 'test-secret', resave: false, saveUninitialized: true }));
   app.use(csrfProtection);
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '../views'));
+  app.get('/seed-session', (req, res) => {
+    req.session.userId = Number(req.query.userId);
+    req.session.userEmail = req.query.email;
+    res.send('ok');
+  });
   // Fresh require each call — module is cached by Node after first load, which
   // is fine here because we control mock implementations per-test via mockXxx.
   app.use('/', require('../routes/index'));
@@ -96,6 +104,23 @@ async function postCalculateJson(app, body, extraCookies = []) {
     .send({ csrfToken: token, ...body });
 }
 
+async function createProfileAgent(app, profile = {}) {
+  const email = `routes_${Date.now()}_${Math.random().toString(36).slice(2)}@example.com`;
+  const userId = createUser(email, 'hash');
+  upsertProfile(userId, {
+    graduationDate: profile.graduationDate ?? '2024-06',
+    loanValueGbp: profile.loanValueGbp ?? 12000,
+    loanValuePglGbp: profile.loanValuePglGbp ?? 3000,
+    defaultCountry: profile.defaultCountry ?? 'Germany',
+    defaultPlan: profile.defaultPlan ?? 'plan4',
+    includePg: profile.includePg ?? true,
+    defaultSalary: profile.defaultSalary ?? 50000,
+  });
+  const agent = request.agent(app);
+  await agent.get(`/seed-session?userId=${userId}&email=${encodeURIComponent(email)}`);
+  return { agent, userId };
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('routes', () => {
@@ -112,6 +137,12 @@ describe('routes', () => {
   // ─── GET / ──────────────────────────────────────────────────────────────────
 
   describe('GET /', () => {
+    test('GET /privacy renders the privacy page', async () => {
+      const res = await request(app).get('/privacy');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Privacy');
+    });
+
     test('renders the index page with a 200', async () => {
       const res = await request(app).get('/');
       expect(res.status).toBe(200);
@@ -165,11 +196,64 @@ describe('routes', () => {
       expect(res.status).toBe(200);
     });
 
+    test('keeps preference cookies when preference consent is present', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', 'selectedPlan=plan2', 'includePg=true']);
+      expect(res.status).toBe(200);
+      expect(res.headers['set-cookie'].join(';')).not.toContain('selectedPlan=;');
+    });
+
+    test('uses saved profile defaults ahead of preference cookies', async () => {
+      const { agent } = await createProfileAgent(app, {
+        defaultCountry: 'Germany',
+        defaultPlan: 'plan4',
+        includePg: true,
+        defaultSalary: 61000,
+      });
+
+      const res = await agent
+        .get('/')
+        .set('Cookie', 'CookieConsent=preferences%3Atrue; selectedPlan=plan2; selectedCountry=Australia; includePg=false');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toMatch(/id="plan4" value="plan4" checked/);
+      expect(res.text).toContain('name="targetCountry" placeholder="e.g. Germany, Australia, Canada…" autocomplete="off" value="Germany"');
+      expect(res.text).toContain('id="pgl-check" name="includePg" checked');
+      expect(res.text).toContain('name="salaryLocalCurrency" placeholder="0" min="0" step="1000" value="61000"');
+    });
+
+    test('falls back to preference cookies when saved profile defaults are not valid', async () => {
+      const { agent } = await createProfileAgent(app, {
+        defaultCountry: '',
+        defaultPlan: 'not-a-plan',
+        includePg: false,
+      });
+
+      const res = await agent
+        .get('/')
+        .set('Cookie', 'CookieConsent=preferences%3Atrue; selectedPlan=plan2; selectedCountry=Australia; includePg=true');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toMatch(/id="plan2" value="plan2" checked/);
+      expect(res.text).toContain('name="targetCountry" placeholder="e.g. Germany, Australia, Canada…" autocomplete="off" value="Australia"');
+      expect(res.text).toContain('id="pgl-check" name="includePg" >');
+    });
+
     test('still renders 200 (with empty country list) when getThresholdData throws', async () => {
       getThresholdData.mockRejectedValue(new Error('gov.uk unreachable'));
       const res = await request(app).get('/');
       expect(res.status).toBe(200);
       expect(res.text).toContain('csrfToken');
+    });
+
+    test('keeps a valid selected plan in the error fallback render', async () => {
+      getThresholdData.mockRejectedValue(new Error('gov.uk unreachable'));
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', 'selectedPlan=plan2']);
+      expect(res.status).toBe(200);
+      expect(res.text).toMatch(/id="plan2" value="plan2" checked/);
     });
 
     test('includes sorted countries with currency data in the page', async () => {
@@ -484,6 +568,30 @@ describe('routes', () => {
       expect(res.headers['set-cookie']).toEqual(
         expect.arrayContaining([expect.stringContaining('includePg=false')])
       );
+    });
+
+    test('includes saved loan values in JSON calculations for logged-in users', async () => {
+      const { agent } = await createProfileAgent(app, {
+        loanValueGbp: 12345,
+        loanValuePglGbp: 6789,
+      });
+      const get = await agent.get('/');
+      const token = get.text.match(/name="csrfToken" value="(.+?)"/)[1];
+
+      const res = await agent
+        .post('/calculate')
+        .set('Accept', 'application/json')
+        .send({
+          csrfToken: token,
+          targetCountry: 'Germany',
+          salaryLocalCurrency: '50000',
+          selectedPlan: 'plan1',
+          selectedYear: DEFAULT_YEAR,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.loanValueGbp).toBe(12345);
+      expect(res.body.loanValuePglGbp).toBe(6789);
     });
   });
 

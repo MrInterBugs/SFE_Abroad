@@ -14,13 +14,10 @@
     : 'Calculation Result — UK Student Loan Overseas Repayment';
 %>
 <title><%= pageTitle %></title>
-<script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="e556bd88-52ac-451e-bb8c-7e9a69fa2193" data-blockingmode="auto" type="text/javascript"></script>
 <meta name="robots" content="noindex, nofollow">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" data-cookieconsent="ignore"></script>
+<script src="/vendor/chart.js/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="page">
@@ -218,7 +215,7 @@
 </div>
 
 <% if (locals.monthlyRepayment !== undefined) { %>
-<script>
+<script nonce="<%= locals.cspNonce || '' %>">
 (function () {
   const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
   const GRADUATION_DATE = <%- JSON.stringify(locals.graduationDate || null) %>;

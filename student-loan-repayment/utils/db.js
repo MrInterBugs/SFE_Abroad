@@ -43,12 +43,16 @@ db.exec(`
   );
 `);
 
-const profileCols = db.prepare('PRAGMA table_info(profiles)').all().map(c => c.name);
-if (!profileCols.includes('loan_value_pgl_gbp')) db.exec('ALTER TABLE profiles ADD COLUMN loan_value_pgl_gbp REAL');
-if (!profileCols.includes('default_country'))     db.exec('ALTER TABLE profiles ADD COLUMN default_country TEXT');
-if (!profileCols.includes('default_plan'))        db.exec('ALTER TABLE profiles ADD COLUMN default_plan TEXT');
-if (!profileCols.includes('include_pg'))          db.exec('ALTER TABLE profiles ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
-if (!profileCols.includes('default_salary'))      db.exec('ALTER TABLE profiles ADD COLUMN default_salary REAL');
+function ensureProfileColumns(database) {
+  const profileCols = database.prepare('PRAGMA table_info(profiles)').all().map(c => c.name);
+  if (!profileCols.includes('loan_value_pgl_gbp')) database.exec('ALTER TABLE profiles ADD COLUMN loan_value_pgl_gbp REAL');
+  if (!profileCols.includes('default_country'))     database.exec('ALTER TABLE profiles ADD COLUMN default_country TEXT');
+  if (!profileCols.includes('default_plan'))        database.exec('ALTER TABLE profiles ADD COLUMN default_plan TEXT');
+  if (!profileCols.includes('include_pg'))          database.exec('ALTER TABLE profiles ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
+  if (!profileCols.includes('default_salary'))      database.exec('ALTER TABLE profiles ADD COLUMN default_salary REAL');
+}
+
+ensureProfileColumns(db);
 
 function saveThresholds(plan, year, countryDataDict) {
   const insert = db.prepare(`
@@ -127,4 +131,4 @@ function upsertProfile(userId, { graduationDate, loanValueGbp, loanValuePglGbp, 
   `).run(userId, graduationDate || null, loanValueGbp ?? null, loanValuePglGbp ?? null, defaultCountry || null, defaultPlan || null, includePg ? 1 : 0, defaultSalary ?? null, Date.now());
 }
 
-module.exports = { saveThresholds, loadThresholds, loadCountryList, db, createUser, getUserByEmail, getUserById, getProfile, upsertProfile, deleteUser };
+module.exports = { saveThresholds, loadThresholds, loadCountryList, db, ensureProfileColumns, createUser, getUserByEmail, getUserById, getProfile, upsertProfile, deleteUser };

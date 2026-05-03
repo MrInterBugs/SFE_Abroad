@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UK Student Loan Overseas Repayment Calculator</title>
-<script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="e556bd88-52ac-451e-bb8c-7e9a69fa2193" data-blockingmode="auto" type="text/javascript"></script>
 <meta name="description" content="Free calculator for UK graduates living abroad. Enter your salary in local currency to find your monthly Student Finance repayment obligation under Plan 1, 2, 4, or 5.">
 <link rel="canonical" href="https://sfe.aedanl.com/">
 <meta property="og:title" content="UK Student Loan Overseas Repayment Calculator">
@@ -14,7 +13,10 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="UK Student Loan Overseas Repayment Calculator">
 <meta name="twitter:description" content="Living abroad? Find your exact monthly UK student loan repayment in seconds.">
-<script type="application/ld+json">
+<% if (locals.allowMarketingScripts) { %>
+<script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="e556bd88-52ac-451e-bb8c-7e9a69fa2193" data-blockingmode="auto" type="text/javascript"></script>
+<% } %>
+<script type="application/ld+json" nonce="<%= locals.cspNonce || '' %>">
 {
   "@context": "https://schema.org",
   "@graph": [
@@ -69,13 +71,15 @@
 </script>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" data-cookieconsent="ignore"></script>
+<script src="/vendor/chart.js/chart.umd.min.js"></script>
+<% if (locals.allowMarketingScripts) { %>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4989908161831974" crossorigin="anonymous"></script>
+<% } %>
 </head>
 <body>
 
 <!-- Server data for autocomplete -->
-<script type="application/json" id="app-data"><%- JSON.stringify({ countries: countries, graduationDate: graduationDate, loanValueGbp: locals.loanValueGbp || null, loanValuePglGbp: locals.loanValuePglGbp || null }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %></script>
+<script type="application/json" id="app-data" nonce="<%= locals.cspNonce || '' %>"><%- JSON.stringify({ countries: countries, graduationDate: graduationDate, loanValueGbp: locals.loanValueGbp || null, loanValuePglGbp: locals.loanValuePglGbp || null }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %></script>
 
 <div class="page">
 
@@ -353,15 +357,18 @@
             <p class="graph-disclaimer">Assumes constant salary and interest rate. Actual repayments will vary.</p>
           </div>
 
-        </div>
-        <!-- Ad unit -->
-        <div class="ad-unit">
-          <ins class="adsbygoogle"
-              style="display:block"
-              data-ad-client="ca-pub-4989908161831974"
-              data-ad-slot="8240706849"
-              data-ad-format="auto"
-              data-full-width-responsive="true"></ins>
+          <% if (locals.allowMarketingScripts) { %>
+          <!-- Ad unit -->
+          <div class="ad-unit">
+            <ins class="adsbygoogle"
+                style="display:block"
+                data-ad-client="ca-pub-4989908161831974"
+                data-ad-slot="8240706849"
+                data-ad-format="auto"
+                data-full-width-responsive="true"></ins>
+          </div>
+          <% } %>
+
         </div>
       </div><!-- /results-card -->
 

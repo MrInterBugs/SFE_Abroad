@@ -519,4 +519,6 @@
   }
 })();
 
-(window.adsbygoogle = window.adsbygoogle || []).push({});
+if (window.adsbygoogle && document.querySelector('.adsbygoogle')) {
+  window.adsbygoogle.push({});
+}

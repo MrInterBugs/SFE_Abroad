@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
+const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const { RateLimiterMemory } = require('rate-limiter-flexible');
@@ -48,48 +49,60 @@ app.use(session({
   },
 }));
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  res.locals.allowMarketingScripts = req.method === 'GET' && req.path === '/';
+  next();
+});
 
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        'default-src': ["'self'"],
-        'script-src': [
-          "'self'",
-          'https://cdn.jsdelivr.net',
-          'https://pagead2.googlesyndication.com',
-          'https://*.adtrafficquality.google',
-          'https://consent.cookiebot.com',
-          'https://consentcdn.cookiebot.com',
-          'https://static.cloudflareinsights.com'
-        ],
-        'style-src': [
-          "'self'",
-          "'unsafe-inline'"
-        ],
-        'font-src': ["'self'"],
-        'img-src': ["'self'", 'data:', 'https:'],
-        'frame-src': [
-          "'self'",
-          'https://googleads.g.doubleclick.net',
-          'https://tpc.googlesyndication.com',
-          'https://pagead2.googlesyndication.com',
-          'https://*.adtrafficquality.google',
-          'https://consentcdn.cookiebot.com'
-        ],
-        'connect-src': [
-          "'self'",
-          'https://pagead2.googlesyndication.com',
-          'https://*.adtrafficquality.google',
-          'https://consent.cookiebot.com',
-          'https://consentcdn.cookiebot.com'
-        ],
-        'upgrade-insecure-requests': [],
-      },
-    },
-  })
-);
+app.use(helmet({ contentSecurityPolicy: false }));
+
+app.use((req, res, next) => {
+  const directives = {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", `'nonce-${res.locals.cspNonce}'`],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'font-src': ["'self'"],
+    'img-src': ["'self'", 'data:'],
+    'frame-src': ["'none'"],
+    'connect-src': ["'self'"],
+    'upgrade-insecure-requests': [],
+  };
+
+  if (res.locals.allowMarketingScripts) {
+    directives['script-src'].push(
+      'https://pagead2.googlesyndication.com',
+      'https://*.adtrafficquality.google',
+      'https://consent.cookiebot.com',
+      'https://consentcdn.cookiebot.com',
+      'https://static.cloudflareinsights.com'
+    );
+    directives['img-src'].push('https:');
+    directives['frame-src'] = [
+      "'self'",
+      'https://googleads.g.doubleclick.net',
+      'https://tpc.googlesyndication.com',
+      'https://pagead2.googlesyndication.com',
+      'https://*.adtrafficquality.google',
+      'https://consentcdn.cookiebot.com',
+    ];
+    directives['connect-src'].push(
+      'https://pagead2.googlesyndication.com',
+      'https://*.adtrafficquality.google',
+      'https://consent.cookiebot.com',
+      'https://consentcdn.cookiebot.com'
+    );
+  }
+
+  const csp = Object.entries(directives)
+    .map(([name, sources]) => sources.length ? `${name} ${sources.join(' ')}` : name)
+    .join('; ');
+  res.setHeader('Content-Security-Policy', csp);
+  next();
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/vendor/chart.js', express.static(path.join(__dirname, 'node_modules/chart.js/dist')));
 
 app.use(csrfProtection);
 

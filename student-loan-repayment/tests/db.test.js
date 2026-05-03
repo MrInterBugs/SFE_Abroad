@@ -1,6 +1,17 @@
 'use strict';
 
-const { saveThresholds, loadThresholds, loadCountryList } = require('../utils/db');
+const {
+  saveThresholds,
+  loadThresholds,
+  loadCountryList,
+  ensureProfileColumns,
+  createUser,
+  getUserByEmail,
+  getUserById,
+  getProfile,
+  upsertProfile,
+  deleteUser,
+} = require('../utils/db');
 
 // Each test run gets a unique plan/year key so repeated runs (and parallel
 // Jest workers) never collide with each other or with prefetched real data.
@@ -63,5 +74,103 @@ describe('db', () => {
     expect(() => saveThresholds(emptyPlan, YEAR, {})).not.toThrow();
     // Nothing stored → null
     expect(loadThresholds(emptyPlan, YEAR)).toBeNull();
+  });
+
+  test('user helpers normalize email, omit password hash by id, and delete users', () => {
+    const email = `User_${RUN_ID}@Example.com`;
+    const userId = createUser(email, 'hash-value');
+
+    const byEmail = getUserByEmail(email.toUpperCase());
+    expect(byEmail).toMatchObject({
+      id: userId,
+      email: email.toLowerCase(),
+      password_hash: 'hash-value',
+    });
+
+    const byId = getUserById(userId);
+    expect(byId).toMatchObject({ id: userId, email: email.toLowerCase() });
+    expect(byId.password_hash).toBeUndefined();
+
+    deleteUser(userId);
+    expect(getUserById(userId)).toBeUndefined();
+    expect(getUserByEmail(email)).toBeUndefined();
+  });
+
+  test('profile helpers insert, update, coerce nullable fields, and cascade on delete', () => {
+    const email = `profile_${RUN_ID}@example.com`;
+    const userId = createUser(email, 'hash-value');
+
+    expect(getProfile(userId)).toBeUndefined();
+
+    upsertProfile(userId, {
+      graduationDate: '2024-06',
+      loanValueGbp: 12000,
+      loanValuePglGbp: 3000,
+      defaultCountry: 'Germany',
+      defaultPlan: 'plan1',
+      includePg: true,
+      defaultSalary: 50000,
+    });
+    expect(getProfile(userId)).toMatchObject({
+      user_id: userId,
+      graduation_date: '2024-06',
+      loan_value_gbp: 12000,
+      loan_value_pgl_gbp: 3000,
+      default_country: 'Germany',
+      default_plan: 'plan1',
+      include_pg: 1,
+      default_salary: 50000,
+    });
+
+    upsertProfile(userId, {
+      graduationDate: '',
+      loanValueGbp: undefined,
+      loanValuePglGbp: undefined,
+      defaultCountry: '',
+      defaultPlan: '',
+      includePg: false,
+      defaultSalary: undefined,
+    });
+    expect(getProfile(userId)).toMatchObject({
+      graduation_date: null,
+      loan_value_gbp: null,
+      loan_value_pgl_gbp: null,
+      default_country: null,
+      default_plan: null,
+      include_pg: 0,
+      default_salary: null,
+    });
+
+    deleteUser(userId);
+    expect(getProfile(userId)).toBeUndefined();
+  });
+
+  test('ensureProfileColumns adds missing migration columns and skips existing ones', () => {
+    const exec = jest.fn();
+    const fakeDb = {
+      prepare: jest.fn(() => ({
+        all: jest.fn(() => [
+          { name: 'user_id' },
+          { name: 'loan_value_pgl_gbp' },
+          { name: 'default_country' },
+        ]),
+      })),
+      exec,
+    };
+
+    ensureProfileColumns(fakeDb);
+
+    expect(exec).toHaveBeenCalledTimes(3);
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN default_plan TEXT');
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN default_salary REAL');
+
+    const emptySchemaExec = jest.fn();
+    ensureProfileColumns({
+      prepare: jest.fn(() => ({ all: jest.fn(() => [{ name: 'user_id' }]) })),
+      exec: emptySchemaExec,
+    });
+    expect(emptySchemaExec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN loan_value_pgl_gbp REAL');
+    expect(emptySchemaExec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN default_country TEXT');
   });
 });

@@ -8,7 +8,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFiles": ["./tests/setup.js"],
+    "setupFiles": [
+      "./tests/setup.js"
+    ],
     "collectCoverageFrom": [
       "app.js",
       "config/**/*.js",
@@ -18,7 +20,15 @@
     "coverageReporters": [
       "text",
       "lcov"
-    ]
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
+    }
   },
   "keywords": [],
   "author": "",
@@ -28,6 +38,7 @@
     "axios": "^1.7.7",
     "better-sqlite3": "^11.0.0",
     "body-parser": "^1.20.2",
+    "chart.js": "4.5.1",
     "cheerio": "^1.0.0",
     "cookie-parser": "^1.4.6",
     "currency-symbol-map": "^5.1.0",
