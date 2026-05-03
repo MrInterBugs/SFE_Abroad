@@ -39,6 +39,13 @@ router.get('/privacy', (req, res) => {
   res.render('privacy');
 });
 
+router.get('/csrf-token', (req, res) => {
+  if (!res.locals.csrfToken) {
+    return res.status(403).json({ error: 'Necessary cookies must be accepted before using the calculator.' });
+  }
+  return res.json({ csrfToken: res.locals.csrfToken });
+});
+
 // Serve home page
 router.get('/', async (req, res) => {
   logger.info(`Handling GET request for '/'`);

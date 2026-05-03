@@ -73,7 +73,9 @@ function buildApp() {
  * the set-cookie header so a subsequent POST can be authenticated.
  */
 async function getCsrfToken(app) {
-  const res = await request(app).get('/');
+  const res = await request(app)
+    .get('/')
+    .set('Cookie', 'CookieConsent=necessary%3Atrue');
   const match = res.text.match(/name="csrfToken" value="(.+?)"/);
   if (!match) throw new Error('Could not find CSRF token in rendered HTML');
   return { token: match[1], cookies: res.headers['set-cookie'] };
@@ -147,6 +149,38 @@ describe('routes', () => {
       const res = await request(app).get('/');
       expect(res.status).toBe(200);
       expect(res.text).toContain('csrfToken');
+    });
+
+    test('does not emit a CSRF token cookie before necessary cookie consent', async () => {
+      const res = await request(app).get('/');
+      const setCookie = (res.headers['set-cookie'] || []).join(';');
+      expect(setCookie).not.toContain('csrfToken=');
+      expect(res.text).toContain('name="csrfToken" value=""');
+    });
+
+    test('emits a CSRF token cookie after necessary cookie consent', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', 'CookieConsent=necessary%3Atrue');
+      const setCookie = (res.headers['set-cookie'] || []).join(';');
+      expect(setCookie).toContain('csrfToken=');
+      expect(res.text).toMatch(/name="csrfToken" value="[a-f0-9]{64}"/);
+    });
+
+    test('GET /csrf-token refuses requests before necessary cookie consent', async () => {
+      const res = await request(app).get('/csrf-token');
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('Necessary cookies');
+    });
+
+    test('GET /csrf-token returns a token after necessary cookie consent', async () => {
+      const res = await request(app)
+        .get('/csrf-token')
+        .set('Cookie', 'CookieConsent=necessary%3Atrue');
+      const setCookie = (res.headers['set-cookie'] || []).join(';');
+      expect(res.status).toBe(200);
+      expect(res.body.csrfToken).toMatch(/^[a-f0-9]{64}$/);
+      expect(setCookie).toContain('csrfToken=');
     });
 
     test('defaults to plan1 when no selectedPlan cookie is set', async () => {

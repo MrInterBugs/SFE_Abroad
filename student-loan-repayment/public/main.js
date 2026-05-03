@@ -380,10 +380,27 @@
     calcBtn.disabled = true;
     calcBtn.textContent = 'Calculating…';
 
-    const csrfToken = document.getElementById('csrf-input').value;
-    const body = new URLSearchParams(new FormData(form));
-
     try {
+      const csrfInput = document.getElementById('csrf-input');
+      let csrfToken = csrfInput.value;
+
+      if (!csrfToken) {
+        const tokenResp = await fetch('/csrf-token', {
+          headers: { 'Accept': 'application/json' },
+        });
+
+        if (!tokenResp.ok) {
+          showInlineError('Please accept necessary cookies to use the calculator.');
+          return;
+        }
+
+        const tokenData = await tokenResp.json();
+        csrfToken = tokenData.csrfToken;
+        csrfInput.value = csrfToken;
+      }
+
+      const body = new URLSearchParams(new FormData(form));
+
       const resp = await fetch('/calculate', {
         method: 'POST',
         headers: {

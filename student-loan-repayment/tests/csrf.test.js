@@ -15,7 +15,7 @@ function makeRes() {
 
 describe('csrfProtection', () => {
   test('re-uses the token already stored in the cookie', () => {
-    const req = { cookies: { csrfToken: 'pre-existing-token' } };
+    const req = { cookies: { csrfToken: 'pre-existing-token' }, path: '/' };
     const res = makeRes();
     const next = jest.fn();
 
@@ -30,8 +30,20 @@ describe('csrfProtection', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  test('generates a fresh 64-character hex token when no cookie is present', () => {
-    const req = { cookies: {} };
+  test('does not issue a token before necessary cookie consent on pages that do not need forms', () => {
+    const req = { cookies: {}, path: '/' };
+    const res = makeRes();
+    const next = jest.fn();
+
+    csrfProtection(req, res, next);
+
+    expect(res.locals.csrfToken).toBe('');
+    expect(res.cookie).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  test('generates a fresh 64-character hex token once necessary cookies are accepted', () => {
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
     const res = makeRes();
     const next = jest.fn();
 
@@ -43,8 +55,22 @@ describe('csrfProtection', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 
+  test('generates a token for account forms even before consent', () => {
+    const req = { cookies: {}, path: '/login' };
+    const res = makeRes();
+
+    csrfProtection(req, res, jest.fn());
+
+    expect(res.locals.csrfToken).toHaveLength(64);
+    expect(res.cookie).toHaveBeenCalledWith(
+      'csrfToken',
+      res.locals.csrfToken,
+      expect.any(Object)
+    );
+  });
+
   test('sets httpOnly and Strict sameSite cookie options', () => {
-    const req = { cookies: {} };
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
     const res = makeRes();
 
     csrfProtection(req, res, jest.fn());
@@ -57,7 +83,7 @@ describe('csrfProtection', () => {
   test('secure flag is false outside production', () => {
     const original = process.env.NODE_ENV;
     process.env.NODE_ENV = 'test';
-    const req = { cookies: {} };
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
     const res = makeRes();
 
     csrfProtection(req, res, jest.fn());
@@ -70,7 +96,7 @@ describe('csrfProtection', () => {
   test('secure flag is true in production', () => {
     const original = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
-    const req = { cookies: {} };
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
     const res = makeRes();
 
     csrfProtection(req, res, jest.fn());

@@ -126,7 +126,7 @@
       <div class="calc-col-form">
       <div class="card" id="form-card">
         <form id="calc-form" action="/calculate" method="POST" novalidate>
-          <input type="hidden" name="csrfToken" value="<%= csrfToken %>" id="csrf-input">
+          <input type="hidden" name="csrfToken" value="<%= locals.csrfToken || '' %>" id="csrf-input">
 
           <!-- Tax year -->
           <div class="form-group">

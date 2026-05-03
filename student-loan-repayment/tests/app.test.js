@@ -32,13 +32,15 @@ describe('Express App', () => {
   // Test to check if cookies are being set, with CSRF token support
   it('should set selectedPlan and selectedCountry cookies on POST /calculate with valid CSRF token', async () => {
     // Step 1: Perform a GET request to retrieve the CSRF token
-    const getResponse = await request(app).get('/');
+    const getResponse = await request(app)
+      .get('/')
+      .set('Cookie', 'CookieConsent=necessary%3Atrue');
     const csrfToken = getResponse.text.match(/name="csrfToken" value="(.+?)"/)[1];
 
     // Step 2: Use the CSRF token in the POST request
     const postResponse = await request(app)
       .post('/calculate')
-      .set('Cookie', [...getResponse.headers['set-cookie'], 'CookieConsent=preferences%3Atrue'])
+      .set('Cookie', [...getResponse.headers['set-cookie'], 'CookieConsent=necessary%3Atrue%2Cpreferences%3Atrue'])
       .send({
         targetCountry: 'Germany',
         salaryLocalCurrency: 50000,
@@ -54,6 +56,14 @@ describe('Express App', () => {
         expect.stringContaining('selectedCountry=Germany')
       ])
     );
+  });
+
+  it('should not set csrfToken or connect.sid on anonymous GET / before necessary consent', async () => {
+    const response = await request(app).get('/');
+    const setCookie = (response.headers['set-cookie'] || []).join(';');
+
+    expect(setCookie).not.toContain('csrfToken=');
+    expect(setCookie).not.toContain('connect.sid=');
   });
 
   // Test for error cases
