@@ -21,10 +21,14 @@ ENV NODE_ENV=production
 COPY --from=test /usr/src/app/package.json /tmp/tested-package.json
 COPY --from=prod-deps /usr/src/app/node_modules ./node_modules
 COPY ./student-loan-repayment ./
+COPY ./docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN mkdir -p /usr/src/app/data && chown -R node:node /usr/src/app
+RUN apk add --no-cache su-exec \
+  && mkdir -p /usr/src/app/data \
+  && chown -R node:node /usr/src/app \
+  && chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER node
 EXPOSE 3000
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "app.js"]

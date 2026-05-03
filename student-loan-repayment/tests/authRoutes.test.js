@@ -203,6 +203,21 @@ describe('auth routes', () => {
     expect(argon2.verify).toHaveBeenCalledWith('stored-hash', 'wrong-password');
   });
 
+  test('login treats password verification errors as invalid credentials', async () => {
+    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'not-an-argon2-hash' });
+    argon2.verify.mockRejectedValue(new Error('invalid hash'));
+    const { token, cookies } = await csrf(app, '/login');
+
+    const res = await request(app)
+      .post('/login')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, email: 'known@example.com', password: 'candidate-password' });
+
+    expect(res.status).toBe(401);
+    expect(res.text).toContain('Incorrect email or password');
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Password verification failed'));
+  });
+
   test('login regenerates the session and redirects on valid credentials', async () => {
     db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'stored-hash' });
     argon2.verify.mockResolvedValue(true);
