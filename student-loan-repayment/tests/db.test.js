@@ -18,6 +18,8 @@ const {
   revokeOutstandingAuthTokens,
   hasRecentAuthToken,
   logCalculation,
+  logAnonymousCalculationStats,
+  getAnonymousCalculationStats,
   getCalculationsForUser,
   getProfile,
   upsertProfile,
@@ -255,7 +257,7 @@ describe('db', () => {
     expect(emptySchemaExec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN default_country TEXT');
   });
 
-  test('logCalculation stores a row and getCalculationsForUser retrieves it linked to a user', () => {
+  test('logCalculation stores signed-in rows and aggregates anonymous usage', () => {
     const email = `calc_${RUN_ID}@example.com`;
     const userId = createUser(email, 'hash');
 
@@ -274,7 +276,8 @@ describe('db', () => {
     };
 
     logCalculation(userId, fields);
-    logCalculation(null, { ...fields, country: 'Australia' });
+    const anonymousCountry = `Australia ${RUN_ID}`;
+    logCalculation(null, { ...fields, country: anonymousCountry });
 
     const rows = getCalculationsForUser(userId);
     expect(rows).toHaveLength(1);
@@ -289,8 +292,46 @@ describe('db', () => {
       pgl_monthly_repayment: null,
     });
 
+    const anonRows = getAnonymousCalculationStats().filter(r => r.country === anonymousCountry && r.tax_year === '2025-26');
+    expect(anonRows).toHaveLength(1);
+    expect(anonRows[0]).toMatchObject({
+      country: anonymousCountry,
+      plan: 'plan1',
+      tax_year: '2025-26',
+      include_pg: 0,
+      calculation_count: 1,
+    });
+    expect(anonRows[0].salary_local).toBeUndefined();
+    expect(anonRows[0].monthly_repayment).toBeUndefined();
+
     deleteUser(userId);
     expect(getCalculationsForUser(userId)).toHaveLength(0);
+  });
+
+  test('logAnonymousCalculationStats increments daily aggregate rows', () => {
+    const now = Date.UTC(2026, 4, 4, 12, 0, 0);
+    const fields = {
+      country: `Aggregate Land ${RUN_ID}`,
+      plan: 'plan2',
+      taxYear: '2025-26',
+      includePg: true,
+    };
+
+    logAnonymousCalculationStats(fields, now);
+    logAnonymousCalculationStats(fields, now + 60000);
+
+    const rows = getAnonymousCalculationStats().filter(r => r.country === fields.country);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      stat_date: '2026-05-04',
+      country: fields.country,
+      plan: 'plan2',
+      tax_year: '2025-26',
+      include_pg: 1,
+      calculation_count: 2,
+      first_calculated_at: now,
+      last_calculated_at: now + 60000,
+    });
   });
 
   test('logCalculation stores PGL fields and orders results newest-first', () => {

@@ -467,6 +467,7 @@
 
     if (!valid) return;
 
+    hideInlineError();
     calcBtn.disabled = true;
     calcBtn.textContent = 'Calculating…';
 
@@ -520,12 +521,23 @@
     const errEl = document.getElementById('calc-error');
     if (errEl) {
       errEl.textContent = msg;
+      errEl.hidden = false;
       errEl.style.display = 'block';
+    }
+  }
+
+  function hideInlineError() {
+    const errEl = document.getElementById('calc-error');
+    if (errEl) {
+      errEl.textContent = '';
+      errEl.hidden = true;
+      errEl.style.display = 'none';
     }
   }
 
   // ─── RESULTS ──────────────────────────────────────────────────────────────
   function renderResults(r) {
+    hideInlineError();
     const hasPGL = r.pglMonthlyRepayment !== null && r.pglMonthlyRepayment !== undefined;
     const ugMonthly = parseFloat(r.monthlyRepayment);
     const pglMonthly = hasPGL ? parseFloat(r.pglMonthlyRepayment) : 0;

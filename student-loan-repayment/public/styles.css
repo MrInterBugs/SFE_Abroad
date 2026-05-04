@@ -188,6 +188,9 @@ html, body {
   margin-bottom: 20px;
   font-size: 14px;
 }
+.calc-error {
+  margin: 14px 0 0;
+}
 .btn-delete {
   background: none;
   border: 1px solid #dc2626;

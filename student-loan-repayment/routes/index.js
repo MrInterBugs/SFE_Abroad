@@ -230,7 +230,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     const countryData = countryDataDict[targetCountry];
 
     if (!countryData) {
-      return sendError(200, 'Country not found in the data.');
+      return sendError(400, 'Country not found in the data.');
     }
 
     const exchangeRate = parseFloat(countryData['Exchange rate']);
@@ -240,7 +240,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     const thresholdRaw = countryData[thresholdField];
 
     if (!isFinite(exchangeRate) || !thresholdRaw) {
-      return sendError(200, 'Unexpected data format for this country. Please try again later.');
+      return sendError(502, 'Unexpected data format for this country. Please try again later.');
     }
 
     const thresholdGbp = parseFloat(thresholdRaw.replace(/[£,]/g, ''));

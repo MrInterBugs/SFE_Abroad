@@ -149,6 +149,8 @@ describe('routes', () => {
       expect(res.text).toContain('Last updated: 4 May 2026');
       expect(res.text).toContain('machine-readable JSON file');
       expect(res.text).toContain('Calculator defaults');
+      expect(res.text).toContain('Anonymous calculation statistics');
+      expect(res.text).toContain('Cookiebot&rsquo;s floating consent control');
     });
 
     test('GET /about renders an indexable trust page', async () => {
@@ -225,6 +227,7 @@ describe('routes', () => {
       const res = await request(app).get('/');
       expect(res.status).toBe(200);
       expect(res.text).toContain('csrfToken');
+      expect(res.text).toContain('id="calc-error"');
       expect(res.text).toContain('UK Student Loan Overseas Repayment Calculator');
       expect(res.text).not.toContain('/vendor/chart.js/chart.umd.min.js"></script>');
     });
@@ -516,7 +519,7 @@ describe('routes', () => {
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(400);
       expect(res.text).toContain('Country not found in the data');
     });
 
@@ -534,7 +537,7 @@ describe('routes', () => {
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(502);
       expect(res.text).toContain('Unexpected data format');
     });
 
@@ -552,7 +555,7 @@ describe('routes', () => {
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(502);
       expect(res.text).toContain('Unexpected data format');
     });
 
@@ -792,7 +795,7 @@ describe('routes', () => {
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(400);
       expect(res.body.error).toContain('Country not found');
     });
 
@@ -810,7 +813,7 @@ describe('routes', () => {
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(502);
       expect(res.body.error).toContain('Unexpected data format');
     });
 

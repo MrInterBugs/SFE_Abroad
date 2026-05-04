@@ -71,6 +71,18 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_calculations_user_id ON calculations(user_id);
+
+  CREATE TABLE IF NOT EXISTS anonymous_calculation_stats (
+    stat_date TEXT NOT NULL,
+    country TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    tax_year TEXT NOT NULL,
+    include_pg INTEGER NOT NULL DEFAULT 0,
+    calculation_count INTEGER NOT NULL DEFAULT 0,
+    first_calculated_at INTEGER NOT NULL,
+    last_calculated_at INTEGER NOT NULL,
+    PRIMARY KEY (stat_date, country, plan, tax_year, include_pg)
+  );
 `);
 
 function ensureProfileColumns(database) {
@@ -239,14 +251,41 @@ function cleanupAuthTokens(now = Date.now()) {
   return db.prepare('DELETE FROM auth_tokens WHERE used_at IS NOT NULL OR expires_at <= ?').run(now).changes;
 }
 
+function statDate(now) {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+function logAnonymousCalculationStats({ country, plan, taxYear, includePg }, now = Date.now()) {
+  db.prepare(`
+    INSERT INTO anonymous_calculation_stats
+      (stat_date, country, plan, tax_year, include_pg, calculation_count, first_calculated_at, last_calculated_at)
+    VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+    ON CONFLICT(stat_date, country, plan, tax_year, include_pg) DO UPDATE SET
+      calculation_count = calculation_count + 1,
+      last_calculated_at = excluded.last_calculated_at
+  `).run(statDate(now), country, plan, taxYear, includePg ? 1 : 0, now, now);
+}
+
+function getAnonymousCalculationStats() {
+  return db.prepare(`
+    SELECT * FROM anonymous_calculation_stats
+    ORDER BY stat_date DESC, country ASC, plan ASC, tax_year ASC, include_pg ASC
+  `).all();
+}
+
 function logCalculation(userId, { country, plan, taxYear, salaryLocal, salaryGbp, exchangeRate, thresholdGbp, monthlyRepayment, includePg, pglMonthlyRepayment, pglThresholdGbp }) {
+  if (!userId) {
+    logAnonymousCalculationStats({ country, plan, taxYear, includePg });
+    return;
+  }
+
   db.prepare(`
     INSERT INTO calculations
       (user_id, country, plan, tax_year, salary_local, salary_gbp, exchange_rate, threshold_gbp,
        monthly_repayment, include_pg, pgl_monthly_repayment, pgl_threshold_gbp, calculated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    userId ?? null,
+    userId,
     country, plan, taxYear,
     salaryLocal, salaryGbp, exchangeRate, thresholdGbp,
     monthlyRepayment,
@@ -306,6 +345,8 @@ module.exports = {
   revokeOutstandingAuthTokens,
   hasRecentAuthToken,
   logCalculation,
+  logAnonymousCalculationStats,
+  getAnonymousCalculationStats,
   getCalculationsForUser,
   getProfile,
   upsertProfile,
