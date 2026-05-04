@@ -109,7 +109,7 @@ describe('email utilities', () => {
     const writes = mockResend();
 
     expect(appBaseUrl()).toBe('https://sfe.example.com');
-    expect(emailFrom()).toBe('Student Finance Overseas <onboarding@resend.dev>');
+    expect(emailFrom()).toBe('Student Finance Overseas Calculator <onboarding@resend.dev>');
 
     await sendEmailConfirmation('user@example.com', 'confirm-token');
     await sendPasswordReset('user@example.com', 'reset-token');
