@@ -1,6 +1,6 @@
 const express = require('express');
 const { verifyCsrfToken } = require('../utils/csrf');
-const { getUserById, getProfile, upsertProfile, deleteUser, loadCountryList } = require('../utils/db');
+const { getUserById, getProfile, upsertProfile, deleteUser, loadCountryList, getCalculationsForUser } = require('../utils/db');
 const { requireAuth } = require('../utils/auth');
 const { getCurrentTaxYear, ALLOWED_PLANS } = require('../config/constants');
 const logger = require('../utils/logger');
@@ -22,6 +22,7 @@ router.get('/profile', requireAuth, (req, res) => {
 router.get('/profile/export', requireAuth, (req, res) => {
   const user = getUserById(req.session.userId);
   const profile = getProfile(req.session.userId);
+  const calculations = getCalculationsForUser(req.session.userId);
   const exportedAt = new Date().toISOString();
 
   res.set({
@@ -47,6 +48,21 @@ router.get('/profile/export', requireAuth, (req, res) => {
       default_salary: profile.default_salary,
       updated_at: profile.updated_at ? new Date(profile.updated_at).toISOString() : null,
     } : null,
+    calculations: calculations.map(c => ({
+      id: c.id,
+      country: c.country,
+      plan: c.plan,
+      tax_year: c.tax_year,
+      salary_local: c.salary_local,
+      salary_gbp: c.salary_gbp,
+      exchange_rate: c.exchange_rate,
+      threshold_gbp: c.threshold_gbp,
+      monthly_repayment: c.monthly_repayment,
+      include_pg: Boolean(c.include_pg),
+      pgl_monthly_repayment: c.pgl_monthly_repayment,
+      pgl_threshold_gbp: c.pgl_threshold_gbp,
+      calculated_at: new Date(c.calculated_at).toISOString(),
+    })),
   }, null, 2));
 });
 

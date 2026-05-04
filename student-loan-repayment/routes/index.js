@@ -6,7 +6,7 @@ const {
   ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
 } = require('../config/constants');
 const { getThresholdData } = require('../utils/fetchCountryData');
-const { getProfile } = require('../utils/db');
+const { getProfile, logCalculation } = require('../utils/db');
 const currencySymbol = require('../utils/currencySymbol');
 const { SITE_URL, getSeoPage } = require('../config/seoPages');
 
@@ -261,6 +261,24 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     }
 
     const salaryCurrencySymbol = currencySymbol(countryData['Currency']);
+
+    try {
+      logCalculation(req.session.userId ?? null, {
+        country: targetCountry,
+        plan: selectedPlan,
+        taxYear: year,
+        salaryLocal: salary,
+        salaryGbp,
+        exchangeRate,
+        thresholdGbp,
+        monthlyRepayment,
+        includePg,
+        pglMonthlyRepayment,
+        pglThresholdGbp,
+      });
+    } catch (logErr) {
+      logger.warn(`Failed to log calculation: ${logErr.message}`);
+    }
 
     if (isJson) {
       return res.json({

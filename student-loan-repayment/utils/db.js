@@ -52,6 +52,25 @@ db.exec(`
     data TEXT NOT NULL,
     expires INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS calculations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    country TEXT NOT NULL,
+    plan TEXT NOT NULL,
+    tax_year TEXT NOT NULL,
+    salary_local REAL NOT NULL,
+    salary_gbp REAL NOT NULL,
+    exchange_rate REAL NOT NULL,
+    threshold_gbp REAL NOT NULL,
+    monthly_repayment REAL NOT NULL,
+    include_pg INTEGER NOT NULL DEFAULT 0,
+    pgl_monthly_repayment REAL,
+    pgl_threshold_gbp REAL,
+    calculated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_calculations_user_id ON calculations(user_id);
 `);
 
 function ensureProfileColumns(database) {
@@ -220,6 +239,30 @@ function cleanupAuthTokens(now = Date.now()) {
   return db.prepare('DELETE FROM auth_tokens WHERE used_at IS NOT NULL OR expires_at <= ?').run(now).changes;
 }
 
+function logCalculation(userId, { country, plan, taxYear, salaryLocal, salaryGbp, exchangeRate, thresholdGbp, monthlyRepayment, includePg, pglMonthlyRepayment, pglThresholdGbp }) {
+  db.prepare(`
+    INSERT INTO calculations
+      (user_id, country, plan, tax_year, salary_local, salary_gbp, exchange_rate, threshold_gbp,
+       monthly_repayment, include_pg, pgl_monthly_repayment, pgl_threshold_gbp, calculated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    userId ?? null,
+    country, plan, taxYear,
+    salaryLocal, salaryGbp, exchangeRate, thresholdGbp,
+    monthlyRepayment,
+    includePg ? 1 : 0,
+    pglMonthlyRepayment ?? null,
+    pglThresholdGbp ?? null,
+    Date.now(),
+  );
+}
+
+function getCalculationsForUser(userId) {
+  return db.prepare(`
+    SELECT * FROM calculations WHERE user_id = ? ORDER BY calculated_at DESC
+  `).all(userId);
+}
+
 function getProfile(userId) {
   return db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
 }
@@ -262,6 +305,8 @@ module.exports = {
   cleanupAuthTokens,
   revokeOutstandingAuthTokens,
   hasRecentAuthToken,
+  logCalculation,
+  getCalculationsForUser,
   getProfile,
   upsertProfile,
   deleteUser,

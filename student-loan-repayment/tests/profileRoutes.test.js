@@ -6,6 +6,7 @@ jest.mock('../utils/db', () => ({
   upsertProfile: jest.fn(),
   deleteUser: jest.fn(),
   loadCountryList: jest.fn(),
+  getCalculationsForUser: jest.fn(),
 }));
 jest.mock('../utils/logger', () => ({
   info: jest.fn(),
@@ -71,6 +72,7 @@ describe('profile routes', () => {
     db.getUserById.mockReturnValue({ id: 42, email: 'profile@example.com', email_confirmed_at: Date.now(), created_at: Date.now() });
     db.getProfile.mockReturnValue(null);
     db.loadCountryList.mockReturnValue(['France', 'Germany']);
+    db.getCalculationsForUser.mockReturnValue([]);
     app = buildApp();
   });
 
@@ -136,6 +138,7 @@ describe('profile routes', () => {
       updated_at: '2026-01-03T00:00:00.000Z',
     });
     expect(data.exported_at).toEqual(expect.any(String));
+    expect(data.calculations).toEqual([]);
     expect(res.text).not.toContain('password_hash');
     expect(res.text).not.toContain('not-exported');
     expect(res.text).not.toContain('auth_tokens');
