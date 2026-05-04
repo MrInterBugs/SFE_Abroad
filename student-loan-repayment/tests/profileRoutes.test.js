@@ -42,6 +42,12 @@ function buildApp() {
     req.session.userEmail = 'profile@example.com';
     res.send('ok');
   });
+  app.use((req, _res, next) => {
+    if (req.headers['x-break-session-destroy']) {
+      req.session.destroy = (cb) => cb(new Error('destroy failed'));
+    }
+    next();
+  });
   app.use('/', require('../routes/profile'));
   return app;
 }
@@ -149,6 +155,7 @@ describe('profile routes', () => {
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('application/json');
     expect(res.headers['content-disposition']).toBe('attachment; filename="student-finance-overseas-data-42.json"');
+    expect(res.headers['cache-control']).toBe('no-store');
     expect(data.account).toEqual({
       id: 42,
       email: 'profile@example.com',
@@ -187,14 +194,7 @@ describe('profile routes', () => {
       country: 'Germany',
       plan: 'plan1',
       tax_year: '2025-26',
-      salary_local: 50000,
-      salary_gbp: 43478,
-      exchange_rate: 1.15,
-      threshold_gbp: 22000,
-      monthly_repayment: 160.59,
       include_pg: 0,
-      pgl_monthly_repayment: null,
-      pgl_threshold_gbp: null,
       calculated_at: Date.UTC(2026, 0, 10),
     };
     db.getCalculationsForUser.mockReturnValue([calcRow]);
@@ -210,12 +210,16 @@ describe('profile routes', () => {
       country: 'Germany',
       plan: 'plan1',
       tax_year: '2025-26',
-      salary_local: 50000,
-      monthly_repayment: 160.59,
       include_pg: false,
-      pgl_monthly_repayment: null,
       calculated_at: '2026-01-10T00:00:00.000Z',
     });
+    expect(data.calculations[0]).not.toHaveProperty('salary_local');
+    expect(data.calculations[0]).not.toHaveProperty('salary_gbp');
+    expect(data.calculations[0]).not.toHaveProperty('exchange_rate');
+    expect(data.calculations[0]).not.toHaveProperty('threshold_gbp');
+    expect(data.calculations[0]).not.toHaveProperty('monthly_repayment');
+    expect(data.calculations[0]).not.toHaveProperty('pgl_monthly_repayment');
+    expect(data.calculations[0]).not.toHaveProperty('pgl_threshold_gbp');
   });
 
   test('GET /profile/export preserves null confirmation and profile dates', async () => {
@@ -367,5 +371,32 @@ describe('profile routes', () => {
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe('/');
     expect(db.deleteUser).toHaveBeenCalledWith(42);
+  });
+
+  test('POST /profile/delete returns an error when deletion fails', async () => {
+    const agent = await loggedInAgent(app);
+    const token = await profileCsrf(agent);
+    db.deleteUser.mockImplementationOnce(() => { throw new Error('delete failed'); });
+
+    const res = await agent.post('/profile/delete').send({ csrfToken: token });
+
+    expect(res.status).toBe(500);
+    expect(res.text).toContain('Something went wrong');
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Profile delete error'));
+  });
+
+  test('POST /profile/delete returns an error when session destruction fails', async () => {
+    const agent = await loggedInAgent(app);
+    const token = await profileCsrf(agent);
+
+    const res = await agent
+      .post('/profile/delete')
+      .set('X-Break-Session-Destroy', '1')
+      .send({ csrfToken: token });
+
+    expect(res.status).toBe(500);
+    expect(res.text).toContain('Something went wrong');
+    expect(db.deleteUser).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Profile delete session destroy error'));
   });
 });

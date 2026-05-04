@@ -306,11 +306,15 @@ describe('db', () => {
       country: 'Germany',
       plan: 'plan1',
       tax_year: '2025-26',
-      salary_local: 50000,
-      monthly_repayment: 160.59,
       include_pg: 0,
-      pgl_monthly_repayment: null,
     });
+    expect(rows[0].salary_local).toBeNull();
+    expect(rows[0].salary_gbp).toBeNull();
+    expect(rows[0].exchange_rate).toBeNull();
+    expect(rows[0].threshold_gbp).toBeNull();
+    expect(rows[0].monthly_repayment).toBeNull();
+    expect(rows[0].pgl_monthly_repayment).toBeNull();
+    expect(rows[0].pgl_threshold_gbp).toBeNull();
 
     const anonRows = getAnonymousCalculationStats().filter(r => r.country === anonymousCountry && r.tax_year === '2025-26');
     expect(anonRows).toHaveLength(1);
@@ -377,7 +381,9 @@ describe('db', () => {
     expect(rows[1].country).toBe('Germany');
     expect(rows[0].include_pg).toBe(0);
     expect(rows[1].include_pg).toBe(1);
-    expect(rows[1].pgl_monthly_repayment).toBe(72.5);
+    expect(rows[1].salary_local).toBeNull();
+    expect(rows[1].monthly_repayment).toBeNull();
+    expect(rows[1].pgl_monthly_repayment).toBeNull();
 
     deleteUser(userId);
   });
@@ -405,10 +411,11 @@ describe('db', () => {
 
   test('ensureCalculationColumns adds missing PGL/stat migration columns', () => {
     const exec = jest.fn();
+    const calculationCols = [{ name: 'id' }, { name: 'user_id' }, { name: 'monthly_repayment', notnull: 0 }];
     const fakeDb = {
       prepare: jest.fn((sql) => ({
         all: () => sql.includes('calculations')
-          ? [{ name: 'id' }, { name: 'user_id' }, { name: 'monthly_repayment' }]
+          ? calculationCols
           : [{ name: 'stat_date' }, { name: 'calculation_count' }],
       })),
       exec,
@@ -424,10 +431,37 @@ describe('db', () => {
     exec.mockClear();
     fakeDb.prepare = jest.fn((sql) => ({
       all: () => sql.includes('calculations')
-        ? [{ name: 'include_pg' }, { name: 'pgl_monthly_repayment' }, { name: 'pgl_threshold_gbp' }]
+        ? [{ name: 'include_pg', notnull: 0 }, { name: 'pgl_monthly_repayment', notnull: 0 }, { name: 'pgl_threshold_gbp', notnull: 0 }]
         : [{ name: 'include_pg' }],
     }));
     ensureCalculationColumns(fakeDb);
     expect(exec).not.toHaveBeenCalled();
+  });
+
+  test('ensureCalculationColumns migrates old sensitive calculation columns to nullable storage', () => {
+    const exec = jest.fn();
+    const fakeDb = {
+      prepare: jest.fn((sql) => ({
+        all: () => sql.includes('calculations')
+          ? [
+            { name: 'include_pg', notnull: 1 },
+            { name: 'pgl_monthly_repayment', notnull: 0 },
+            { name: 'pgl_threshold_gbp', notnull: 0 },
+            { name: 'salary_local', notnull: 1 },
+            { name: 'salary_gbp', notnull: 1 },
+            { name: 'exchange_rate', notnull: 1 },
+            { name: 'threshold_gbp', notnull: 1 },
+            { name: 'monthly_repayment', notnull: 1 },
+          ]
+          : [{ name: 'include_pg' }],
+      })),
+      exec,
+    };
+
+    ensureCalculationColumns(fakeDb);
+
+    expect(exec).toHaveBeenCalledTimes(1);
+    expect(exec.mock.calls[0][0]).toContain('CREATE TABLE calculations_privacy_migration');
+    expect(exec.mock.calls[0][0]).toContain('DROP TABLE calculations');
   });
 });

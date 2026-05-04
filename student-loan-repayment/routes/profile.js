@@ -45,6 +45,7 @@ router.get('/profile/export', requireAuth, (req, res) => {
   res.set({
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Disposition': `attachment; filename="student-finance-overseas-data-${user.id}.json"`,
+    'Cache-Control': 'no-store',
   });
 
   res.send(JSON.stringify({
@@ -70,14 +71,7 @@ router.get('/profile/export', requireAuth, (req, res) => {
       country: c.country,
       plan: c.plan,
       tax_year: c.tax_year,
-      salary_local: c.salary_local,
-      salary_gbp: c.salary_gbp,
-      exchange_rate: c.exchange_rate,
-      threshold_gbp: c.threshold_gbp,
-      monthly_repayment: c.monthly_repayment,
       include_pg: Boolean(c.include_pg),
-      pgl_monthly_repayment: c.pgl_monthly_repayment,
-      pgl_threshold_gbp: c.pgl_threshold_gbp,
       calculated_at: new Date(c.calculated_at).toISOString(),
     })),
   }, null, 2));
@@ -122,8 +116,26 @@ router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
 
 router.post('/profile/delete', requireAuth, verifyCsrfToken, (req, res) => {
   const userId = req.session.userId;
-  req.session.destroy(() => {
-    deleteUser(userId);
+  req.session.destroy((sessionErr) => {
+    if (sessionErr) {
+      logger.error(`Profile delete session destroy error: ${sessionErr.message}`);
+      return res.status(500).render('profile', {
+        user: getUserById(userId),
+        profile: getProfile(userId) || {},
+        countries: [],
+        ugPlans: UG_PLANS,
+        error: 'Something went wrong. Please try again.',
+        success: false,
+        csrfToken: res.locals.csrfToken,
+      });
+    }
+
+    try {
+      deleteUser(userId);
+    } catch (err) {
+      logger.error(`Profile delete error: ${err.message}`);
+      return res.status(500).send('Something went wrong. Please contact support.');
+    }
     res.redirect('/');
   });
 });

@@ -60,11 +60,11 @@ db.exec(`
     country TEXT NOT NULL,
     plan TEXT NOT NULL,
     tax_year TEXT NOT NULL,
-    salary_local REAL NOT NULL,
-    salary_gbp REAL NOT NULL,
-    exchange_rate REAL NOT NULL,
-    threshold_gbp REAL NOT NULL,
-    monthly_repayment REAL NOT NULL,
+    salary_local REAL,
+    salary_gbp REAL,
+    exchange_rate REAL,
+    threshold_gbp REAL,
+    monthly_repayment REAL,
     include_pg INTEGER NOT NULL DEFAULT 0,
     pgl_monthly_repayment REAL,
     pgl_threshold_gbp REAL,
@@ -112,6 +112,39 @@ function ensureCalculationColumns(database) {
   if (!calculationCols.includes('include_pg')) database.exec('ALTER TABLE calculations ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
   if (!calculationCols.includes('pgl_monthly_repayment')) database.exec('ALTER TABLE calculations ADD COLUMN pgl_monthly_repayment REAL');
   if (!calculationCols.includes('pgl_threshold_gbp')) database.exec('ALTER TABLE calculations ADD COLUMN pgl_threshold_gbp REAL');
+
+  const updatedCalculationCols = database.prepare('PRAGMA table_info(calculations)').all();
+  const sensitiveRequiredCols = new Set(['salary_local', 'salary_gbp', 'exchange_rate', 'threshold_gbp', 'monthly_repayment']);
+  const hasRequiredSensitiveColumns = updatedCalculationCols.some(c => sensitiveRequiredCols.has(c.name) && c.notnull);
+  if (hasRequiredSensitiveColumns) {
+    database.exec(`
+      CREATE TABLE calculations_privacy_migration (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        country TEXT NOT NULL,
+        plan TEXT NOT NULL,
+        tax_year TEXT NOT NULL,
+        salary_local REAL,
+        salary_gbp REAL,
+        exchange_rate REAL,
+        threshold_gbp REAL,
+        monthly_repayment REAL,
+        include_pg INTEGER NOT NULL DEFAULT 0,
+        pgl_monthly_repayment REAL,
+        pgl_threshold_gbp REAL,
+        calculated_at INTEGER NOT NULL
+      );
+
+      INSERT INTO calculations_privacy_migration
+        (id, user_id, country, plan, tax_year, include_pg, calculated_at)
+      SELECT id, user_id, country, plan, tax_year, include_pg, calculated_at
+      FROM calculations;
+
+      DROP TABLE calculations;
+      ALTER TABLE calculations_privacy_migration RENAME TO calculations;
+      CREATE INDEX IF NOT EXISTS idx_calculations_user_id ON calculations(user_id);
+    `);
+  }
 
   const statCols = database.prepare('PRAGMA table_info(anonymous_calculation_stats)').all().map(c => c.name);
   if (!statCols.includes('include_pg')) database.exec('ALTER TABLE anonymous_calculation_stats ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
@@ -286,7 +319,7 @@ function getAnonymousCalculationStats() {
   `).all();
 }
 
-function logCalculation(userId, { country, plan, taxYear, salaryLocal, salaryGbp, exchangeRate, thresholdGbp, monthlyRepayment, includePg, pglMonthlyRepayment, pglThresholdGbp }) {
+function logCalculation(userId, { country, plan, taxYear, includePg }) {
   if (!userId) {
     logAnonymousCalculationStats({ country, plan, taxYear, includePg });
     return;
@@ -294,17 +327,12 @@ function logCalculation(userId, { country, plan, taxYear, salaryLocal, salaryGbp
 
   db.prepare(`
     INSERT INTO calculations
-      (user_id, country, plan, tax_year, salary_local, salary_gbp, exchange_rate, threshold_gbp,
-       monthly_repayment, include_pg, pgl_monthly_repayment, pgl_threshold_gbp, calculated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (user_id, country, plan, tax_year, include_pg, calculated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
   `).run(
     userId,
     country, plan, taxYear,
-    salaryLocal, salaryGbp, exchangeRate, thresholdGbp,
-    monthlyRepayment,
     includePg ? 1 : 0,
-    pglMonthlyRepayment ?? null,
-    pglThresholdGbp ?? null,
     Date.now(),
   );
 }
