@@ -253,9 +253,15 @@
 
         writeoffText.textContent = text;
         writeoffEl.style.display = 'flex';
-      } else if (lastWriteoffText) {
-        writeoffText.textContent = lastWriteoffText;
-        writeoffEl.style.display = wo ? 'flex' : 'none';
+      } else {
+        // Neither loan paid off — loan(s) will be written off
+        if (lastWriteoffText) {
+          writeoffText.textContent = lastWriteoffText;
+        } else {
+          // No graduation date (not signed in): use estimated write-off year
+          writeoffText.textContent = `Based on your current balance and repayment rate, your ${planLabel} loan will be written off by ${writeOffCalYear} (or sooner, depending on when you graduated) rather than fully repaid.`;
+        }
+        writeoffEl.style.display = 'flex';
       }
     }
 
