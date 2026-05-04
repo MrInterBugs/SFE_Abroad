@@ -73,7 +73,7 @@ describe('SEO page configuration', () => {
   test('exports canonical site URL and page lists', () => {
     expect(SITE_URL).toBe('https://sfe.aedanl.com');
     expect(PLAN_PAGES.length).toBe(5);
-    expect(COUNTRY_PAGES.length).toBe(3);
+    expect(COUNTRY_PAGES.length).toBe(17);
     expect(SEO_PAGES).toHaveLength(PLAN_PAGES.length + COUNTRY_PAGES.length);
   });
 
