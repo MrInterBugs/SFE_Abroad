@@ -323,7 +323,7 @@
     updatePlan2Note(rpi);
     updatePglNote(rpi);
 
-    if (ugBalance <= 0) return;
+    if (ugBalance <= 0 && (PGL_MONTHLY === null || pglBalance <= 0)) return;
 
     const currentYear = new Date().getFullYear();
     const writeOffCalYear = calcWriteOffYear(GRADUATION_DATE, SELECTED_PLAN)

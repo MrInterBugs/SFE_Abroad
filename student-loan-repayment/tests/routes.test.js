@@ -151,8 +151,8 @@ describe('routes', () => {
       expect(res.text).toContain('Calculator defaults');
       expect(res.text).toContain('Anonymous calculation statistics');
       expect(res.text).toContain('Cookiebot&rsquo;s floating consent control');
-      expect(res.text).toContain('remember your calculator preferences (30 days)');
-      expect(res.text).toContain('<strong>Preference cookies</strong> &mdash; 30 days');
+      expect(res.text).toContain('Preference cookies are only set after you give preference consent');
+      expect(res.text).toContain('<strong>Preference cookies</strong> &mdash; 30 days, if you give preference consent');
     });
 
     test('GET /about renders an indexable trust page', async () => {

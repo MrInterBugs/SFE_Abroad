@@ -280,7 +280,7 @@
 
     const writeoffEl = document.getElementById('writeoff-notice');
 
-    if (ugBalance <= 0) {
+    if (ugBalance <= 0 && (!hasPGL || pglBalance <= 0)) {
       if (writeoffEl && wo) writeoffEl.style.display = 'flex';
       return;
     }

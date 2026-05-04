@@ -1,7 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const logger = require('./logger');
-const { urlsByYear, CACHE_DURATION, DEFAULT_YEAR } = require('../config/constants');
+const { urlsByYear, CACHE_DURATION, getCurrentTaxYear } = require('../config/constants');
 const db = require('./db');
 
 // In-memory cache keyed by "plan:year", stores full data dict
@@ -59,20 +59,22 @@ async function fetchFromWeb(plan, year) {
 
 /**
  * Returns the full country data dict for a plan+year.
- * For non-current years, serves from DB once cached — never re-fetches from gov.uk.
+ * For non-current tax years, serves from DB once cached — gov.uk may remove older pages.
  * For the current year, falls back to DB only if gov.uk is unreachable.
  */
 async function getThresholdData(plan, year) {
   const key = cacheKey(plan, year);
   const now = Date.now();
+  const currentTaxYear = getCurrentTaxYear();
 
   if (cache[key] && (now - cacheTimestamp[key] < CACHE_DURATION)) {
     logger.info(`Memory cache hit: ${plan} ${year}`);
     return cache[key];
   }
 
-  // Old year: if it's in the DB, use it permanently — gov.uk may remove the page.
-  if (year !== DEFAULT_YEAR) {
+  // Older/future configured years: prefer DB when available because gov.uk may
+  // remove or rename archived pages.
+  if (year !== currentTaxYear) {
     const dbData = db.loadThresholds(plan, year);
     if (dbData) {
       logger.info(`DB cache hit (archived year): ${plan} ${year}`);
@@ -98,13 +100,14 @@ async function getThresholdData(plan, year) {
 async function fetchCountryData(plan, year) {
   const key = cacheKey(plan, year);
   const now = Date.now();
+  const currentTaxYear = getCurrentTaxYear();
 
   if (cache[key] && (now - cacheTimestamp[key] < CACHE_DURATION)) {
     return Object.keys(cache[key]);
   }
 
-  // Old year: serve from DB only, never re-fetch.
-  if (year !== DEFAULT_YEAR) {
+  // Non-current year: serve from DB first, then fall back to a full fetch.
+  if (year !== currentTaxYear) {
     const dbList = db.loadCountryList(plan, year);
     if (dbList.length > 0) {
       logger.info(`DB country list hit (archived year): ${plan} ${year}`);
