@@ -1,1 +1,7 @@
 student-loan-repayment/node_modules
+student-loan-repayment/coverage
+student-loan-repayment/*.log
+student-loan-repayment/.env
+student-loan-repayment/data/*.db
+student-loan-repayment/data/*.db-*
+student-loan-repayment/data/*.log
