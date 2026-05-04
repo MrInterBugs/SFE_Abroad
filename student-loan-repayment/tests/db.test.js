@@ -224,8 +224,27 @@ describe('db', () => {
       default_salary: null,
     });
 
+    createAuthToken(userId, 'password-reset', `cascade-token-${RUN_ID}`, Date.now() + 10000);
+    logCalculation(userId, {
+      country: 'Germany',
+      plan: 'plan1',
+      taxYear: '2025-26',
+      salaryLocal: 50000,
+      salaryGbp: 43478,
+      exchangeRate: 1.15,
+      thresholdGbp: 22000,
+      monthlyRepayment: 160.59,
+      includePg: false,
+      pglMonthlyRepayment: null,
+      pglThresholdGbp: null,
+    });
+    expect(db.prepare('SELECT COUNT(*) AS count FROM auth_tokens WHERE user_id = ?').get(userId).count).toBe(1);
+    expect(getCalculationsForUser(userId)).toHaveLength(1);
+
     deleteUser(userId);
     expect(getProfile(userId)).toBeUndefined();
+    expect(db.prepare('SELECT COUNT(*) AS count FROM auth_tokens WHERE user_id = ?').get(userId).count).toBe(0);
+    expect(getCalculationsForUser(userId)).toHaveLength(0);
   });
 
   test('ensureProfileColumns adds missing migration columns and skips existing ones', () => {

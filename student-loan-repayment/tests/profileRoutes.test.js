@@ -224,8 +224,11 @@ describe('profile routes', () => {
 
     const cases = [
       { loanValueGbp: '-1', text: 'undergraduate loan value' },
+      { loanValueGbp: '12000abc', text: 'undergraduate loan value' },
       { loanValuePglGbp: 'NaN', text: 'postgraduate loan value' },
+      { loanValuePglGbp: '3000abc', text: 'postgraduate loan value' },
       { defaultSalary: '-1', text: 'valid salary' },
+      { defaultSalary: '50000abc', text: 'valid salary' },
       { graduationDate: 'June 2024', text: 'graduation date' },
       { defaultPlan: 'planPg', text: 'Invalid repayment plan' },
       { defaultCountry: 'Atlantis', text: 'Invalid default country' },
@@ -278,6 +281,29 @@ describe('profile routes', () => {
       defaultCountry: '',
       defaultPlan: '',
       defaultSalary: '',
+    });
+
+    expect(res.status).toBe(200);
+    expect(db.upsertProfile).toHaveBeenCalledWith(42, {
+      graduationDate: null,
+      loanValueGbp: null,
+      loanValuePglGbp: null,
+      defaultCountry: null,
+      defaultPlan: null,
+      includePg: false,
+      defaultSalary: null,
+    });
+  });
+
+  test('POST /profile treats omitted optional numeric fields as null', async () => {
+    const agent = await loggedInAgent(app);
+    const token = await profileCsrf(agent);
+
+    const res = await agent.post('/profile').send({
+      csrfToken: token,
+      graduationDate: '',
+      defaultCountry: '',
+      defaultPlan: '',
     });
 
     expect(res.status).toBe(200);

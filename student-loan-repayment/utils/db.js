@@ -7,6 +7,7 @@ const dataDir = path.join(__dirname, '../data');
 fs.mkdirSync(dataDir, { recursive: true });
 
 const db = new Database(path.join(dataDir, 'thresholds.db'));
+db.pragma('foreign_keys = ON');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS cached_thresholds (

@@ -26,6 +26,16 @@ function hasPreferenceConsent(req) {
   return decodeURIComponent(raw).includes('preferences:true');
 }
 
+function preferenceCookie(req, name) {
+  return hasPreferenceConsent(req) ? req.cookies[name] : undefined;
+}
+
+function parseRequiredNumber(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return NaN;
+  return Number(raw);
+}
+
 function buildCountriesList(fullData) {
   return Object.entries(fullData).map(([name, data]) => {
     const rawCurrency = (data['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
@@ -142,8 +152,9 @@ router.get('/', async (req, res) => {
     res.clearCookie('includePg', clearOpts);
   }
 
-  const selectedYear = SUPPORTED_YEARS.includes(req.cookies.selectedYear)
-    ? req.cookies.selectedYear
+  const selectedYearCookie = preferenceCookie(req, 'selectedYear');
+  const selectedYear = SUPPORTED_YEARS.includes(selectedYearCookie)
+    ? selectedYearCookie
     : getCurrentTaxYear();
 
   try {
@@ -154,9 +165,9 @@ router.get('/', async (req, res) => {
 
     const selectedPlan = (profile?.default_plan && ALLOWED_PLANS.includes(profile.default_plan))
       ? profile.default_plan
-      : (ALLOWED_PLANS.includes(req.cookies.selectedPlan) ? req.cookies.selectedPlan : 'plan1');
-    const selectedCountry = profile?.default_country || req.cookies.selectedCountry || '';
-    const includePg = profile ? !!profile.include_pg : req.cookies.includePg === 'true';
+      : (ALLOWED_PLANS.includes(preferenceCookie(req, 'selectedPlan')) ? preferenceCookie(req, 'selectedPlan') : 'plan1');
+    const selectedCountry = profile?.default_country || preferenceCookie(req, 'selectedCountry') || '';
+    const includePg = profile ? !!profile.include_pg : preferenceCookie(req, 'includePg') === 'true';
 
     res.render('index', {
       countries,
@@ -172,9 +183,9 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     logger.error(`Error loading data: ${error.message}`);
-    const selectedPlan = ALLOWED_PLANS.includes(req.cookies.selectedPlan) ? req.cookies.selectedPlan : 'plan1';
-    const selectedCountry = req.cookies.selectedCountry || '';
-    const includePg = req.cookies.includePg === 'true';
+    const selectedPlan = ALLOWED_PLANS.includes(preferenceCookie(req, 'selectedPlan')) ? preferenceCookie(req, 'selectedPlan') : 'plan1';
+    const selectedCountry = preferenceCookie(req, 'selectedCountry') || '';
+    const includePg = preferenceCookie(req, 'includePg') === 'true';
     res.render('index', {
       countries: [],
       selectedPlan,
@@ -213,8 +224,8 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   }
 
   // Validate salary: must be a finite positive number
-  const salary = parseFloat(req.body.salaryLocalCurrency);
-  if (!isFinite(salary) || salary <= 0) {
+  const salary = parseRequiredNumber(req.body.salaryLocalCurrency);
+  if (!Number.isFinite(salary) || salary <= 0) {
     return sendError(400, 'Please enter a valid positive salary.');
   }
 
@@ -257,16 +268,20 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     if (includePg) {
       const pgDataDict = await getThresholdData('planPg', year);
       const pgCountryData = pgDataDict[targetCountry];
-      if (pgCountryData) {
-        const pgThresholdRaw = pgCountryData['Earnings threshold (GBP)'];
-        if (pgThresholdRaw) {
-          pglThresholdGbp = parseFloat(pgThresholdRaw.replace(/[£,]/g, ''));
-          const pgAmountOver = salaryGbp - pglThresholdGbp;
-          pglMonthlyRepayment = pgAmountOver > 0
-            ? (pgAmountOver * PGL_REPAYMENT_RATE) / MONTHS_PER_YEAR
-            : 0;
-        }
+      const pgThresholdRaw = pgCountryData?.['Earnings threshold (GBP)'];
+      if (!pgCountryData || !pgThresholdRaw) {
+        return sendError(502, 'Unexpected postgraduate loan data format for this country. Please try again later.');
       }
+
+      pglThresholdGbp = parseFloat(pgThresholdRaw.replace(/[£,]/g, ''));
+      if (!Number.isFinite(pglThresholdGbp)) {
+        return sendError(502, 'Unexpected postgraduate loan data format for this country. Please try again later.');
+      }
+
+      const pgAmountOver = salaryGbp - pglThresholdGbp;
+      pglMonthlyRepayment = pgAmountOver > 0
+        ? (pgAmountOver * PGL_REPAYMENT_RATE) / MONTHS_PER_YEAR
+        : 0;
     }
 
     const salaryCurrencySymbol = currencySymbol(countryData['Currency']);

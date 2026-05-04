@@ -13,6 +13,12 @@ function getCountries() {
   return loadCountryList('plan1', getCurrentTaxYear());
 }
 
+function parseOptionalNumber(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  return Number(raw);
+}
+
 router.get('/profile', requireAuth, (req, res) => {
   const user = getUserById(req.session.userId);
   const profile = getProfile(req.session.userId);
@@ -71,9 +77,9 @@ router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
   const user = getUserById(req.session.userId);
   const countries = getCountries();
 
-  const parsedLoan    = loanValueGbp    !== '' ? parseFloat(loanValueGbp)    : null;
-  const parsedPglLoan = loanValuePglGbp !== '' ? parseFloat(loanValuePglGbp) : null;
-  const parsedSalary  = defaultSalary   !== '' ? parseFloat(defaultSalary)   : null;
+  const parsedLoan    = parseOptionalNumber(loanValueGbp);
+  const parsedPglLoan = parseOptionalNumber(loanValuePglGbp);
+  const parsedSalary  = parseOptionalNumber(defaultSalary);
 
   const renderError = (msg) => res.status(400).render('profile', { user, profile: req.body, countries, ugPlans: UG_PLANS, error: msg, success: false, csrfToken: res.locals.csrfToken });
 

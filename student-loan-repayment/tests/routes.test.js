@@ -151,6 +151,8 @@ describe('routes', () => {
       expect(res.text).toContain('Calculator defaults');
       expect(res.text).toContain('Anonymous calculation statistics');
       expect(res.text).toContain('Cookiebot&rsquo;s floating consent control');
+      expect(res.text).toContain('remember your calculator preferences (30 days)');
+      expect(res.text).toContain('<strong>Preference cookies</strong> &mdash; 30 days');
     });
 
     test('GET /about renders an indexable trust page', async () => {
@@ -269,45 +271,56 @@ describe('routes', () => {
       expect(res.status).toBe(200);
     });
 
-    test('reads a valid selectedPlan cookie (plan2)', async () => {
+    test('ignores preference cookies before preference consent', async () => {
       const res = await request(app)
         .get('/')
-        .set('Cookie', ['selectedPlan=plan2']);
+        .set('Cookie', ['selectedPlan=plan2', 'selectedCountry=Germany', 'includePg=true']);
       expect(res.status).toBe(200);
+      expect(res.text).toMatch(/id="plan1" value="plan1" checked/);
+      expect(res.text).toContain('name="targetCountry" placeholder="e.g. Germany, Australia, Canada…" autocomplete="off" value=""');
+      expect(res.text).toContain('id="pgl-check" name="includePg" >');
+    });
+
+    test('reads a valid selectedPlan cookie (plan2) after preference consent', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', 'selectedPlan=plan2']);
+      expect(res.status).toBe(200);
+      expect(res.text).toMatch(/id="plan2" value="plan2" checked/);
     });
 
     test('ignores an invalid selectedPlan cookie and defaults to plan1', async () => {
       const res = await request(app)
         .get('/')
-        .set('Cookie', ['selectedPlan=planX']);
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', 'selectedPlan=planX']);
       expect(res.status).toBe(200);
     });
 
     test('reads a valid selectedYear cookie', async () => {
       const res = await request(app)
         .get('/')
-        .set('Cookie', [`selectedYear=${SUPPORTED_YEARS[0]}`]);
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', `selectedYear=${SUPPORTED_YEARS[0]}`]);
       expect(res.status).toBe(200);
     });
 
     test('ignores an invalid selectedYear cookie and falls back to current year', async () => {
       const res = await request(app)
         .get('/')
-        .set('Cookie', ['selectedYear=not-a-year']);
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', 'selectedYear=not-a-year']);
       expect(res.status).toBe(200);
     });
 
     test('reads includePg=true cookie', async () => {
       const res = await request(app)
         .get('/')
-        .set('Cookie', ['includePg=true']);
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', 'includePg=true']);
       expect(res.status).toBe(200);
     });
 
     test('reads selectedCountry cookie', async () => {
       const res = await request(app)
         .get('/')
-        .set('Cookie', ['selectedCountry=Germany']);
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', 'selectedCountry=Germany']);
       expect(res.status).toBe(200);
     });
 
@@ -465,6 +478,16 @@ describe('routes', () => {
       });
       expect(res.status).toBe(400);
       expect(res.text).toContain('valid positive salary');
+    });
+
+    test('returns 400 for a partially numeric salary', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000abc',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
     });
 
     test('returns 400 for a zero salary', async () => {
@@ -638,7 +661,7 @@ describe('routes', () => {
       expect(res.text).toContain('below the Postgraduate Loan');
     });
 
-    test('skips PGL row when country is absent from PG data', async () => {
+    test('returns an error when country is absent from PG data', async () => {
       getThresholdData.mockImplementation((plan) =>
         plan === 'planPg'
           ? Promise.resolve({}) // no entry for Germany
@@ -651,10 +674,11 @@ describe('routes', () => {
         selectedYear: DEFAULT_YEAR,
         includePg: 'on',
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(502);
+      expect(res.text).toContain('Unexpected postgraduate loan data format');
     });
 
-    test('skips PGL row when PG threshold field is missing for country', async () => {
+    test('returns an error when PG threshold field is missing for country', async () => {
       getThresholdData.mockImplementation((plan) =>
         plan === 'planPg'
           ? Promise.resolve({
@@ -669,7 +693,27 @@ describe('routes', () => {
         selectedYear: DEFAULT_YEAR,
         includePg: 'on',
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(502);
+      expect(res.text).toContain('Unexpected postgraduate loan data format');
+    });
+
+    test('returns an error when PG threshold is not numeric', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve({
+              Germany: { 'Exchange rate': '1.15', Currency: 'Euro', 'Earnings threshold (GBP)': 'not-a-number' },
+            })
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+      });
+      expect(res.status).toBe(502);
+      expect(res.text).toContain('Unexpected postgraduate loan data format');
     });
 
     test('includePg cookie is stored as "false" when checkbox is absent', async () => {
@@ -781,6 +825,16 @@ describe('routes', () => {
       const res = await postCalculateJson(app, {
         targetCountry: 'Germany',
         salaryLocalCurrency: 'not-a-number',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('valid positive salary');
+    });
+
+    test('returns JSON 400 for a missing salary', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
       });
