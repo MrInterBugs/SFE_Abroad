@@ -3,14 +3,25 @@ const { verifyCsrfToken } = require('../utils/csrf');
 const { getUserById, getProfile, upsertProfile, deleteUser, loadCountryList, getCalculationsForUser } = require('../utils/db');
 const { requireAuth } = require('../utils/auth');
 const { getCurrentTaxYear, ALLOWED_PLANS } = require('../config/constants');
+const { getThresholdData } = require('../utils/fetchCountryData');
 const logger = require('../utils/logger');
 
 const UG_PLANS = ALLOWED_PLANS.filter(p => p !== 'planPg');
 
 const router = express.Router();
 
-function getCountries() {
-  return loadCountryList('plan1', getCurrentTaxYear());
+async function getCountries() {
+  const year = getCurrentTaxYear();
+  const cachedCountries = loadCountryList('plan1', year);
+  if (cachedCountries.length > 0) return cachedCountries;
+
+  try {
+    const data = await getThresholdData('plan1', year);
+    return Object.keys(data).sort((a, b) => a.localeCompare(b));
+  } catch (err) {
+    logger.warn(`Profile country list unavailable: ${err.message}`);
+    return [];
+  }
 }
 
 function parseOptionalNumber(value) {
@@ -19,10 +30,10 @@ function parseOptionalNumber(value) {
   return Number(raw);
 }
 
-router.get('/profile', requireAuth, (req, res) => {
+router.get('/profile', requireAuth, async (req, res) => {
   const user = getUserById(req.session.userId);
   const profile = getProfile(req.session.userId);
-  res.render('profile', { user, profile: profile || {}, countries: getCountries(), ugPlans: UG_PLANS, error: null, success: false, csrfToken: res.locals.csrfToken });
+  res.render('profile', { user, profile: profile || {}, countries: await getCountries(), ugPlans: UG_PLANS, error: null, success: false, csrfToken: res.locals.csrfToken });
 });
 
 router.get('/profile/export', requireAuth, (req, res) => {
@@ -72,10 +83,10 @@ router.get('/profile/export', requireAuth, (req, res) => {
   }, null, 2));
 });
 
-router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
+router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
   const { graduationDate, loanValueGbp, loanValuePglGbp, defaultCountry, defaultPlan, includePg, defaultSalary } = req.body;
   const user = getUserById(req.session.userId);
-  const countries = getCountries();
+  const countries = await getCountries();
 
   const parsedLoan    = parseOptionalNumber(loanValueGbp);
   const parsedPglLoan = parseOptionalNumber(loanValuePglGbp);

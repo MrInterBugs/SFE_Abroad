@@ -1,13 +1,12 @@
 const crypto = require('crypto');
+const { hasCookieConsent } = require('./consent');
 
 const CSRF_COOKIE = 'csrfToken';
 const MUTATING_METHODS = ['POST', 'PUT', 'DELETE'];
 const FORM_PATHS = new Set(['/login', '/register', '/profile', '/forgot-password', '/check-email', '/resend-confirmation']);
 
 function hasNecessaryConsent(req) {
-  const raw = req.cookies?.CookieConsent;
-  if (!raw) return false;
-  return decodeURIComponent(raw).includes('necessary:true');
+  return hasCookieConsent(req, 'necessary');
 }
 
 function shouldIssueCsrfToken(req) {

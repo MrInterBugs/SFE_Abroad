@@ -21,6 +21,19 @@ function isStaticRequest(req) {
   return Boolean(path.extname(req.path)) || req.path.startsWith('/fonts/') || req.path.startsWith('/vendor/');
 }
 
+function isPrivatePage(req) {
+  if (req.method !== 'GET') return true;
+  return [
+    '/login',
+    '/register',
+    '/check-email',
+    '/forgot-password',
+  ].includes(req.path)
+    || req.path.startsWith('/profile')
+    || req.path.startsWith('/reset-password/')
+    || req.path.startsWith('/confirm-email/');
+}
+
 function createApp() {
   const app = express();
 
@@ -30,7 +43,7 @@ function createApp() {
 
   app.use((req, res, next) => {
     res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
-    res.locals.allowMarketingScripts = req.method === 'GET' && req.path === '/';
+    res.locals.allowMarketingScripts = !isPrivatePage(req);
     next();
   });
 
@@ -173,4 +186,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { createApp, startServer, prefetchAllData, isStaticRequest };
+module.exports = { createApp, startServer, prefetchAllData, isStaticRequest, isPrivatePage };

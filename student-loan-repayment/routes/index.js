@@ -10,6 +10,7 @@ const { getProfile } = require('../utils/db');
 const db = require('../utils/db');
 const currencySymbol = require('../utils/currencySymbol');
 const { SITE_URL, getSeoPage, getSeoPagePaths } = require('../config/seoPages');
+const { hasCookieConsent } = require('../utils/consent');
 
 const router = express.Router();
 
@@ -21,9 +22,7 @@ const COOKIE_OPTS = (req) => ({
 });
 
 function hasPreferenceConsent(req) {
-  const raw = req.cookies.CookieConsent;
-  if (!raw) return false;
-  return decodeURIComponent(raw).includes('preferences:true');
+  return hasCookieConsent(req, 'preferences');
 }
 
 function preferenceCookie(req, name) {

@@ -6,7 +6,7 @@ jest.mock('../utils/logger', () => ({
 }));
 
 const request = require('supertest');
-const { createApp, startServer, prefetchAllData, isStaticRequest } = require('../app');
+const { createApp, startServer, prefetchAllData, isStaticRequest, isPrivatePage } = require('../app');
 const { getThresholdData } = require('../utils/fetchCountryData');
 const logger = require('../utils/logger');
 
@@ -64,6 +64,27 @@ describe('Express App', () => {
     expect(isStaticRequest({ method: 'GET', path: '/vendor/chart.js/chart.umd.min.js' })).toBe(true);
     expect(isStaticRequest({ method: 'POST', path: '/styles.css' })).toBe(false);
     expect(isStaticRequest({ method: 'GET', path: '/' })).toBe(false);
+  });
+
+  it('identifies account pages as private for marketing scripts', () => {
+    expect(isPrivatePage({ method: 'GET', path: '/profile' })).toBe(true);
+    expect(isPrivatePage({ method: 'GET', path: '/profile/export' })).toBe(true);
+    expect(isPrivatePage({ method: 'GET', path: '/login' })).toBe(true);
+    expect(isPrivatePage({ method: 'GET', path: '/reset-password/token' })).toBe(true);
+    expect(isPrivatePage({ method: 'POST', path: '/' })).toBe(true);
+    expect(isPrivatePage({ method: 'GET', path: '/' })).toBe(false);
+    expect(isPrivatePage({ method: 'GET', path: '/privacy' })).toBe(false);
+    expect(isPrivatePage({ method: 'GET', path: '/about' })).toBe(false);
+  });
+
+  it('loads Cookiebot on public pages but not private account pages', async () => {
+    const privacy = await request(app).get('/privacy');
+    const login = await request(app).get('/login');
+
+    expect(privacy.status).toBe(200);
+    expect(privacy.text).toContain('id="Cookiebot"');
+    expect(login.status).toBe(200);
+    expect(login.text).not.toContain('id="Cookiebot"');
   });
 
   it('should not rate limit static asset paths', async () => {

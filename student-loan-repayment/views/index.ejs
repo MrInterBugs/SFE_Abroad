@@ -13,9 +13,7 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="UK Student Loan Overseas Repayment Calculator <%= selectedYear %>">
 <meta name="twitter:description" content="Living abroad? Estimate your monthly UK student loan repayment in seconds.">
-<% if (locals.allowMarketingScripts) { %>
-<script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="e556bd88-52ac-451e-bb8c-7e9a69fa2193" data-blockingmode="auto" type="text/javascript"></script>
-<% } %>
+<%- include('partials/cookiebot') %>
 <script type="application/ld+json" nonce="<%= locals.cspNonce || '' %>">
 {
   "@context": "https://schema.org",

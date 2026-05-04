@@ -13,6 +13,9 @@ jest.mock('../utils/logger', () => ({
   warn: jest.fn(),
   error: jest.fn(),
 }));
+jest.mock('../utils/fetchCountryData', () => ({
+  getThresholdData: jest.fn(),
+}));
 
 const request = require('supertest');
 const express = require('express');
@@ -22,6 +25,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const db = require('../utils/db');
 const logger = require('../utils/logger');
+const { getThresholdData } = require('../utils/fetchCountryData');
 const { csrfProtection } = require('../utils/csrf');
 
 function buildApp() {
@@ -72,6 +76,7 @@ describe('profile routes', () => {
     db.getUserById.mockReturnValue({ id: 42, email: 'profile@example.com', email_confirmed_at: Date.now(), created_at: Date.now() });
     db.getProfile.mockReturnValue(null);
     db.loadCountryList.mockReturnValue(['France', 'Germany']);
+    getThresholdData.mockResolvedValue({ France: {}, Germany: {} });
     db.getCalculationsForUser.mockReturnValue([]);
     app = buildApp();
   });
@@ -88,6 +93,29 @@ describe('profile routes', () => {
     expect(res.text).toContain('Germany');
     expect(res.text).toContain('Email confirmed');
     expect(db.loadCountryList).toHaveBeenCalledWith('plan1', expect.any(String));
+  });
+
+  test('GET /profile falls back to threshold data when cached countries are not warm yet', async () => {
+    db.loadCountryList.mockReturnValue([]);
+    getThresholdData.mockResolvedValue({ Germany: {}, France: {} });
+
+    const agent = await loggedInAgent(app);
+    const res = await agent.get('/profile');
+
+    expect(res.status).toBe(200);
+    expect(getThresholdData).toHaveBeenCalledWith('plan1', expect.any(String));
+    expect(res.text.indexOf('France')).toBeLessThan(res.text.indexOf('Germany'));
+  });
+
+  test('GET /profile still renders when country fallback fetch fails', async () => {
+    db.loadCountryList.mockReturnValue([]);
+    getThresholdData.mockRejectedValue(new Error('offline'));
+
+    const agent = await loggedInAgent(app);
+    const res = await agent.get('/profile');
+
+    expect(res.status).toBe(200);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Profile country list unavailable'));
   });
 
   test('GET /profile/export downloads portable account data for logged-in users', async () => {

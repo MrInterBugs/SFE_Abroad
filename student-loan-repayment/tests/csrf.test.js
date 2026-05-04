@@ -1,6 +1,7 @@
 'use strict';
 
-const { csrfProtection, verifyCsrfToken } = require('../utils/csrf');
+const { csrfProtection, verifyCsrfToken, hasNecessaryConsent } = require('../utils/csrf');
+const { decodedCookieValue, hasCookieConsent } = require('../utils/consent');
 
 // Factory for a minimal mock response object
 function makeRes() {
@@ -56,6 +57,17 @@ describe('csrfProtection', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 
+  test('treats malformed consent cookies as no consent instead of throwing', () => {
+    const req = { cookies: { CookieConsent: '%' }, session: {}, path: '/' };
+    const res = makeRes();
+    const next = jest.fn();
+
+    expect(() => csrfProtection(req, res, next)).not.toThrow();
+    expect(res.locals.csrfToken).toBe('');
+    expect(hasNecessaryConsent(req)).toBe(false);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
   test('generates a token for account forms even before consent', () => {
     const req = { cookies: {}, session: {}, path: '/login' };
     const res = makeRes();
@@ -105,6 +117,26 @@ describe('csrfProtection', () => {
     const [, , opts] = res.cookie.mock.calls[0];
     expect(opts.secure).toBe(true);
     process.env.NODE_ENV = original;
+  });
+});
+
+describe('consent helpers', () => {
+  test('decodes valid consent cookie values', () => {
+    expect(decodedCookieValue('necessary%3Atrue%2Cpreferences%3Atrue')).toBe('necessary:true,preferences:true');
+  });
+
+  test('returns an empty string for invalid encoded cookie values', () => {
+    expect(decodedCookieValue('%')).toBe('');
+    expect(decodedCookieValue(null)).toBe('');
+  });
+
+  test('detects enabled consent categories', () => {
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue%2Cpreferences%3Afalse' } };
+    expect(hasCookieConsent(req, 'necessary')).toBe(true);
+    expect(hasCookieConsent(req, 'preferences')).toBe(false);
+    expect(hasCookieConsent(req, '')).toBe(false);
+    expect(hasCookieConsent({ cookies: {} }, 'necessary')).toBe(false);
+    expect(hasCookieConsent({}, 'necessary')).toBe(false);
   });
 });
 
