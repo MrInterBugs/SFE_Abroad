@@ -99,6 +99,7 @@ describe('auth routes', () => {
     const anon = await request(app).get('/register');
     expect(anon.status).toBe(200);
     expect(anon.text).toContain('Create account');
+    expect(anon.text).toContain('<meta name="robots" content="noindex, nofollow">');
 
     const agent = request.agent(app);
     await agent.get('/seed-session');

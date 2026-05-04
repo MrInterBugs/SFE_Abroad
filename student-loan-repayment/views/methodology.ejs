@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Methodology — UK Student Loan Overseas Repayment Calculator</title>
+<meta name="description" content="How the UK student loan overseas repayment calculator estimates monthly repayments from salary, repayment plan, country thresholds, and exchange rates.">
+<link rel="canonical" href="<%= siteUrl %>/methodology">
+<meta property="og:title" content="Methodology — UK Student Loan Overseas Repayment Calculator">
+<meta property="og:description" content="See the formula, data sources, repayment rates, and caveats behind the overseas student loan repayment estimate.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="<%= siteUrl %>/methodology">
+<script type="application/ld+json" nonce="<%= locals.cspNonce || '' %>">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Student loan overseas repayment methodology",
+  "description": "Formula and source notes for estimating UK student loan repayments while living overseas.",
+  "mainEntityOfPage": "<%= siteUrl %>/methodology"
+}
+</script>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="page">
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-crown" href="/">
+        <span class="header-title">Student Finance Overseas Repayment Calculator</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/about" class="header-nav-link">About</a>
+        <a href="/" class="header-nav-pill">Calculator</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container seo-container">
+      <div class="page-heading">
+        <h1>Methodology</h1>
+        <p>How the calculator turns a local overseas salary into an estimated UK student loan repayment.</p>
+      </div>
+
+      <section class="card seo-content">
+        <h2>Formula</h2>
+        <p>The calculator converts your gross annual local salary into GBP, subtracts the relevant overseas earnings threshold, then applies the repayment rate.</p>
+        <pre class="seo-code">monthly repayment = max(0, salary in GBP - overseas threshold) × repayment rate ÷ 12</pre>
+
+        <h2>Repayment rates</h2>
+        <ul>
+          <li>Plan 1, Plan 2, Plan 4, and Plan 5: 9% above the overseas threshold.</li>
+          <li>Postgraduate Loan: 6% above the overseas threshold.</li>
+          <li>If you have both an undergraduate loan and a Postgraduate Loan, the estimates are calculated separately and added together.</li>
+        </ul>
+
+        <h2>Data sources</h2>
+        <p>
+          Thresholds and exchange rates are loaded from GOV.UK overseas earnings threshold publications for each supported tax year. The app stores fetched threshold data locally so older published tables remain available if GOV.UK moves or replaces pages.
+        </p>
+
+        <h2>Limitations</h2>
+        <p>
+          This is an estimate, not an official Student Loans Company notice. Your actual payment may differ if SLC uses a different exchange rate, updates thresholds, assesses income differently, or applies account-specific rules.
+        </p>
+
+        <div class="seo-actions">
+          <a href="/" class="btn-calculate">Calculate repayment</a>
+          <a href="https://www.gov.uk/repaying-your-student-loan/living-or-working-overseas" target="_blank" rel="noopener" class="seo-secondary-link">GOV.UK overseas guidance</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="/about">About</a>
+        <a href="/privacy">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

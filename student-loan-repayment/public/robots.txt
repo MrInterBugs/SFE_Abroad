@@ -1,5 +1,12 @@
 User-agent: *
 Allow: /
 Disallow: /calculate
+Disallow: /login
+Disallow: /register
+Disallow: /check-email
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /profile
+Disallow: /profile/export
 
 Sitemap: https://sfe.aedanl.com/sitemap.xml

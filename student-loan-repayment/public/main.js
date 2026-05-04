@@ -145,6 +145,22 @@
   let chartInstance = null;
   let lastResult = null;
   let lastWriteoffText = null;
+  let chartJsPromise = null;
+
+  function loadChartJs() {
+    if (window.Chart) return Promise.resolve();
+    if (chartJsPromise) return chartJsPromise;
+
+    chartJsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/vendor/chart.js/chart.umd.min.js';
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    return chartJsPromise;
+  }
 
   function buildBalanceOverTime(startBalance, monthlyPayment, annualRatePct, maxYears) {
     const monthlyRate = annualRatePct / 100 / 12;
@@ -171,7 +187,7 @@
     return { data, totalPaid: Math.round(totalPaid), totalInterest: Math.round(totalInterest), paidOff, payoffYear };
   }
 
-  function renderRepaymentGraph() {
+  async function renderRepaymentGraph() {
     if (!lastResult) return;
     const panel = document.getElementById('repayment-graph-panel');
     if (!panel) return;
@@ -186,6 +202,12 @@
     const interestRate = isFinite(interestRateParsed) ? interestRateParsed : 6.5;
 
     panel.style.display = 'block';
+    try {
+      await loadChartJs();
+    } catch (err) {
+      panel.style.display = 'none';
+      return;
+    }
 
     const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5' };
     const planLabel = planLabels[lastResult.selectedPlan] || 'UG';

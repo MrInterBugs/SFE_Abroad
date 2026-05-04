@@ -8,6 +8,7 @@ const {
 const { getThresholdData } = require('../utils/fetchCountryData');
 const { getProfile } = require('../utils/db');
 const currencySymbol = require('../utils/currencySymbol');
+const { SITE_URL, getSeoPage } = require('../config/seoPages');
 
 const router = express.Router();
 
@@ -35,8 +36,68 @@ function buildCountriesList(fullData) {
   }).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+const SEO_THRESHOLD_PLANS = [
+  { key: 'plan1', label: 'Plan 1', field: 'Earnings threshold (GBP)' },
+  { key: 'plan2', label: 'Plan 2', field: 'Lower earnings threshold (GBP)' },
+  { key: 'plan4', label: 'Plan 4', field: 'Earnings threshold (GBP)' },
+  { key: 'plan5', label: 'Plan 5', field: 'Earnings threshold (GBP)' },
+  { key: 'planPg', label: 'Postgraduate Loan', field: 'Earnings threshold (GBP)' },
+];
+
+async function buildCountryThresholdExamples(country, year) {
+  const rows = [];
+  for (const plan of SEO_THRESHOLD_PLANS) {
+    try {
+      const data = await getThresholdData(plan.key, year);
+      const countryData = data[country];
+      if (!countryData || !countryData[plan.field]) continue;
+      rows.push({
+        plan: plan.label,
+        threshold: countryData[plan.field].replace(/[£,]/g, ''),
+        exchangeRate: countryData['Exchange rate'] || 'n/a',
+      });
+    } catch (err) {
+      logger.warn(`SEO threshold example failed: ${plan.key} ${country} ${year} — ${err.message}`);
+    }
+  }
+  return rows;
+}
+
 router.get('/privacy', (req, res) => {
   res.render('privacy');
+});
+
+router.get('/about', (req, res) => {
+  res.render('about', { siteUrl: SITE_URL });
+});
+
+router.get('/methodology', (req, res) => {
+  res.render('methodology', { siteUrl: SITE_URL });
+});
+
+router.get([
+  '/plan-1-overseas-repayment',
+  '/plan-2-overseas-repayment',
+  '/plan-4-overseas-repayment',
+  '/plan-5-overseas-repayment',
+  '/postgraduate-loan-overseas-repayment',
+  '/student-loan-overseas-repayment-germany',
+  '/student-loan-overseas-repayment-australia',
+  '/student-loan-overseas-repayment-canada',
+], async (req, res) => {
+  const slug = req.path.slice(1);
+  const page = getSeoPage(slug);
+  const taxYear = getCurrentTaxYear();
+  const thresholds = page.kind === 'country'
+    ? await buildCountryThresholdExamples(page.country, taxYear)
+    : [];
+
+  return res.render('seo-page', {
+    page,
+    siteUrl: SITE_URL,
+    taxYear,
+    thresholds,
+  });
 });
 
 router.get('/csrf-token', (req, res) => {

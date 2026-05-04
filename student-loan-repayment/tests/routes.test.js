@@ -148,10 +148,75 @@ describe('routes', () => {
       expect(res.text).toContain('Calculator defaults');
     });
 
+    test('GET /about renders an indexable trust page', async () => {
+      const res = await request(app).get('/about');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<link rel="canonical" href="https://sfe.aedanl.com/about">');
+      expect(res.text).toContain('not affiliated with Student Finance England');
+      expect(res.text).not.toContain('noindex');
+    });
+
+    test('GET /methodology renders the formula and source notes', async () => {
+      const res = await request(app).get('/methodology');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('monthly repayment = max(0, salary in GBP - overseas threshold)');
+      expect(res.text).toContain('GOV.UK overseas earnings threshold publications');
+      expect(res.text).not.toContain('noindex');
+    });
+
+    test('GET plan SEO landing page renders with canonical metadata', async () => {
+      const res = await request(app).get('/plan-2-overseas-repayment');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Plan 2 Overseas Student Loan Repayment');
+      expect(res.text).toContain('<link rel="canonical" href="https://sfe.aedanl.com/plan-2-overseas-repayment">');
+      expect(res.text).toContain('BreadcrumbList');
+    });
+
+    test('GET country SEO landing page renders threshold examples', async () => {
+      const res = await request(app).get('/student-loan-overseas-repayment-germany');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('UK Student Loan Repayment While Living in Germany');
+      expect(res.text).toContain('<td>Plan 1</td>');
+      expect(res.text).toContain('<td>£22000</td>');
+    });
+
+    test('GET country SEO landing page still renders when threshold data is missing', async () => {
+      const res = await request(app).get('/student-loan-overseas-repayment-canada');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('UK Student Loan Repayment While Living in Canada');
+      expect(res.text).not.toContain('<table class="seo-table">');
+    });
+
+    test('GET country SEO landing page tolerates threshold fetch failures', async () => {
+      getThresholdData.mockImplementation((plan) => {
+        if (plan === 'plan1') return Promise.reject(new Error('offline'));
+        return Promise.resolve(THRESHOLD_DATA);
+      });
+      const res = await request(app).get('/student-loan-overseas-repayment-germany');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('UK Student Loan Repayment While Living in Germany');
+      expect(res.text).toContain('<td>Plan 2</td>');
+    });
+
+    test('GET country SEO landing page shows n/a when an exchange rate is absent', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': '£22,000',
+          'Lower earnings threshold (GBP)': '£18,000',
+        },
+      });
+      const res = await request(app).get('/student-loan-overseas-repayment-germany');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<td>n/a</td>');
+    });
+
     test('renders the index page with a 200', async () => {
       const res = await request(app).get('/');
       expect(res.status).toBe(200);
       expect(res.text).toContain('csrfToken');
+      expect(res.text).toContain('UK Student Loan Overseas Repayment Calculator');
+      expect(res.text).not.toContain('/vendor/chart.js/chart.umd.min.js"></script>');
     });
 
     test('does not emit a CSRF token cookie before necessary cookie consent', async () => {

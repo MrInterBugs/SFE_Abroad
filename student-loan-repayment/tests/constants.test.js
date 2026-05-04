@@ -11,6 +11,7 @@ const {
   CACHE_DURATION,
   COOKIE_MAX_AGE,
 } = require('../config/constants');
+const { SITE_URL, PLAN_PAGES, COUNTRY_PAGES, SEO_PAGES, getSeoPage } = require('../config/seoPages');
 
 describe('constants — exported values', () => {
   test('REPAYMENT_RATE is 9%', () => expect(REPAYMENT_RATE).toBe(0.09));
@@ -65,5 +66,20 @@ describe('getCurrentTaxYear', () => {
     // Far-future date: computed year will be something like '2099-00', not supported
     jest.setSystemTime(new Date('2099-07-01T00:00:00'));
     expect(getCurrentTaxYear()).toBe(DEFAULT_YEAR);
+  });
+});
+
+describe('SEO page configuration', () => {
+  test('exports canonical site URL and page lists', () => {
+    expect(SITE_URL).toBe('https://sfe.aedanl.com');
+    expect(PLAN_PAGES.length).toBe(5);
+    expect(COUNTRY_PAGES.length).toBe(3);
+    expect(SEO_PAGES).toHaveLength(PLAN_PAGES.length + COUNTRY_PAGES.length);
+  });
+
+  test('finds configured pages by slug and returns null for misses', () => {
+    expect(getSeoPage('plan-2-overseas-repayment').plan).toBe('Plan 2');
+    expect(getSeoPage('student-loan-overseas-repayment-germany').country).toBe('Germany');
+    expect(getSeoPage('missing-page')).toBeNull();
   });
 });

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= page.metaTitle %></title>
+<meta name="description" content="<%= page.description %>">
+<link rel="canonical" href="<%= siteUrl %>/<%= page.slug %>">
+<meta property="og:title" content="<%= page.metaTitle %>">
+<meta property="og:description" content="<%= page.description %>">
+<meta property="og:type" content="article">
+<meta property="og:url" content="<%= siteUrl %>/<%= page.slug %>">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<%= page.metaTitle %>">
+<meta name="twitter:description" content="<%= page.description %>">
+<script type="application/ld+json" nonce="<%= locals.cspNonce || '' %>">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Calculator", "item": "<%= siteUrl %>/" },
+        { "@type": "ListItem", "position": 2, "name": "<%= page.title %>", "item": "<%= siteUrl %>/<%= page.slug %>" }
+      ]
+    },
+    {
+      "@type": "Article",
+      "headline": "<%= page.title %>",
+      "description": "<%= page.description %>",
+      "mainEntityOfPage": "<%= siteUrl %>/<%= page.slug %>",
+      "publisher": {
+        "@type": "Person",
+        "name": "Aedan L"
+      }
+    }
+  ]
+}
+</script>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="page">
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-crown" href="/">
+        <svg class="crown-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="22" cy="22" r="12" fill="#e8f0fb" stroke="#1d70b8" stroke-width="1.5"/>
+          <ellipse cx="22" cy="22" rx="5.5" ry="12" stroke="#1d70b8" stroke-width="1" opacity="0.5"/>
+          <line x1="10" y1="22" x2="34" y2="22" stroke="#1d70b8" stroke-width="1" opacity="0.5"/>
+          <rect x="4" y="11" width="18" height="3" rx="1.5" fill="#1d70b8"/>
+          <polygon points="13,5 4,11 22,11" fill="#1d70b8"/>
+        </svg>
+        <span class="header-title">Student Finance Overseas Repayment Calculator</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/methodology" class="header-nav-link">Methodology</a>
+        <a href="/" class="header-nav-pill">Calculator</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container seo-container">
+      <div class="page-heading">
+        <h1><%= page.title %></h1>
+        <p><%= page.description %></p>
+      </div>
+
+      <section class="card seo-content">
+        <% if (page.kind === 'country') { %>
+          <h2>How repayments work in <%= page.country %></h2>
+          <p>
+            If you live in <%= page.country %>, the Student Loans Company assesses your income against an overseas earnings threshold for your repayment plan. Your salary is converted to GBP using the official overseas threshold table, then the repayment rate is applied only to income above the threshold.
+          </p>
+          <p>
+            Use the calculator to enter your gross annual salary in <%= page.currency %>, choose Plan 1, Plan 2, Plan 4, Plan 5, and optionally include a Postgraduate Loan.
+          </p>
+
+          <% if (thresholds.length) { %>
+            <h2><%= taxYear %> threshold examples</h2>
+            <div class="seo-table-wrap">
+              <table class="seo-table">
+                <thead>
+                  <tr>
+                    <th>Plan</th>
+                    <th>Overseas threshold</th>
+                    <th>Exchange rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% thresholds.forEach(function(row) { %>
+                    <tr>
+                      <td><%= row.plan %></td>
+                      <td>£<%= row.threshold %></td>
+                      <td><%= row.exchangeRate %></td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        <% } else { %>
+          <h2>What counts for <%= page.plan %> overseas repayments?</h2>
+          <p><%= page.intro %></p>
+          <p>
+            The calculator supports the current published overseas threshold tables for <%= taxYear %>. Enter your country of residence and annual gross salary in local currency to estimate your monthly repayment.
+          </p>
+          <h2>Repayment rate</h2>
+          <p>
+            <%= page.plan === 'Postgraduate Loan' ? 'Postgraduate Loans are repaid at 6% of income above the overseas threshold.' : page.plan + ' repayments are usually 9% of income above the overseas threshold.' %>
+          </p>
+        <% } %>
+
+        <h2>Important caveats</h2>
+        <p>
+          This tool is an estimate. Official repayment notices can use different exchange rates, updated thresholds, or account-specific details. Always verify final amounts with the Student Loans Company.
+        </p>
+
+        <div class="seo-actions">
+          <a href="/" class="btn-calculate">Open calculator</a>
+          <a href="/methodology" class="seo-secondary-link">How the formula works</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-note">
+        Thresholds and rates are based on public GOV.UK and Student Loans Company guidance.
+      </div>
+      <div class="footer-links">
+        <a href="/about">About</a>
+        <a href="/methodology">Methodology</a>
+        <a href="/privacy">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

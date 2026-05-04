@@ -1035,3 +1035,72 @@ html, body {
   color: var(--text-muted);
 }
 .pp-content a { color: var(--blue); }
+
+.seo-container {
+  max-width: 760px;
+}
+.seo-content {
+  padding: 28px;
+}
+.seo-content h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  line-height: 1.25;
+  margin: 0 0 10px;
+}
+.seo-content h2:not(:first-child) {
+  margin-top: 28px;
+}
+.seo-content p,
+.seo-content li {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+.seo-content p + p {
+  margin-top: 12px;
+}
+.seo-content ul {
+  margin: 10px 0 0 20px;
+}
+.seo-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.seo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.seo-table th,
+.seo-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+  text-align: left;
+}
+.seo-table th {
+  color: var(--text);
+  font-weight: 700;
+}
+.seo-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+.seo-secondary-link {
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+.seo-code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  margin: 12px 0 0;
+  overflow-x: auto;
+  padding: 12px;
+}
