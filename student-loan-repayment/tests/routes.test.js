@@ -546,6 +546,19 @@ describe('routes', () => {
       expect(res.text).toContain('Country not found in the data');
     });
 
+    test('does not set preference cookies when the country is not found', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Narnia',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      }, ['CookieConsent=preferences%3Atrue']);
+      const setCookie = (res.headers['set-cookie'] || []).join(';');
+      expect(res.status).toBe(400);
+      expect(setCookie).not.toContain('selectedCountry=Narnia');
+      expect(setCookie).not.toContain('selectedPlan=plan1');
+    });
+
     test('renders an error when the exchange rate is not a number', async () => {
       getThresholdData.mockResolvedValue({
         Germany: {

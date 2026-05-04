@@ -107,6 +107,18 @@ function ensureUserColumns(database) {
 
 ensureUserColumns(db);
 
+function ensureCalculationColumns(database) {
+  const calculationCols = database.prepare('PRAGMA table_info(calculations)').all().map(c => c.name);
+  if (!calculationCols.includes('include_pg')) database.exec('ALTER TABLE calculations ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
+  if (!calculationCols.includes('pgl_monthly_repayment')) database.exec('ALTER TABLE calculations ADD COLUMN pgl_monthly_repayment REAL');
+  if (!calculationCols.includes('pgl_threshold_gbp')) database.exec('ALTER TABLE calculations ADD COLUMN pgl_threshold_gbp REAL');
+
+  const statCols = database.prepare('PRAGMA table_info(anonymous_calculation_stats)').all().map(c => c.name);
+  if (!statCols.includes('include_pg')) database.exec('ALTER TABLE anonymous_calculation_stats ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
+}
+
+ensureCalculationColumns(db);
+
 function saveThresholds(plan, year, countryDataDict) {
   const insert = db.prepare(`
     INSERT OR REPLACE INTO cached_thresholds (plan, year, country_name, data, fetched_at)
@@ -334,6 +346,7 @@ module.exports = {
   db,
   ensureProfileColumns,
   ensureUserColumns,
+  ensureCalculationColumns,
   createUser,
   getUserByEmail,
   getUserById,

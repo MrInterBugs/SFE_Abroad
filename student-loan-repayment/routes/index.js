@@ -228,13 +228,6 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     return sendError(400, 'Please enter a valid positive salary.');
   }
 
-  if (hasPreferenceConsent(req)) {
-    res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS(req));
-    res.cookie('selectedCountry', targetCountry, COOKIE_OPTS(req));
-    res.cookie('selectedYear', year, COOKIE_OPTS(req));
-    res.cookie('includePg', String(includePg), COOKIE_OPTS(req));
-  }
-
   try {
     const countryDataDict = await getThresholdData(selectedPlan, year);
     const countryData = countryDataDict[targetCountry];
@@ -256,6 +249,13 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     const thresholdGbp = parseFloat(thresholdRaw.replace(/[£,]/g, ''));
     const salaryGbp = salary * exchangeRate;
     const amountOverThreshold = salaryGbp - thresholdGbp;
+
+    if (hasPreferenceConsent(req)) {
+      res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS(req));
+      res.cookie('selectedCountry', targetCountry, COOKIE_OPTS(req));
+      res.cookie('selectedYear', year, COOKIE_OPTS(req));
+      res.cookie('includePg', String(includePg), COOKIE_OPTS(req));
+    }
 
     const monthlyRepayment = amountOverThreshold > 0
       ? (amountOverThreshold * REPAYMENT_RATE) / MONTHS_PER_YEAR

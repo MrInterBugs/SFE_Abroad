@@ -6,6 +6,7 @@ const {
   loadCountryList,
   ensureProfileColumns,
   ensureUserColumns,
+  ensureCalculationColumns,
   createUser,
   getUserByEmail,
   getUserById,
@@ -399,6 +400,34 @@ describe('db', () => {
       all: () => [{ name: 'email_confirmed_at' }],
     }));
     ensureUserColumns(fakeDb);
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  test('ensureCalculationColumns adds missing PGL/stat migration columns', () => {
+    const exec = jest.fn();
+    const fakeDb = {
+      prepare: jest.fn((sql) => ({
+        all: () => sql.includes('calculations')
+          ? [{ name: 'id' }, { name: 'user_id' }, { name: 'monthly_repayment' }]
+          : [{ name: 'stat_date' }, { name: 'calculation_count' }],
+      })),
+      exec,
+    };
+
+    ensureCalculationColumns(fakeDb);
+
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE calculations ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE calculations ADD COLUMN pgl_monthly_repayment REAL');
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE calculations ADD COLUMN pgl_threshold_gbp REAL');
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE anonymous_calculation_stats ADD COLUMN include_pg INTEGER NOT NULL DEFAULT 0');
+
+    exec.mockClear();
+    fakeDb.prepare = jest.fn((sql) => ({
+      all: () => sql.includes('calculations')
+        ? [{ name: 'include_pg' }, { name: 'pgl_monthly_repayment' }, { name: 'pgl_threshold_gbp' }]
+        : [{ name: 'include_pg' }],
+    }));
+    ensureCalculationColumns(fakeDb);
     expect(exec).not.toHaveBeenCalled();
   });
 });

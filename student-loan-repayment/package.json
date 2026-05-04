@@ -2,9 +2,10 @@
   "name": "student-loan-repayment",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "generate:sitemap": "node scripts/generateSitemap.js",
+    "start": "node app.js",
     "test": "jest --coverage --runInBand"
   },
   "jest": {
