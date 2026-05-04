@@ -6,6 +6,47 @@
   const PROFILE_PGL_GBP = appData.loanValuePglGbp || null;
 
   const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
+  const PLAN2_LOWER = 29385;
+  const PLAN2_UPPER = 52884;
+
+  function calcPlan2Surcharge(salaryGbp) {
+    if (salaryGbp <= PLAN2_LOWER) return 0;
+    if (salaryGbp >= PLAN2_UPPER) return 3;
+    return ((salaryGbp - PLAN2_LOWER) / (PLAN2_UPPER - PLAN2_LOWER)) * 3;
+  }
+
+  function updatePlan2Note(rpi) {
+    const note = document.getElementById('plan2-rate-note');
+    if (!note) return;
+    if (!lastResult || lastResult.selectedPlan !== 'plan2') {
+      note.style.display = 'none';
+      return;
+    }
+    const surcharge = calcPlan2Surcharge(parseFloat(lastResult.salaryGbp));
+    const effective = rpi + surcharge;
+    let detail;
+    if (surcharge === 0) {
+      detail = `RPI only — income below £${PLAN2_LOWER.toLocaleString('en-GB')}`;
+    } else if (surcharge >= 3) {
+      detail = `RPI + 3% — income above £${PLAN2_UPPER.toLocaleString('en-GB')}`;
+    } else {
+      detail = `RPI + ${surcharge.toFixed(1)}% income surcharge`;
+    }
+    note.textContent = `Plan 2 effective rate: ${effective.toFixed(1)}% (${detail})`;
+    note.style.display = 'block';
+  }
+
+  function updatePglNote(rpi) {
+    const note = document.getElementById('pgl-rate-note');
+    if (!note) return;
+    if (!lastResult || lastResult.pglMonthlyRepayment === null || lastResult.pglMonthlyRepayment === undefined) {
+      note.style.display = 'none';
+      return;
+    }
+    const effective = rpi + 3;
+    note.textContent = `Postgraduate Loan rate: ${effective.toFixed(1)}% (RPI ${rpi.toFixed(1)}% + 3% fixed)`;
+    note.style.display = 'block';
+  }
 
   function calcWriteOff(graduationDate, plan) {
     const years = WRITE_OFF_YEARS[plan];
@@ -162,7 +203,7 @@
     return chartJsPromise;
   }
 
-  function buildBalanceOverTime(startBalance, monthlyPayment, annualRatePct, maxYears) {
+  function buildBalanceOverTime(startBalance, annualRatePct, maxYears, payRisePct, initialSalaryGbp, thresholdGbp, repaymentRate) {
     const monthlyRate = annualRatePct / 100 / 12;
     let balance = startBalance;
     const data = [parseFloat(startBalance.toFixed(2))];
@@ -171,6 +212,8 @@
     let payoffYear = null;
     for (let yr = 1; yr <= maxYears; yr++) {
       if (!paidOff) {
+        const salary = initialSalaryGbp * Math.pow(1 + payRisePct / 100, yr - 1);
+        const monthlyPayment = Math.max(0, (salary - thresholdGbp) * repaymentRate / 12);
         for (let m = 0; m < 12; m++) {
           const interest = balance * monthlyRate;
           const newBalance = Math.max(0, balance + interest - monthlyPayment);
@@ -195,11 +238,20 @@
     const balanceInput = document.getElementById('loan-balance-input');
     const pglBalanceInput = document.getElementById('pgl-balance-input');
     const rateSlider = document.getElementById('rate-slider');
+    const payRiseSlider = document.getElementById('payrise-slider');
 
     const ugBalance = parseFloat(balanceInput && balanceInput.value) || 0;
     const pglBalance = pglBalanceInput ? (parseFloat(pglBalanceInput.value) || 0) : 0;
     const interestRateParsed = parseFloat(rateSlider && rateSlider.value);
-    const interestRate = isFinite(interestRateParsed) ? interestRateParsed : 6.5;
+    const rpi = isFinite(interestRateParsed) ? interestRateParsed : 3.2;
+    const payRiseParsed = parseFloat(payRiseSlider && payRiseSlider.value);
+    const payRise = isFinite(payRiseParsed) ? payRiseParsed : 2;
+    const plan2Surcharge = lastResult.selectedPlan === 'plan2'
+      ? calcPlan2Surcharge(parseFloat(lastResult.salaryGbp))
+      : 0;
+    const interestRate = rpi + plan2Surcharge;
+    updatePlan2Note(rpi);
+    updatePglNote(rpi);
 
     panel.style.display = 'block';
     try {
@@ -214,9 +266,10 @@
     const balanceLabel = document.querySelector('label[for="loan-balance-input"]');
     if (balanceLabel) balanceLabel.textContent = planLabel + ' loan balance';
 
-    const ugMonthly = parseFloat(lastResult.monthlyRepayment);
     const hasPGL = lastResult.pglMonthlyRepayment !== null && lastResult.pglMonthlyRepayment !== undefined;
-    const pglMonthly = hasPGL ? parseFloat(lastResult.pglMonthlyRepayment) : 0;
+    const salaryGbp = parseFloat(lastResult.salaryGbp);
+    const thresholdGbp = parseFloat(lastResult.thresholdGbp);
+    const pglThresholdGbp = lastResult.pglThresholdGbp ? parseFloat(lastResult.pglThresholdGbp) : 0;
 
     const currentYear = new Date().getFullYear();
     const wo = calcWriteOff(GRADUATION_DATE, lastResult.selectedPlan);
@@ -232,10 +285,11 @@
       return;
     }
 
-    const ugResult = buildBalanceOverTime(ugBalance, ugMonthly, interestRate, maxYears);
+    const pglRate = rpi + 3;
+    const ugResult = buildBalanceOverTime(ugBalance, interestRate, maxYears, payRise, salaryGbp, thresholdGbp, 0.09);
     let pglResult = null;
     if (hasPGL && pglBalance > 0) {
-      pglResult = buildBalanceOverTime(pglBalance, pglMonthly, interestRate, maxYears);
+      pglResult = buildBalanceOverTime(pglBalance, pglRate, maxYears, payRise, salaryGbp, pglThresholdGbp, 0.06);
     }
 
     // Trim chart to payoff year if every displayed loan is paid off before write-off
@@ -372,6 +426,14 @@
     if (rateSlider) {
       rateSlider.addEventListener('input', () => {
         rateDisplay.textContent = parseFloat(rateSlider.value).toFixed(1) + '%';
+        renderRepaymentGraph();
+      });
+    }
+    const payRiseSlider = document.getElementById('payrise-slider');
+    const payRiseDisplay = document.getElementById('payrise-display');
+    if (payRiseSlider) {
+      payRiseSlider.addEventListener('input', () => {
+        payRiseDisplay.textContent = parseFloat(payRiseSlider.value).toFixed(1) + '%';
         renderRepaymentGraph();
       });
     }

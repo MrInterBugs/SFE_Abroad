@@ -304,6 +304,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       pglThresholdGbp: pglThresholdGbp !== null ? pglThresholdGbp.toFixed(2) : null,
       targetCountry,
       salaryLocalCurrency: salary.toFixed(2),
+      salaryGbp: salaryGbp.toFixed(2),
       salaryCurrencySymbol,
       exchangeRate: exchangeRate.toFixed(2),
       thresholdGbp: thresholdGbp.toFixed(2),

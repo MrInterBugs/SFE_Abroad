@@ -1012,6 +1012,14 @@ html, body {
   cursor: pointer;
   height: 4px;
 }
+.plan2-rate-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--blue-light);
+  border: 1px solid var(--blue-mid);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
 .graph-canvas-wrap {
   position: relative;
 }
