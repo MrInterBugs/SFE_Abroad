@@ -84,6 +84,20 @@ router.get([
   '/student-loan-overseas-repayment-germany',
   '/student-loan-overseas-repayment-australia',
   '/student-loan-overseas-repayment-canada',
+  '/student-loan-overseas-repayment-usa',
+  '/student-loan-overseas-repayment-new-zealand',
+  '/student-loan-overseas-repayment-uae',
+  '/student-loan-overseas-repayment-france',
+  '/student-loan-overseas-repayment-netherlands',
+  '/student-loan-overseas-repayment-ireland',
+  '/student-loan-overseas-repayment-spain',
+  '/student-loan-overseas-repayment-sweden',
+  '/student-loan-overseas-repayment-switzerland',
+  '/student-loan-overseas-repayment-singapore',
+  '/student-loan-overseas-repayment-japan',
+  '/student-loan-overseas-repayment-south-africa',
+  '/student-loan-overseas-repayment-hong-kong',
+  '/student-loan-overseas-repayment-norway',
 ], async (req, res) => {
   const slug = req.path.slice(1);
   const page = getSeoPage(slug);

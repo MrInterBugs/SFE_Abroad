@@ -126,6 +126,10 @@ app.use('/', indexRouter);
 app.use('/', authRouter);
 app.use('/', profileRouter);
 
+app.use((req, res) => {
+  res.status(404).render('404');
+});
+
 const server = app.listen(port, () => {
   logger.info(`Server running at http://localhost:${port}`);
   prefetchAllData();
