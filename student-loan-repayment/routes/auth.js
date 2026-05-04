@@ -7,9 +7,11 @@ const {
   getUserByEmail,
   confirmUserEmail,
   updateUserPassword,
+  revokeUserSessions,
   createAuthToken,
   consumeAuthToken,
   cleanupAuthTokens,
+  hasRecentAuthToken,
 } = require('../utils/db');
 const { authRateLimit } = require('../utils/auth');
 const { sendEmailConfirmation, sendPasswordReset } = require('../utils/email');
@@ -20,6 +22,7 @@ const router = express.Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_CONFIRM_TTL_MS = 24 * 60 * 60 * 1000;
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+const AUTH_EMAIL_COOLDOWN_MS = 5 * 60 * 1000;
 
 // Pre-computed dummy hash used to ensure argon2.verify always runs on login,
 // preventing timing-based account enumeration.
@@ -49,6 +52,10 @@ async function sendPasswordResetForUser(user) {
   createAuthToken(user.id, 'password-reset', token, Date.now() + PASSWORD_RESET_TTL_MS);
   await sendPasswordReset(user.email, token);
   logger.info(`Email sent: type=password-reset userId=${user.id}`);
+}
+
+function recentlySentAuthEmail(userId, purpose) {
+  return hasRecentAuthToken(userId, purpose, Date.now() - AUTH_EMAIL_COOLDOWN_MS);
 }
 
 router.get('/register', (req, res) => {
@@ -83,7 +90,8 @@ router.post('/register', authRateLimit, verifyCsrfToken, async (req, res) => {
     res.redirect('/check-email');
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE')) {
-      return res.status(400).render('register', { error: 'An account with that email already exists.', csrfToken: res.locals.csrfToken });
+      req.session.pendingConfirmationEmail = email.toLowerCase();
+      return res.redirect('/check-email');
     }
     logger.error(`Register error: ${err.message}`);
     res.status(500).render('register', { error: 'Something went wrong. Please try again.', csrfToken: res.locals.csrfToken });
@@ -113,7 +121,7 @@ router.post('/resend-confirmation', authRateLimit, verifyCsrfToken, async (req, 
 
   try {
     const user = getUserByEmail(normalizedEmail);
-    if (user && !user.email_confirmed_at) {
+    if (user && !user.email_confirmed_at && !recentlySentAuthEmail(user.id, 'email-confirmation')) {
       await sendConfirmationForUser(user.id, user.email);
     }
     res.status(200).render('check-email', { email: normalizedEmail, message, error: null, csrfToken: res.locals.csrfToken });
@@ -211,7 +219,7 @@ router.post('/forgot-password', authRateLimit, verifyCsrfToken, async (req, res)
   try {
     cleanupAuthTokens();
     const user = getUserByEmail(email);
-    if (user) {
+    if (user && !recentlySentAuthEmail(user.id, 'password-reset')) {
       await sendPasswordResetForUser(user);
     }
     res.status(200).render('forgot-password', { error: null, message, csrfToken: res.locals.csrfToken });
@@ -248,6 +256,7 @@ router.post('/reset-password/:token', authRateLimit, verifyCsrfToken, async (req
 
     const hash = await argon2.hash(password, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 });
     updateUserPassword(consumed.userId, hash);
+    revokeUserSessions(consumed.userId);
     logger.info(`Password reset: userId=${consumed.userId}`);
     res.redirect('/login?reset=1');
   } catch (err) {

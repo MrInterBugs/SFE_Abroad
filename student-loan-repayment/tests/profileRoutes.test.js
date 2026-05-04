@@ -188,6 +188,7 @@ describe('profile routes', () => {
       { defaultSalary: '-1', text: 'valid salary' },
       { graduationDate: 'June 2024', text: 'graduation date' },
       { defaultPlan: 'planPg', text: 'Invalid repayment plan' },
+      { defaultCountry: 'Atlantis', text: 'Invalid default country' },
     ];
 
     for (const testCase of cases) {

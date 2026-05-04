@@ -66,6 +66,7 @@ router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
   if (parsedSalary  !== null && (!isFinite(parsedSalary)  || parsedSalary  < 0)) return renderError('Please enter a valid salary.');
   if (graduationDate && !/^\d{4}-\d{2}$/.test(graduationDate))                  return renderError('Please enter a valid graduation date.');
   if (defaultPlan && !UG_PLANS.includes(defaultPlan))                            return renderError('Invalid repayment plan selected.');
+  if (defaultCountry && !countries.includes(defaultCountry))                     return renderError('Invalid default country selected.');
 
   try {
     upsertProfile(req.session.userId, {

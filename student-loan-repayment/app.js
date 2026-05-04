@@ -60,6 +60,10 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use((req, res, next) => {
   const directives = {
     'default-src': ["'self'"],
+    'base-uri': ["'self'"],
+    'object-src': ["'none'"],
+    'form-action': ["'self'"],
+    'frame-ancestors': ["'none'"],
     'script-src': ["'self'", `'nonce-${res.locals.cspNonce}'`],
     'style-src': ["'self'", "'unsafe-inline'"],
     'font-src': ["'self'"],

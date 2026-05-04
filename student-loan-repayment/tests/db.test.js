@@ -11,12 +11,16 @@ const {
   getUserById,
   confirmUserEmail,
   updateUserPassword,
+  revokeUserSessions,
   createAuthToken,
   consumeAuthToken,
   cleanupAuthTokens,
+  revokeOutstandingAuthTokens,
+  hasRecentAuthToken,
   getProfile,
   upsertProfile,
   deleteUser,
+  db,
 } = require('../utils/db');
 
 // Each test run gets a unique plan/year key so repeated runs (and parallel
@@ -113,6 +117,7 @@ describe('db', () => {
     expect(getUserByEmail(email).password_hash).toBe('new-hash');
 
     createAuthToken(userId, 'password-reset', 'plain-token', Date.now() + 10000);
+    expect(hasRecentAuthToken(userId, 'password-reset', Date.now() - 1000)).toBe(true);
     expect(consumeAuthToken('wrong-token', 'password-reset')).toBeNull();
     expect(consumeAuthToken('plain-token', 'email-confirmation')).toBeNull();
     expect(consumeAuthToken('plain-token', 'password-reset')).toMatchObject({ userId, email: email.toLowerCase() });
@@ -123,6 +128,51 @@ describe('db', () => {
     expect(cleanupAuthTokens()).toBeGreaterThanOrEqual(1);
 
     deleteUser(userId);
+  });
+
+  test('creating a new auth token invalidates older outstanding tokens of the same purpose', () => {
+    const email = `rotate_${RUN_ID}@example.com`;
+    const userId = createUser(email, 'hash');
+
+    createAuthToken(userId, 'password-reset', 'first-token', Date.now() + 10000);
+    createAuthToken(userId, 'password-reset', 'second-token', Date.now() + 10000);
+
+    expect(consumeAuthToken('first-token', 'password-reset')).toBeNull();
+    expect(consumeAuthToken('second-token', 'password-reset')).toMatchObject({ userId });
+
+    deleteUser(userId);
+  });
+
+  test('auth token revocation helper marks outstanding tokens as used', () => {
+    const email = `revoke_token_${RUN_ID}@example.com`;
+    const userId = createUser(email, 'hash');
+
+    createAuthToken(userId, 'email-confirmation', 'confirm-token', Date.now() + 10000);
+    expect(revokeOutstandingAuthTokens(userId, 'email-confirmation')).toBe(1);
+    expect(consumeAuthToken('confirm-token', 'email-confirmation')).toBeNull();
+
+    deleteUser(userId);
+  });
+
+  test('revokeUserSessions deletes only sessions for the requested user', () => {
+    const keepSid = `keep_${RUN_ID}`;
+    const revokeSid = `revoke_${RUN_ID}`;
+    const malformedSid = `malformed_${RUN_ID}`;
+    const expires = Date.now() + 10000;
+
+    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
+      .run(keepSid, JSON.stringify({ userId: 1001, cookie: {} }), expires);
+    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
+      .run(revokeSid, JSON.stringify({ userId: 1002, cookie: {} }), expires);
+    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
+      .run(malformedSid, '{bad-json', expires);
+
+    expect(revokeUserSessions(1002)).toBe(1);
+    expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(revokeSid)).toBeUndefined();
+    expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(keepSid)).toBeDefined();
+    expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(malformedSid)).toBeDefined();
+
+    db.prepare('DELETE FROM sessions WHERE sid IN (?, ?)').run(keepSid, malformedSid);
   });
 
   test('profile helpers insert, update, coerce nullable fields, and cascade on delete', () => {

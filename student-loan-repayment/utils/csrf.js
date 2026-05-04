@@ -28,7 +28,10 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  const token = req.cookies[CSRF_COOKIE] || crypto.randomBytes(32).toString('hex');
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  }
+  const token = req.session.csrfToken;
   res.cookie(CSRF_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
   res.locals.csrfToken = token;
   next();
@@ -39,8 +42,15 @@ const verifyCsrfToken = (req, res, next) => {
   if (MUTATING_METHODS.includes(req.method)) {
     const tokenFromClient = req.body.csrfToken || req.headers['x-csrf-token'];
     const tokenFromCookie = req.cookies?.[CSRF_COOKIE];
+    const tokenFromSession = req.session?.csrfToken;
 
-    if (tokenFromClient && tokenFromCookie && tokenFromClient === tokenFromCookie) {
+    if (
+      tokenFromClient &&
+      tokenFromCookie &&
+      tokenFromSession &&
+      tokenFromClient === tokenFromCookie &&
+      tokenFromClient === tokenFromSession
+    ) {
       return next();
     }
     return res.status(403).send('Invalid CSRF token');

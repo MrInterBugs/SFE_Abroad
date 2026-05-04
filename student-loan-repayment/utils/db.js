@@ -136,12 +136,61 @@ function updateUserPassword(userId, passwordHash) {
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
 }
 
+function revokeUserSessions(userId) {
+  const rows = db.prepare('SELECT sid, data FROM sessions').all();
+  const deleteSession = db.prepare('DELETE FROM sessions WHERE sid = ?');
+  let revoked = 0;
+
+  const revokeMany = db.transaction((sessions) => {
+    for (const row of sessions) {
+      try {
+        const session = JSON.parse(row.data);
+        if (session.userId === userId) {
+          deleteSession.run(row.sid);
+          revoked += 1;
+        }
+      } catch (err) {
+        logger.warn(`DB: could not parse session ${row.sid} during revocation: ${err.message}`);
+      }
+    }
+  });
+
+  revokeMany(rows);
+  return revoked;
+}
+
 function hashAuthToken(token) {
   return require('crypto').createHash('sha256').update(token).digest('hex');
 }
 
+function revokeOutstandingAuthTokens(userId, purpose) {
+  return db.prepare(`
+    UPDATE auth_tokens
+    SET used_at = ?
+    WHERE user_id = ?
+      AND purpose = ?
+      AND used_at IS NULL
+      AND expires_at > ?
+  `).run(Date.now(), userId, purpose, Date.now()).changes;
+}
+
+function hasRecentAuthToken(userId, purpose, since) {
+  const row = db.prepare(`
+    SELECT 1
+    FROM auth_tokens
+    WHERE user_id = ?
+      AND purpose = ?
+      AND used_at IS NULL
+      AND expires_at > ?
+      AND created_at >= ?
+    LIMIT 1
+  `).get(userId, purpose, Date.now(), since);
+  return Boolean(row);
+}
+
 function createAuthToken(userId, purpose, token, expiresAt) {
   cleanupAuthTokens();
+  revokeOutstandingAuthTokens(userId, purpose);
   const stmt = db.prepare(`
     INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at, created_at)
     VALUES (?, ?, ?, ?, ?)
@@ -207,9 +256,12 @@ module.exports = {
   getUserById,
   confirmUserEmail,
   updateUserPassword,
+  revokeUserSessions,
   createAuthToken,
   consumeAuthToken,
   cleanupAuthTokens,
+  revokeOutstandingAuthTokens,
+  hasRecentAuthToken,
   getProfile,
   upsertProfile,
   deleteUser,

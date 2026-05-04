@@ -14,24 +14,24 @@ function makeRes() {
 // ─── csrfProtection ──────────────────────────────────────────────────────────
 
 describe('csrfProtection', () => {
-  test('re-uses the token already stored in the cookie', () => {
-    const req = { cookies: { csrfToken: 'pre-existing-token' }, path: '/' };
+  test('uses the token stored in the server-side session', () => {
+    const req = { cookies: { csrfToken: 'cookie-token' }, session: { csrfToken: 'session-token' }, path: '/' };
     const res = makeRes();
     const next = jest.fn();
 
     csrfProtection(req, res, next);
 
-    expect(res.locals.csrfToken).toBe('pre-existing-token');
+    expect(res.locals.csrfToken).toBe('session-token');
     expect(res.cookie).toHaveBeenCalledWith(
       'csrfToken',
-      'pre-existing-token',
+      'session-token',
       expect.any(Object)
     );
     expect(next).toHaveBeenCalledTimes(1);
   });
 
   test('does not issue a token before necessary cookie consent on pages that do not need forms', () => {
-    const req = { cookies: {}, path: '/' };
+    const req = { cookies: {}, session: {}, path: '/' };
     const res = makeRes();
     const next = jest.fn();
 
@@ -43,7 +43,7 @@ describe('csrfProtection', () => {
   });
 
   test('generates a fresh 64-character hex token once necessary cookies are accepted', () => {
-    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, session: {}, path: '/' };
     const res = makeRes();
     const next = jest.fn();
 
@@ -52,11 +52,12 @@ describe('csrfProtection', () => {
     const token = res.locals.csrfToken;
     expect(typeof token).toBe('string');
     expect(token).toHaveLength(64); // 32 random bytes → 64 hex chars
+    expect(req.session.csrfToken).toBe(token);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
   test('generates a token for account forms even before consent', () => {
-    const req = { cookies: {}, path: '/login' };
+    const req = { cookies: {}, session: {}, path: '/login' };
     const res = makeRes();
 
     csrfProtection(req, res, jest.fn());
@@ -70,7 +71,7 @@ describe('csrfProtection', () => {
   });
 
   test('sets httpOnly and Strict sameSite cookie options', () => {
-    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, session: {}, path: '/' };
     const res = makeRes();
 
     csrfProtection(req, res, jest.fn());
@@ -83,7 +84,7 @@ describe('csrfProtection', () => {
   test('secure flag is false outside production', () => {
     const original = process.env.NODE_ENV;
     process.env.NODE_ENV = 'test';
-    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, session: {}, path: '/' };
     const res = makeRes();
 
     csrfProtection(req, res, jest.fn());
@@ -96,7 +97,7 @@ describe('csrfProtection', () => {
   test('secure flag is true in production', () => {
     const original = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
-    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, path: '/' };
+    const req = { cookies: { CookieConsent: 'necessary%3Atrue' }, session: {}, path: '/' };
     const res = makeRes();
 
     csrfProtection(req, res, jest.fn());
@@ -138,6 +139,7 @@ describe('verifyCsrfToken', () => {
       body: { csrfToken: token },
       headers: {},
       cookies: { csrfToken: token },
+      session: { csrfToken: token },
     };
     const res = makeRes();
     const next = jest.fn();
@@ -155,6 +157,7 @@ describe('verifyCsrfToken', () => {
       body: {},
       headers: { 'x-csrf-token': token },
       cookies: { csrfToken: token },
+      session: { csrfToken: token },
     };
     const res = makeRes();
     const next = jest.fn();
@@ -170,6 +173,7 @@ describe('verifyCsrfToken', () => {
       body: { csrfToken: 'wrong' },
       headers: {},
       cookies: { csrfToken: 'correct' },
+      session: { csrfToken: 'correct' },
     };
     const res = makeRes();
     const next = jest.fn();
@@ -187,6 +191,7 @@ describe('verifyCsrfToken', () => {
       body: {},
       headers: {},
       cookies: { csrfToken: 'correct' },
+      session: { csrfToken: 'correct' },
     };
     const res = makeRes();
     const next = jest.fn();
@@ -203,6 +208,7 @@ describe('verifyCsrfToken', () => {
       body: { csrfToken: 'wrong' },
       headers: {},
       cookies: { csrfToken: 'correct' },
+      session: { csrfToken: 'correct' },
     };
     const res = makeRes();
     const next = jest.fn();
@@ -220,6 +226,7 @@ describe('verifyCsrfToken', () => {
       body: { csrfToken: token },
       headers: {},
       cookies: { csrfToken: token },
+      session: { csrfToken: token },
     };
     const res = makeRes();
     const next = jest.fn();
@@ -227,5 +234,22 @@ describe('verifyCsrfToken', () => {
     verifyCsrfToken(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  test('rejects POST when cookie and body match but the session token differs', () => {
+    const req = {
+      method: 'POST',
+      body: { csrfToken: 'injected-token' },
+      headers: {},
+      cookies: { csrfToken: 'injected-token' },
+      session: { csrfToken: 'server-token' },
+    };
+    const res = makeRes();
+    const next = jest.fn();
+
+    verifyCsrfToken(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 });

@@ -10,9 +10,11 @@ jest.mock('../utils/db', () => ({
   getUserByEmail: jest.fn(),
   confirmUserEmail: jest.fn(),
   updateUserPassword: jest.fn(),
+  revokeUserSessions: jest.fn(),
   createAuthToken: jest.fn(),
   consumeAuthToken: jest.fn(),
   cleanupAuthTokens: jest.fn(),
+  hasRecentAuthToken: jest.fn(),
 }));
 jest.mock('../utils/email', () => ({
   sendEmailConfirmation: jest.fn(),
@@ -87,6 +89,7 @@ describe('auth routes', () => {
     db.createUser.mockReturnValue(123);
     db.getUserByEmail.mockReturnValue(null);
     db.consumeAuthToken.mockReturnValue(null);
+    db.hasRecentAuthToken.mockReturnValue(false);
     email.sendEmailConfirmation.mockResolvedValue(true);
     email.sendPasswordReset.mockResolvedValue(true);
     app = buildApp();
@@ -221,7 +224,7 @@ describe('auth routes', () => {
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Confirmation resend error'));
   });
 
-  test('register reports duplicate and unexpected database errors', async () => {
+  test('register uses a neutral check-email response for duplicate accounts and reports unexpected database errors', async () => {
     const { token, cookies } = await csrf(app, '/register');
     const body = {
       csrfToken: token,
@@ -232,14 +235,30 @@ describe('auth routes', () => {
 
     db.createUser.mockImplementationOnce(() => { throw new Error('UNIQUE constraint failed'); });
     const duplicate = await request(app).post('/register').set('Cookie', cookies).send(body);
-    expect(duplicate.status).toBe(400);
-    expect(duplicate.text).toContain('already exists');
+    expect(duplicate.status).toBe(302);
+    expect(duplicate.headers.location).toBe('/check-email');
 
     db.createUser.mockImplementationOnce(() => { throw new Error('disk full'); });
     const failure = await request(app).post('/register').set('Cookie', cookies).send(body);
     expect(failure.status).toBe(500);
     expect(failure.text).toContain('Something went wrong');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Register error'));
+  });
+
+  test('resend confirmation observes the per-account email cooldown', async () => {
+    db.getUserByEmail.mockReturnValueOnce({ id: 9, email: 'new@example.com', email_confirmed_at: null });
+    db.hasRecentAuthToken.mockReturnValueOnce(true);
+    const { token, cookies } = await csrf(app, '/check-email');
+
+    const res = await request(app)
+      .post('/resend-confirmation')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, email: 'new@example.com' });
+
+    expect(res.status).toBe(200);
+    expect(db.hasRecentAuthToken).toHaveBeenCalledWith(9, 'email-confirmation', expect.any(Number));
+    expect(db.createAuthToken).not.toHaveBeenCalled();
+    expect(email.sendEmailConfirmation).not.toHaveBeenCalled();
   });
 
   test('GET /login renders for anonymous users and redirects logged-in users', async () => {
@@ -432,6 +451,22 @@ describe('auth routes', () => {
     expect(logger.info).toHaveBeenCalledWith('Email sent: type=password-reset userId=9');
   });
 
+  test('forgot password observes the per-account email cooldown', async () => {
+    db.getUserByEmail.mockReturnValue({ id: 9, email: 'known@example.com' });
+    db.hasRecentAuthToken.mockReturnValueOnce(true);
+    const { token, cookies } = await csrf(app, '/forgot-password');
+
+    const res = await request(app)
+      .post('/forgot-password')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, email: 'known@example.com' });
+
+    expect(res.status).toBe(200);
+    expect(db.hasRecentAuthToken).toHaveBeenCalledWith(9, 'password-reset', expect.any(Number));
+    expect(db.createAuthToken).not.toHaveBeenCalled();
+    expect(email.sendPasswordReset).not.toHaveBeenCalled();
+  });
+
   test('forgot and reset forms redirect logged-in users to profile', async () => {
     const agent = request.agent(app);
     await agent.get('/seed-session');
@@ -503,6 +538,7 @@ describe('auth routes', () => {
     expect(res.headers.location).toBe('/login?reset=1');
     expect(argon2.hash).toHaveBeenCalledWith('new-long-password', expect.objectContaining({ type: argon2.argon2id }));
     expect(db.updateUserPassword).toHaveBeenCalledWith(9, 'hashed-password');
+    expect(db.revokeUserSessions).toHaveBeenCalledWith(9);
   });
 
   test('reset password handles hashing or update errors', async () => {
