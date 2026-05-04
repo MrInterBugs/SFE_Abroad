@@ -40,6 +40,12 @@
       <% if (error) { %>
         <div class="alert-error" role="alert"><%= error %></div>
       <% } %>
+      <% if (locals.unconfirmedEmailError) { %>
+        <div class="alert-error" role="alert">
+          Please confirm your email address before signing in.
+          <a href="/check-email" style="color:inherit;font-weight:600;">Resend confirmation email.</a>
+        </div>
+      <% } %>
       <% if (message) { %>
         <div class="alert-success" role="status"><%= message %></div>
       <% } %>

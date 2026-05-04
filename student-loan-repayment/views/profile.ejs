@@ -43,6 +43,10 @@
         <div class="profile-hero-info">
           <div class="profile-hero-email"><%= user.email %></div>
           <div class="profile-hero-since">Member since <%= new Date(user.created_at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) %></div>
+          <div class="profile-hero-status">
+            <span class="profile-status-dot <%= user.email_confirmed_at ? 'confirmed' : '' %>"></span>
+            <%= user.email_confirmed_at ? 'Email confirmed' : 'Email not confirmed' %>
+          </div>
         </div>
         <a href="/" class="profile-hero-back">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -158,6 +162,15 @@
         <% if (profile.updated_at) { %>
           <p class="profile-updated">Last updated <%= new Date(profile.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></p>
         <% } %>
+      </div>
+
+      <!-- Data export card -->
+      <div class="profile-action-card">
+        <div>
+          <div class="profile-action-title">Download your data</div>
+          <p class="profile-action-body">Receive your account and saved calculator profile in a machine-readable JSON file.</p>
+        </div>
+        <a href="/profile/export" class="btn-secondary">Download JSON</a>
       </div>
 
       <!-- Danger zone card -->

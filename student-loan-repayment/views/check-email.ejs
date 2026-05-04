@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Check your email — Student Finance Overseas</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-crown">
+        <a href="/" style="text-decoration:none;color:inherit;"><span class="header-title">Student Finance Overseas Repayment Calculator</span></a>
+      </div>
+      <nav class="header-nav">
+        <a href="/login" class="header-nav-link">Sign in</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container" style="max-width:480px;">
+      <div class="page-heading">
+        <h1>Check your email</h1>
+        <% if (email) { %>
+          <p>This account still needs email confirmation before you can sign in.</p>
+        <% } else { %>
+          <p>Enter your email address and we will send a new confirmation link.</p>
+        <% } %>
+      </div>
+
+      <% if (error) { %>
+        <div class="alert-error" role="alert"><%= error %></div>
+      <% } %>
+      <% if (message) { %>
+        <div class="alert-success" role="status"><%= message %></div>
+      <% } %>
+
+      <div class="card" style="padding:28px;">
+        <% if (email) { %>
+          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">
+            Email address: <strong><%= email %></strong>
+          </p>
+
+          <form method="POST" action="/resend-confirmation" novalidate>
+            <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
+            <input type="hidden" name="email" value="<%= email %>">
+            <button type="submit" class="btn-calculate" style="margin-top:8px;">Resend confirmation email</button>
+          </form>
+        <% } else { %>
+          <form method="POST" action="/resend-confirmation" novalidate>
+            <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
+
+            <div class="form-group">
+              <label class="field-label" for="email">Email address</label>
+              <div class="input-wrap">
+                <input type="email" id="email" name="email" autocomplete="email" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-calculate" style="margin-top:8px;">Resend confirmation email</button>
+          </form>
+        <% } %>
+
+        <p style="margin-top:20px;font-size:13px;color:var(--text-secondary);text-align:center;">
+          Already confirmed? <a href="/login" style="color:var(--blue);">Sign in</a>
+        </p>
+      </div>
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

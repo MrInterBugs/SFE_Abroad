@@ -143,6 +143,9 @@ describe('routes', () => {
       const res = await request(app).get('/privacy');
       expect(res.status).toBe(200);
       expect(res.text).toContain('Privacy');
+      expect(res.text).toContain('Last updated: 4 May 2026');
+      expect(res.text).toContain('machine-readable JSON file');
+      expect(res.text).toContain('Calculator defaults');
     });
 
     test('renders the index page with a 200', async () => {

@@ -13,6 +13,7 @@ const {
   updateUserPassword,
   createAuthToken,
   consumeAuthToken,
+  cleanupAuthTokens,
   getProfile,
   upsertProfile,
   deleteUser,
@@ -119,6 +120,7 @@ describe('db', () => {
 
     createAuthToken(userId, 'password-reset', 'expired-token', Date.now() - 10000);
     expect(consumeAuthToken('expired-token', 'password-reset')).toBeNull();
+    expect(cleanupAuthTokens()).toBeGreaterThanOrEqual(1);
 
     deleteUser(userId);
   });

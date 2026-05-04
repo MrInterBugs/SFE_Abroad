@@ -125,7 +125,7 @@ function getUserByEmail(email) {
 }
 
 function getUserById(id) {
-  return db.prepare('SELECT id, email, created_at FROM users WHERE id = ?').get(id);
+  return db.prepare('SELECT id, email, email_confirmed_at, created_at FROM users WHERE id = ?').get(id);
 }
 
 function confirmUserEmail(userId) {
@@ -141,6 +141,7 @@ function hashAuthToken(token) {
 }
 
 function createAuthToken(userId, purpose, token, expiresAt) {
+  cleanupAuthTokens();
   const stmt = db.prepare(`
     INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at, created_at)
     VALUES (?, ?, ?, ?, ?)
@@ -164,6 +165,10 @@ function consumeAuthToken(token, purpose) {
 
   db.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ?').run(Date.now(), row.id);
   return { userId: row.user_id, email: row.email };
+}
+
+function cleanupAuthTokens(now = Date.now()) {
+  return db.prepare('DELETE FROM auth_tokens WHERE used_at IS NOT NULL OR expires_at <= ?').run(now).changes;
 }
 
 function getProfile(userId) {
@@ -204,6 +209,7 @@ module.exports = {
   updateUserPassword,
   createAuthToken,
   consumeAuthToken,
+  cleanupAuthTokens,
   getProfile,
   upsertProfile,
   deleteUser,

@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 const CSRF_COOKIE = 'csrfToken';
 const MUTATING_METHODS = ['POST', 'PUT', 'DELETE'];
-const FORM_PATHS = new Set(['/login', '/register', '/profile', '/forgot-password']);
+const FORM_PATHS = new Set(['/login', '/register', '/profile', '/forgot-password', '/check-email', '/resend-confirmation']);
 
 function hasNecessaryConsent(req) {
   const raw = req.cookies?.CookieConsent;

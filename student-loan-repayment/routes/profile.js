@@ -19,6 +19,37 @@ router.get('/profile', requireAuth, (req, res) => {
   res.render('profile', { user, profile: profile || {}, countries: getCountries(), ugPlans: UG_PLANS, error: null, success: false, csrfToken: res.locals.csrfToken });
 });
 
+router.get('/profile/export', requireAuth, (req, res) => {
+  const user = getUserById(req.session.userId);
+  const profile = getProfile(req.session.userId);
+  const exportedAt = new Date().toISOString();
+
+  res.set({
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Disposition': `attachment; filename="student-finance-overseas-data-${user.id}.json"`,
+  });
+
+  res.send(JSON.stringify({
+    exported_at: exportedAt,
+    account: {
+      id: user.id,
+      email: user.email,
+      email_confirmed_at: user.email_confirmed_at ? new Date(user.email_confirmed_at).toISOString() : null,
+      created_at: new Date(user.created_at).toISOString(),
+    },
+    profile: profile ? {
+      graduation_date: profile.graduation_date,
+      loan_value_gbp: profile.loan_value_gbp,
+      loan_value_pgl_gbp: profile.loan_value_pgl_gbp,
+      default_country: profile.default_country,
+      default_plan: profile.default_plan,
+      include_pg: Boolean(profile.include_pg),
+      default_salary: profile.default_salary,
+      updated_at: profile.updated_at ? new Date(profile.updated_at).toISOString() : null,
+    } : null,
+  }, null, 2));
+});
+
 router.post('/profile', requireAuth, verifyCsrfToken, (req, res) => {
   const { graduationDate, loanValueGbp, loanValuePglGbp, defaultCountry, defaultPlan, includePg, defaultSalary } = req.body;
   const user = getUserById(req.session.userId);

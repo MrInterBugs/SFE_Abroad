@@ -232,6 +232,22 @@ html, body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .profile-hero-since { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.profile-hero-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.profile-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d4351c;
+  flex-shrink: 0;
+}
+.profile-status-dot.confirmed { background: var(--green); }
 .profile-hero-back {
   display: flex; align-items: center; gap: 4px;
   font-size: 13px; color: var(--text-muted); text-decoration: none;
@@ -261,6 +277,49 @@ html, body {
 .profile-updated {
   font-size: 12px; color: var(--text-muted);
   text-align: center; margin-top: 14px;
+}
+.profile-action-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.profile-action-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.profile-action-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-secondary:hover {
+  background: var(--blue);
+  color: var(--white);
 }
 
 .danger-card {

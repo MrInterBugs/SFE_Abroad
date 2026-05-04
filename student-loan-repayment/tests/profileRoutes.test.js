@@ -68,7 +68,7 @@ describe('profile routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    db.getUserById.mockReturnValue({ id: 42, email: 'profile@example.com', created_at: Date.now() });
+    db.getUserById.mockReturnValue({ id: 42, email: 'profile@example.com', email_confirmed_at: Date.now(), created_at: Date.now() });
     db.getProfile.mockReturnValue(null);
     db.loadCountryList.mockReturnValue(['France', 'Germany']);
     app = buildApp();
@@ -84,7 +84,98 @@ describe('profile routes', () => {
     const res = await agent.get('/profile');
     expect(res.status).toBe(200);
     expect(res.text).toContain('Germany');
+    expect(res.text).toContain('Email confirmed');
     expect(db.loadCountryList).toHaveBeenCalledWith('plan1', expect.any(String));
+  });
+
+  test('GET /profile/export downloads portable account data for logged-in users', async () => {
+    const anon = await request(app).get('/profile/export');
+    expect(anon.status).toBe(302);
+    expect(anon.headers.location).toBe('/login');
+
+    db.getUserById.mockReturnValue({
+      id: 42,
+      email: 'profile@example.com',
+      email_confirmed_at: Date.UTC(2026, 0, 2),
+      created_at: Date.UTC(2026, 0, 1),
+      password_hash: 'not-exported',
+    });
+    db.getProfile.mockReturnValue({
+      user_id: 42,
+      graduation_date: '2024-06',
+      loan_value_gbp: 12000,
+      loan_value_pgl_gbp: 3000,
+      default_country: 'Germany',
+      default_plan: 'plan2',
+      include_pg: 1,
+      default_salary: 50000,
+      updated_at: Date.UTC(2026, 0, 3),
+    });
+
+    const agent = await loggedInAgent(app);
+    const res = await agent.get('/profile/export');
+    const data = JSON.parse(res.text);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/json');
+    expect(res.headers['content-disposition']).toBe('attachment; filename="student-finance-overseas-data-42.json"');
+    expect(data.account).toEqual({
+      id: 42,
+      email: 'profile@example.com',
+      email_confirmed_at: '2026-01-02T00:00:00.000Z',
+      created_at: '2026-01-01T00:00:00.000Z',
+    });
+    expect(data.profile).toEqual({
+      graduation_date: '2024-06',
+      loan_value_gbp: 12000,
+      loan_value_pgl_gbp: 3000,
+      default_country: 'Germany',
+      default_plan: 'plan2',
+      include_pg: true,
+      default_salary: 50000,
+      updated_at: '2026-01-03T00:00:00.000Z',
+    });
+    expect(data.exported_at).toEqual(expect.any(String));
+    expect(res.text).not.toContain('password_hash');
+    expect(res.text).not.toContain('not-exported');
+    expect(res.text).not.toContain('auth_tokens');
+  });
+
+  test('GET /profile/export returns null profile when no profile is saved', async () => {
+    const agent = await loggedInAgent(app);
+    const res = await agent.get('/profile/export');
+    const data = JSON.parse(res.text);
+
+    expect(res.status).toBe(200);
+    expect(data.profile).toBeNull();
+  });
+
+  test('GET /profile/export preserves null confirmation and profile dates', async () => {
+    db.getUserById.mockReturnValue({
+      id: 42,
+      email: 'profile@example.com',
+      email_confirmed_at: null,
+      created_at: Date.UTC(2026, 0, 1),
+    });
+    db.getProfile.mockReturnValue({
+      graduation_date: null,
+      loan_value_gbp: null,
+      loan_value_pgl_gbp: null,
+      default_country: null,
+      default_plan: null,
+      include_pg: 0,
+      default_salary: null,
+      updated_at: null,
+    });
+
+    const agent = await loggedInAgent(app);
+    const res = await agent.get('/profile/export');
+    const data = JSON.parse(res.text);
+
+    expect(res.status).toBe(200);
+    expect(data.account.email_confirmed_at).toBeNull();
+    expect(data.profile.updated_at).toBeNull();
+    expect(data.profile.include_pg).toBe(false);
   });
 
   test('POST /profile validates numeric fields, graduation date, and default plan', async () => {

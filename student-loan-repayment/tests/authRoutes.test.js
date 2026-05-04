@@ -12,6 +12,7 @@ jest.mock('../utils/db', () => ({
   updateUserPassword: jest.fn(),
   createAuthToken: jest.fn(),
   consumeAuthToken: jest.fn(),
+  cleanupAuthTokens: jest.fn(),
 }));
 jest.mock('../utils/email', () => ({
   sendEmailConfirmation: jest.fn(),
@@ -60,6 +61,10 @@ function buildApp() {
   app.get('/seed-session', (req, res) => {
     req.session.userId = 7;
     req.session.userEmail = 'seed@example.com';
+    res.send('ok');
+  });
+  app.get('/seed-pending-confirmation', (req, res) => {
+    req.session.pendingConfirmationEmail = 'known@example.com';
     res.send('ok');
   });
   app.use('/', require('../routes/auth'));
@@ -133,12 +138,87 @@ describe('auth routes', () => {
     });
 
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe('/login?registered=1');
+    expect(res.headers.location).toBe('/check-email');
     expect(argon2.hash).toHaveBeenCalledWith('long-enough-password', expect.objectContaining({ type: argon2.argon2id }));
     expect(db.createUser).toHaveBeenCalledWith('NewUser@Example.com', 'hashed-password');
     expect(db.createAuthToken).toHaveBeenCalledWith(123, 'email-confirmation', expect.any(String), expect.any(Number));
     expect(email.sendEmailConfirmation).toHaveBeenCalledWith('newuser@example.com', expect.any(String));
+    expect(logger.info).toHaveBeenCalledWith('Email sent: type=email-confirmation userId=123');
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('New user registered'));
+  });
+
+  test('check email page renders and resend confirmation handles missing, confirmed, and unconfirmed accounts', async () => {
+    const anon = await request(app).get('/check-email');
+    expect(anon.status).toBe(200);
+    expect(anon.text).toContain('Check your email');
+    expect(anon.text).toContain('id="email"');
+
+    const agent = request.agent(app);
+    await agent.get('/seed-pending-confirmation');
+    const known = await agent.get('/check-email');
+    expect(known.status).toBe(200);
+    expect(known.text).toContain('still needs email confirmation');
+    expect(known.text).toContain('known@example.com');
+    expect(known.text).toContain('type="hidden" name="email" value="known@example.com"');
+    expect(known.text).not.toContain('id="email"');
+    expect(known.text).not.toContain('We sent a confirmation link');
+
+    const first = await csrf(app, '/check-email');
+    const invalid = await request(app)
+      .post('/resend-confirmation')
+      .set('Cookie', first.cookies)
+      .send({ csrfToken: first.token, email: 'not-an-email' });
+    expect(invalid.status).toBe(200);
+    expect(invalid.text).toContain('If that email needs confirmation');
+
+    db.getUserByEmail.mockReturnValueOnce(null);
+    const second = await csrf(app, '/check-email');
+    const missing = await request(app)
+      .post('/resend-confirmation')
+      .set('Cookie', second.cookies)
+      .send({ csrfToken: second.token, email: 'missing@example.com' });
+    expect(missing.status).toBe(200);
+    expect(email.sendEmailConfirmation).not.toHaveBeenCalled();
+
+    db.getUserByEmail.mockReturnValueOnce({ id: 8, email: 'known@example.com', email_confirmed_at: Date.now() });
+    const third = await csrf(app, '/check-email');
+    const confirmed = await request(app)
+      .post('/resend-confirmation')
+      .set('Cookie', third.cookies)
+      .send({ csrfToken: third.token, email: 'known@example.com' });
+    expect(confirmed.status).toBe(200);
+    expect(email.sendEmailConfirmation).not.toHaveBeenCalled();
+
+    db.getUserByEmail.mockReturnValueOnce({ id: 9, email: 'new@example.com', email_confirmed_at: null });
+    const fourth = await csrf(app, '/check-email');
+    const unconfirmed = await request(app)
+      .post('/resend-confirmation')
+      .set('Cookie', fourth.cookies)
+      .send({ csrfToken: fourth.token, email: 'new@example.com' });
+    expect(unconfirmed.status).toBe(200);
+    expect(db.createAuthToken).toHaveBeenCalledWith(9, 'email-confirmation', expect.any(String), expect.any(Number));
+    expect(email.sendEmailConfirmation).toHaveBeenCalledWith('new@example.com', expect.any(String));
+    expect(logger.info).toHaveBeenCalledWith('Email sent: type=email-confirmation userId=9');
+  });
+
+  test('check email redirects logged-in users and reports resend failures', async () => {
+    const agent = request.agent(app);
+    await agent.get('/seed-session');
+    const loggedIn = await agent.get('/check-email');
+    expect(loggedIn.status).toBe(302);
+    expect(loggedIn.headers.location).toBe('/profile');
+
+    db.getUserByEmail.mockReturnValueOnce({ id: 9, email: 'new@example.com', email_confirmed_at: null });
+    email.sendEmailConfirmation.mockRejectedValueOnce(new Error('resend offline'));
+    const { token, cookies } = await csrf(app, '/check-email');
+    const res = await request(app)
+      .post('/resend-confirmation')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, email: 'new@example.com' });
+
+    expect(res.status).toBe(500);
+    expect(res.text).toContain('Something went wrong');
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Confirmation resend error'));
   });
 
   test('register reports duplicate and unexpected database errors', async () => {
@@ -166,9 +246,7 @@ describe('auth routes', () => {
     const anon = await request(app).get('/login');
     expect(anon.status).toBe(200);
     expect(anon.text).toContain('Sign in');
-
-    const registered = await request(app).get('/login?registered=1');
-    expect(registered.text).toContain('Check your email');
+    expect(anon.text).not.toContain('Resend confirmation email');
 
     const confirmed = await request(app).get('/login?confirmed=1');
     expect(confirmed.text).toContain('Email confirmed');
@@ -290,16 +368,30 @@ describe('auth routes', () => {
 
     expect(res.status).toBe(403);
     expect(res.text).toContain('confirm your email');
+    expect(res.text).toContain('Resend confirmation email');
   });
 
   test('confirm email consumes token and marks the user confirmed', async () => {
+    db.consumeAuthToken.mockReturnValue({ userId: 8, email: 'known@example.com' });
+
+    const agent = request.agent(app);
+    await agent.get('/seed-pending-confirmation');
+    const res = await agent.get('/confirm-email/good-token');
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/login?confirmed=1');
+    expect(db.consumeAuthToken).toHaveBeenCalledWith('good-token', 'email-confirmation');
+    expect(db.confirmUserEmail).toHaveBeenCalledWith(8);
+    expect(db.cleanupAuthTokens).toHaveBeenCalled();
+  });
+
+  test('confirm email works without a pending confirmation session value', async () => {
     db.consumeAuthToken.mockReturnValue({ userId: 8, email: 'known@example.com' });
 
     const res = await request(app).get('/confirm-email/good-token');
 
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe('/login?confirmed=1');
-    expect(db.consumeAuthToken).toHaveBeenCalledWith('good-token', 'email-confirmation');
     expect(db.confirmUserEmail).toHaveBeenCalledWith(8);
   });
 
@@ -337,6 +429,7 @@ describe('auth routes', () => {
     expect(known.status).toBe(200);
     expect(db.createAuthToken).toHaveBeenCalledWith(9, 'password-reset', expect.any(String), expect.any(Number));
     expect(email.sendPasswordReset).toHaveBeenCalledWith('known@example.com', expect.any(String));
+    expect(logger.info).toHaveBeenCalledWith('Email sent: type=password-reset userId=9');
   });
 
   test('forgot and reset forms redirect logged-in users to profile', async () => {
