@@ -9,6 +9,7 @@ A web app for UK student loan borrowers living abroad to estimate their monthly 
 - **Offline cache** — thresholds are scraped from gov.uk and persisted to a local SQLite database; archived years are served entirely from the database once cached
 - **Currency formatting** — salary is displayed with the correct local currency symbol
 - **Remembers preferences** — selected plan, country, and year are stored in cookies and restored on next visit
+- **Account recovery** — email confirmation and password reset links are sent through Resend
 - **Form protection** — CSRF tokens on all submissions; rate limiting to prevent abuse.
 
 ## How it works
@@ -43,6 +44,18 @@ docker compose up --build
 The app will be available at `http://localhost:3000`.
 
 > **Note:** The first build compiles `better-sqlite3` from source and may take a couple of minutes.
+
+### Email setup
+
+Email confirmation and password reset use Resend. Set these variables before running the production compose stack:
+
+```bash
+RESEND_API_KEY=...
+EMAIL_FROM="Student Finance Overseas <hello@your-domain.example>"
+APP_BASE_URL=https://sfe.aedanl.com
+```
+
+`APP_BASE_URL` defaults to `https://sfe.aedanl.com` in `docker-compose.yml`. In local development, email sending is skipped unless `RESEND_API_KEY` is configured.
 
 ### Data persistence
 

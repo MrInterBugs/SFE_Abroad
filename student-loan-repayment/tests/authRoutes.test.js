@@ -8,6 +8,14 @@ jest.mock('argon2', () => ({
 jest.mock('../utils/db', () => ({
   createUser: jest.fn(),
   getUserByEmail: jest.fn(),
+  confirmUserEmail: jest.fn(),
+  updateUserPassword: jest.fn(),
+  createAuthToken: jest.fn(),
+  consumeAuthToken: jest.fn(),
+}));
+jest.mock('../utils/email', () => ({
+  sendEmailConfirmation: jest.fn(),
+  sendPasswordReset: jest.fn(),
 }));
 jest.mock('../utils/auth', () => {
   const actual = jest.requireActual('../utils/auth');
@@ -30,6 +38,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const argon2 = require('argon2');
 const db = require('../utils/db');
+const email = require('../utils/email');
 const logger = require('../utils/logger');
 const { csrfProtection } = require('../utils/csrf');
 
@@ -72,6 +81,9 @@ describe('auth routes', () => {
     argon2.verify.mockResolvedValue(false);
     db.createUser.mockReturnValue(123);
     db.getUserByEmail.mockReturnValue(null);
+    db.consumeAuthToken.mockReturnValue(null);
+    email.sendEmailConfirmation.mockResolvedValue(true);
+    email.sendPasswordReset.mockResolvedValue(true);
     app = buildApp();
   });
 
@@ -108,7 +120,7 @@ describe('auth routes', () => {
     expect(argon2.hash).toHaveBeenCalledTimes(0);
   });
 
-  test('register creates a user, stores normalized session email, and redirects', async () => {
+  test('register creates a user, sends confirmation email, and redirects', async () => {
     const agent = request.agent(app);
     const get = await agent.get('/register');
     const token = get.text.match(/name="csrfToken" value="(.+?)"/)[1];
@@ -121,9 +133,11 @@ describe('auth routes', () => {
     });
 
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe('/profile');
+    expect(res.headers.location).toBe('/login?registered=1');
     expect(argon2.hash).toHaveBeenCalledWith('long-enough-password', expect.objectContaining({ type: argon2.argon2id }));
     expect(db.createUser).toHaveBeenCalledWith('NewUser@Example.com', 'hashed-password');
+    expect(db.createAuthToken).toHaveBeenCalledWith(123, 'email-confirmation', expect.any(String), expect.any(Number));
+    expect(email.sendEmailConfirmation).toHaveBeenCalledWith('newuser@example.com', expect.any(String));
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('New user registered'));
   });
 
@@ -152,6 +166,15 @@ describe('auth routes', () => {
     const anon = await request(app).get('/login');
     expect(anon.status).toBe(200);
     expect(anon.text).toContain('Sign in');
+
+    const registered = await request(app).get('/login?registered=1');
+    expect(registered.text).toContain('Check your email');
+
+    const confirmed = await request(app).get('/login?confirmed=1');
+    expect(confirmed.text).toContain('Email confirmed');
+
+    const reset = await request(app).get('/login?reset=1');
+    expect(reset.text).toContain('Password updated');
 
     const agent = request.agent(app);
     await agent.get('/seed-session');
@@ -190,7 +213,7 @@ describe('auth routes', () => {
   });
 
   test('login rejects wrong passwords for known users', async () => {
-    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'stored-hash' });
+    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'stored-hash', email_confirmed_at: Date.now() });
     argon2.verify.mockResolvedValue(false);
     const { token, cookies } = await csrf(app, '/login');
 
@@ -204,7 +227,7 @@ describe('auth routes', () => {
   });
 
   test('login treats password verification errors as invalid credentials', async () => {
-    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'not-an-argon2-hash' });
+    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'not-an-argon2-hash', email_confirmed_at: Date.now() });
     argon2.verify.mockRejectedValue(new Error('invalid hash'));
     const { token, cookies } = await csrf(app, '/login');
 
@@ -219,7 +242,7 @@ describe('auth routes', () => {
   });
 
   test('login regenerates the session and redirects on valid credentials', async () => {
-    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'stored-hash' });
+    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'stored-hash', email_confirmed_at: Date.now() });
     argon2.verify.mockResolvedValue(true);
     const { token, cookies } = await csrf(app, '/login');
 
@@ -234,7 +257,7 @@ describe('auth routes', () => {
   });
 
   test('login handles session regeneration errors and lookup errors', async () => {
-    db.getUserByEmail.mockReturnValueOnce({ id: 8, email: 'known@example.com', password_hash: 'stored-hash' });
+    db.getUserByEmail.mockReturnValueOnce({ id: 8, email: 'known@example.com', password_hash: 'stored-hash', email_confirmed_at: Date.now() });
     argon2.verify.mockResolvedValueOnce(true);
     const first = await csrf(app, '/login');
     const regen = await request(app)
@@ -253,6 +276,154 @@ describe('auth routes', () => {
       .send({ csrfToken: second.token, email: 'known@example.com', password: 'right-password' });
     expect(lookup.status).toBe(500);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Login error'));
+  });
+
+  test('login rejects valid credentials until email is confirmed', async () => {
+    db.getUserByEmail.mockReturnValue({ id: 8, email: 'known@example.com', password_hash: 'stored-hash', email_confirmed_at: null });
+    argon2.verify.mockResolvedValue(true);
+    const { token, cookies } = await csrf(app, '/login');
+
+    const res = await request(app)
+      .post('/login')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, email: 'known@example.com', password: 'right-password' });
+
+    expect(res.status).toBe(403);
+    expect(res.text).toContain('confirm your email');
+  });
+
+  test('confirm email consumes token and marks the user confirmed', async () => {
+    db.consumeAuthToken.mockReturnValue({ userId: 8, email: 'known@example.com' });
+
+    const res = await request(app).get('/confirm-email/good-token');
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/login?confirmed=1');
+    expect(db.consumeAuthToken).toHaveBeenCalledWith('good-token', 'email-confirmation');
+    expect(db.confirmUserEmail).toHaveBeenCalledWith(8);
+  });
+
+  test('confirm email rejects invalid or expired tokens', async () => {
+    const res = await request(app).get('/confirm-email/bad-token');
+
+    expect(res.status).toBe(400);
+    expect(res.text).toContain('confirmation link is invalid');
+  });
+
+  test('forgot password sends the same response for missing and known accounts', async () => {
+    const invalid = await csrf(app, '/forgot-password');
+    const invalidEmail = await request(app)
+      .post('/forgot-password')
+      .set('Cookie', invalid.cookies)
+      .send({ csrfToken: invalid.token, email: 'not-an-email' });
+    expect(invalidEmail.status).toBe(200);
+    expect(invalidEmail.text).toContain('If that email has an account');
+
+    const first = await csrf(app, '/forgot-password');
+    const missing = await request(app)
+      .post('/forgot-password')
+      .set('Cookie', first.cookies)
+      .send({ csrfToken: first.token, email: 'missing@example.com' });
+    expect(missing.status).toBe(200);
+    expect(missing.text).toContain('If that email has an account');
+    expect(email.sendPasswordReset).not.toHaveBeenCalled();
+
+    db.getUserByEmail.mockReturnValue({ id: 9, email: 'known@example.com' });
+    const second = await csrf(app, '/forgot-password');
+    const known = await request(app)
+      .post('/forgot-password')
+      .set('Cookie', second.cookies)
+      .send({ csrfToken: second.token, email: 'known@example.com' });
+    expect(known.status).toBe(200);
+    expect(db.createAuthToken).toHaveBeenCalledWith(9, 'password-reset', expect.any(String), expect.any(Number));
+    expect(email.sendPasswordReset).toHaveBeenCalledWith('known@example.com', expect.any(String));
+  });
+
+  test('forgot and reset forms redirect logged-in users to profile', async () => {
+    const agent = request.agent(app);
+    await agent.get('/seed-session');
+
+    const forgot = await agent.get('/forgot-password');
+    expect(forgot.status).toBe(302);
+    expect(forgot.headers.location).toBe('/profile');
+
+    const reset = await agent.get('/reset-password/reset-token');
+    expect(reset.status).toBe(302);
+    expect(reset.headers.location).toBe('/profile');
+  });
+
+  test('forgot password handles lookup or email errors', async () => {
+    db.getUserByEmail.mockImplementationOnce(() => { throw new Error('db offline'); });
+    const { token, cookies } = await csrf(app, '/forgot-password');
+
+    const res = await request(app)
+      .post('/forgot-password')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, email: 'known@example.com' });
+
+    expect(res.status).toBe(500);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Password reset request error'));
+  });
+
+  test('reset password validates input and rejects invalid tokens', async () => {
+    const get = await csrf(app, '/reset-password/reset-token');
+
+    const invalidType = await request(app)
+      .post('/reset-password/reset-token')
+      .set('Cookie', get.cookies)
+      .send({ csrfToken: get.token, password: ['bad'], confirmPassword: 'long-enough-password' });
+    expect(invalidType.status).toBe(400);
+    expect(invalidType.text).toContain('Invalid input');
+
+    const short = await request(app)
+      .post('/reset-password/reset-token')
+      .set('Cookie', get.cookies)
+      .send({ csrfToken: get.token, password: 'short', confirmPassword: 'short' });
+    expect(short.status).toBe(400);
+    expect(short.text).toContain('at least 10');
+
+    const mismatch = await request(app)
+      .post('/reset-password/reset-token')
+      .set('Cookie', get.cookies)
+      .send({ csrfToken: get.token, password: 'long-enough-password', confirmPassword: 'different-password' });
+    expect(mismatch.status).toBe(400);
+    expect(mismatch.text).toContain('do not match');
+
+    const invalid = await request(app)
+      .post('/reset-password/reset-token')
+      .set('Cookie', get.cookies)
+      .send({ csrfToken: get.token, password: 'long-enough-password', confirmPassword: 'long-enough-password' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.text).toContain('reset link is invalid');
+  });
+
+  test('reset password updates hash and redirects', async () => {
+    db.consumeAuthToken.mockReturnValue({ userId: 9, email: 'known@example.com' });
+    const { token, cookies } = await csrf(app, '/reset-password/reset-token');
+
+    const res = await request(app)
+      .post('/reset-password/reset-token')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, password: 'new-long-password', confirmPassword: 'new-long-password' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/login?reset=1');
+    expect(argon2.hash).toHaveBeenCalledWith('new-long-password', expect.objectContaining({ type: argon2.argon2id }));
+    expect(db.updateUserPassword).toHaveBeenCalledWith(9, 'hashed-password');
+  });
+
+  test('reset password handles hashing or update errors', async () => {
+    db.consumeAuthToken.mockReturnValue({ userId: 9, email: 'known@example.com' });
+    argon2.hash.mockRejectedValueOnce(new Error('hash failed'));
+    const { token, cookies } = await csrf(app, '/reset-password/reset-token');
+
+    const res = await request(app)
+      .post('/reset-password/reset-token')
+      .set('Cookie', cookies)
+      .send({ csrfToken: token, password: 'new-long-password', confirmPassword: 'new-long-password' });
+
+    expect(res.status).toBe(500);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Password reset error'));
   });
 
   test('logout destroys the session and redirects home', async () => {

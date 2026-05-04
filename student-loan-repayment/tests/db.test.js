@@ -5,9 +5,14 @@ const {
   loadThresholds,
   loadCountryList,
   ensureProfileColumns,
+  ensureUserColumns,
   createUser,
   getUserByEmail,
   getUserById,
+  confirmUserEmail,
+  updateUserPassword,
+  createAuthToken,
+  consumeAuthToken,
   getProfile,
   upsertProfile,
   deleteUser,
@@ -96,6 +101,28 @@ describe('db', () => {
     expect(getUserByEmail(email)).toBeUndefined();
   });
 
+  test('email confirmation, password update, and auth tokens work together', () => {
+    const email = `token_${RUN_ID}@example.com`;
+    const userId = createUser(email, 'old-hash');
+
+    confirmUserEmail(userId);
+    expect(getUserByEmail(email).email_confirmed_at).toEqual(expect.any(Number));
+
+    updateUserPassword(userId, 'new-hash');
+    expect(getUserByEmail(email).password_hash).toBe('new-hash');
+
+    createAuthToken(userId, 'password-reset', 'plain-token', Date.now() + 10000);
+    expect(consumeAuthToken('wrong-token', 'password-reset')).toBeNull();
+    expect(consumeAuthToken('plain-token', 'email-confirmation')).toBeNull();
+    expect(consumeAuthToken('plain-token', 'password-reset')).toMatchObject({ userId, email: email.toLowerCase() });
+    expect(consumeAuthToken('plain-token', 'password-reset')).toBeNull();
+
+    createAuthToken(userId, 'password-reset', 'expired-token', Date.now() - 10000);
+    expect(consumeAuthToken('expired-token', 'password-reset')).toBeNull();
+
+    deleteUser(userId);
+  });
+
   test('profile helpers insert, update, coerce nullable fields, and cascade on delete', () => {
     const email = `profile_${RUN_ID}@example.com`;
     const userId = createUser(email, 'hash-value');
@@ -172,5 +199,26 @@ describe('db', () => {
     });
     expect(emptySchemaExec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN loan_value_pgl_gbp REAL');
     expect(emptySchemaExec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN default_country TEXT');
+  });
+
+  test('ensureUserColumns adds confirmation column and backfills existing users', () => {
+    const exec = jest.fn();
+    const fakeDb = {
+      prepare: jest.fn(() => ({
+        all: () => [{ name: 'id' }, { name: 'email' }, { name: 'password_hash' }, { name: 'created_at' }],
+      })),
+      exec,
+    };
+
+    ensureUserColumns(fakeDb);
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE users ADD COLUMN email_confirmed_at INTEGER');
+    expect(exec).toHaveBeenCalledWith('UPDATE users SET email_confirmed_at = created_at WHERE email_confirmed_at IS NULL');
+
+    exec.mockClear();
+    fakeDb.prepare = jest.fn(() => ({
+      all: () => [{ name: 'email_confirmed_at' }],
+    }));
+    ensureUserColumns(fakeDb);
+    expect(exec).not.toHaveBeenCalled();
   });
 });

@@ -40,6 +40,9 @@
       <% if (error) { %>
         <div class="alert-error" role="alert"><%= error %></div>
       <% } %>
+      <% if (message) { %>
+        <div class="alert-success" role="status"><%= message %></div>
+      <% } %>
 
       <div class="card" style="padding:28px;">
         <form method="POST" action="/login" novalidate>
@@ -63,6 +66,9 @@
         </form>
 
         <p style="margin-top:20px;font-size:13px;color:var(--text-secondary);text-align:center;">
+          <a href="/forgot-password" style="color:var(--blue);">Forgot password?</a>
+        </p>
+        <p style="margin-top:10px;font-size:13px;color:var(--text-secondary);text-align:center;">
           No account yet? <a href="/register" style="color:var(--blue);">Create one</a>
         </p>
       </div>

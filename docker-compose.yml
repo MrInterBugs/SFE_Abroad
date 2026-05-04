@@ -20,6 +20,9 @@ services:
     environment:
       NODE_ENV: production
       SESSION_SECRET: ${SESSION_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      APP_BASE_URL: ${APP_BASE_URL:-https://sfe.aedanl.com}
     volumes:
       - ./data:/usr/src/app/data
     networks:

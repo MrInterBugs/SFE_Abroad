@@ -22,6 +22,17 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    email_confirmed_at INTEGER,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS auth_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
     created_at INTEGER NOT NULL
   );
 
@@ -53,6 +64,16 @@ function ensureProfileColumns(database) {
 }
 
 ensureProfileColumns(db);
+
+function ensureUserColumns(database) {
+  const userCols = database.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+  if (!userCols.includes('email_confirmed_at')) {
+    database.exec('ALTER TABLE users ADD COLUMN email_confirmed_at INTEGER');
+    database.exec('UPDATE users SET email_confirmed_at = created_at WHERE email_confirmed_at IS NULL');
+  }
+}
+
+ensureUserColumns(db);
 
 function saveThresholds(plan, year, countryDataDict) {
   const insert = db.prepare(`
@@ -107,6 +128,44 @@ function getUserById(id) {
   return db.prepare('SELECT id, email, created_at FROM users WHERE id = ?').get(id);
 }
 
+function confirmUserEmail(userId) {
+  db.prepare('UPDATE users SET email_confirmed_at = COALESCE(email_confirmed_at, ?) WHERE id = ?').run(Date.now(), userId);
+}
+
+function updateUserPassword(userId, passwordHash) {
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
+}
+
+function hashAuthToken(token) {
+  return require('crypto').createHash('sha256').update(token).digest('hex');
+}
+
+function createAuthToken(userId, purpose, token, expiresAt) {
+  const stmt = db.prepare(`
+    INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  stmt.run(userId, purpose, hashAuthToken(token), expiresAt, Date.now());
+}
+
+function consumeAuthToken(token, purpose) {
+  const tokenHash = hashAuthToken(token);
+  const row = db.prepare(`
+    SELECT auth_tokens.id, auth_tokens.user_id, users.email
+    FROM auth_tokens
+    JOIN users ON users.id = auth_tokens.user_id
+    WHERE auth_tokens.token_hash = ?
+      AND auth_tokens.purpose = ?
+      AND auth_tokens.used_at IS NULL
+      AND auth_tokens.expires_at > ?
+  `).get(tokenHash, purpose, Date.now());
+
+  if (!row) return null;
+
+  db.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ?').run(Date.now(), row.id);
+  return { userId: row.user_id, email: row.email };
+}
+
 function getProfile(userId) {
   return db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
 }
@@ -131,4 +190,21 @@ function upsertProfile(userId, { graduationDate, loanValueGbp, loanValuePglGbp, 
   `).run(userId, graduationDate || null, loanValueGbp ?? null, loanValuePglGbp ?? null, defaultCountry || null, defaultPlan || null, includePg ? 1 : 0, defaultSalary ?? null, Date.now());
 }
 
-module.exports = { saveThresholds, loadThresholds, loadCountryList, db, ensureProfileColumns, createUser, getUserByEmail, getUserById, getProfile, upsertProfile, deleteUser };
+module.exports = {
+  saveThresholds,
+  loadThresholds,
+  loadCountryList,
+  db,
+  ensureProfileColumns,
+  ensureUserColumns,
+  createUser,
+  getUserByEmail,
+  getUserById,
+  confirmUserEmail,
+  updateUserPassword,
+  createAuthToken,
+  consumeAuthToken,
+  getProfile,
+  upsertProfile,
+  deleteUser,
+};
