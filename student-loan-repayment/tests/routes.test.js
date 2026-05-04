@@ -21,6 +21,7 @@ const { createUser, upsertProfile } = require('../utils/db');
 const db = require('../utils/db');
 const logger = require('../utils/logger');
 const { DEFAULT_YEAR, SUPPORTED_YEARS } = require('../config/constants');
+const { SEO_PAGES } = require('../config/seoPages');
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,13 @@ describe('routes', () => {
       expect(res.text).toContain('Plan 2 Overseas Student Loan Repayment');
       expect(res.text).toContain('<link rel="canonical" href="https://sfe.aedanl.com/plan-2-overseas-repayment">');
       expect(res.text).toContain('BreadcrumbList');
+    });
+
+    test('all configured SEO pages are routed', async () => {
+      const responses = await Promise.all(
+        SEO_PAGES.map((page) => request(app).get(`/${page.slug}`))
+      );
+      responses.forEach((res) => expect(res.status).toBe(200));
     });
 
     test('GET country SEO landing page renders threshold examples', async () => {

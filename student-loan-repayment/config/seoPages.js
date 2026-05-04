@@ -205,9 +205,33 @@ const COUNTRY_PAGES = [
 ];
 
 const SEO_PAGES = [...PLAN_PAGES, ...COUNTRY_PAGES];
+const STATIC_INDEXABLE_PAGES = [
+  { path: '/', changefreq: 'monthly', priority: '1.0' },
+  { path: '/methodology', changefreq: 'monthly', priority: '0.8' },
+  { path: '/about', changefreq: 'yearly', priority: '0.6' },
+];
 
 function getSeoPage(slug) {
   return SEO_PAGES.find((page) => page.slug === slug) || null;
+}
+
+function getSeoPagePaths() {
+  return SEO_PAGES.map((page) => `/${page.slug}`);
+}
+
+function getSitemapEntries(lastmod) {
+  const seoEntries = SEO_PAGES.map((page) => ({
+    path: `/${page.slug}`,
+    changefreq: 'monthly',
+    priority: page.kind === 'country' ? '0.9' : '0.8',
+  }));
+
+  return [...STATIC_INDEXABLE_PAGES, ...seoEntries].map((entry) => ({
+    loc: entry.path === '/' ? `${SITE_URL}/` : `${SITE_URL}${entry.path}`,
+    lastmod,
+    changefreq: entry.changefreq,
+    priority: entry.priority,
+  }));
 }
 
 module.exports = {
@@ -215,5 +239,8 @@ module.exports = {
   PLAN_PAGES,
   COUNTRY_PAGES,
   SEO_PAGES,
+  STATIC_INDEXABLE_PAGES,
   getSeoPage,
+  getSeoPagePaths,
+  getSitemapEntries,
 };

@@ -11,7 +11,16 @@ const {
   CACHE_DURATION,
   COOKIE_MAX_AGE,
 } = require('../config/constants');
-const { SITE_URL, PLAN_PAGES, COUNTRY_PAGES, SEO_PAGES, getSeoPage } = require('../config/seoPages');
+const {
+  SITE_URL,
+  PLAN_PAGES,
+  COUNTRY_PAGES,
+  SEO_PAGES,
+  STATIC_INDEXABLE_PAGES,
+  getSeoPage,
+  getSeoPagePaths,
+  getSitemapEntries,
+} = require('../config/seoPages');
 
 describe('constants — exported values', () => {
   test('REPAYMENT_RATE is 9%', () => expect(REPAYMENT_RATE).toBe(0.09));
@@ -75,11 +84,33 @@ describe('SEO page configuration', () => {
     expect(PLAN_PAGES.length).toBe(5);
     expect(COUNTRY_PAGES.length).toBe(17);
     expect(SEO_PAGES).toHaveLength(PLAN_PAGES.length + COUNTRY_PAGES.length);
+    expect(STATIC_INDEXABLE_PAGES.map((page) => page.path)).toEqual(['/', '/methodology', '/about']);
   });
 
   test('finds configured pages by slug and returns null for misses', () => {
     expect(getSeoPage('plan-2-overseas-repayment').plan).toBe('Plan 2');
     expect(getSeoPage('student-loan-overseas-repayment-germany').country).toBe('Germany');
     expect(getSeoPage('missing-page')).toBeNull();
+  });
+
+  test('derives route paths and sitemap entries from configured SEO pages', () => {
+    expect(getSeoPagePaths()).toContain('/plan-2-overseas-repayment');
+    expect(getSeoPagePaths()).toContain('/student-loan-overseas-repayment-germany');
+    expect(getSeoPagePaths()).toHaveLength(SEO_PAGES.length);
+
+    const entries = getSitemapEntries('2026-05-04');
+    expect(entries).toHaveLength(STATIC_INDEXABLE_PAGES.length + SEO_PAGES.length);
+    expect(entries).toContainEqual({
+      loc: 'https://sfe.aedanl.com/',
+      lastmod: '2026-05-04',
+      changefreq: 'monthly',
+      priority: '1.0',
+    });
+    expect(entries).toContainEqual({
+      loc: 'https://sfe.aedanl.com/student-loan-overseas-repayment-germany',
+      lastmod: '2026-05-04',
+      changefreq: 'monthly',
+      priority: '0.9',
+    });
   });
 });

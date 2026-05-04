@@ -9,7 +9,7 @@ const { getThresholdData } = require('../utils/fetchCountryData');
 const { getProfile } = require('../utils/db');
 const db = require('../utils/db');
 const currencySymbol = require('../utils/currencySymbol');
-const { SITE_URL, getSeoPage } = require('../config/seoPages');
+const { SITE_URL, getSeoPage, getSeoPagePaths } = require('../config/seoPages');
 
 const router = express.Router();
 
@@ -46,22 +46,52 @@ const SEO_THRESHOLD_PLANS = [
 ];
 
 async function buildCountryThresholdExamples(country, year) {
-  const rows = [];
-  for (const plan of SEO_THRESHOLD_PLANS) {
+  const rows = await Promise.all(SEO_THRESHOLD_PLANS.map(async (plan) => {
     try {
       const data = await getThresholdData(plan.key, year);
       const countryData = data[country];
-      if (!countryData || !countryData[plan.field]) continue;
-      rows.push({
+      if (!countryData || !countryData[plan.field]) return null;
+      return {
         plan: plan.label,
         threshold: countryData[plan.field].replace(/[£,]/g, ''),
         exchangeRate: countryData['Exchange rate'] || 'n/a',
-      });
+      };
     } catch (err) {
       logger.warn(`SEO threshold example failed: ${plan.key} ${country} ${year} — ${err.message}`);
+      return null;
     }
-  }
-  return rows;
+  }));
+  return rows.filter(Boolean);
+}
+
+function buildSeoPageSchema(page) {
+  const pageUrl = `${SITE_URL}/${page.slug}`;
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Calculator', item: `${SITE_URL}/` },
+          { '@type': 'ListItem', position: 2, name: page.title, item: pageUrl },
+        ],
+      },
+      {
+        '@type': 'Article',
+        headline: page.title,
+        description: page.description,
+        mainEntityOfPage: pageUrl,
+        publisher: {
+          '@type': 'Person',
+          name: 'Aedan L',
+        },
+      },
+    ],
+  };
+}
+
+function serializeJsonForHtml(value) {
+  return JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
 }
 
 router.get('/privacy', (req, res) => {
@@ -76,30 +106,7 @@ router.get('/methodology', (req, res) => {
   res.render('methodology', { siteUrl: SITE_URL });
 });
 
-router.get([
-  '/plan-1-overseas-repayment',
-  '/plan-2-overseas-repayment',
-  '/plan-4-overseas-repayment',
-  '/plan-5-overseas-repayment',
-  '/postgraduate-loan-overseas-repayment',
-  '/student-loan-overseas-repayment-germany',
-  '/student-loan-overseas-repayment-australia',
-  '/student-loan-overseas-repayment-canada',
-  '/student-loan-overseas-repayment-usa',
-  '/student-loan-overseas-repayment-new-zealand',
-  '/student-loan-overseas-repayment-uae',
-  '/student-loan-overseas-repayment-france',
-  '/student-loan-overseas-repayment-netherlands',
-  '/student-loan-overseas-repayment-ireland',
-  '/student-loan-overseas-repayment-spain',
-  '/student-loan-overseas-repayment-sweden',
-  '/student-loan-overseas-repayment-switzerland',
-  '/student-loan-overseas-repayment-singapore',
-  '/student-loan-overseas-repayment-japan',
-  '/student-loan-overseas-repayment-south-africa',
-  '/student-loan-overseas-repayment-hong-kong',
-  '/student-loan-overseas-repayment-norway',
-], async (req, res) => {
+router.get(getSeoPagePaths(), async (req, res) => {
   const slug = req.path.slice(1);
   const page = getSeoPage(slug);
   const taxYear = getCurrentTaxYear();
@@ -112,6 +119,7 @@ router.get([
     siteUrl: SITE_URL,
     taxYear,
     thresholds,
+    schemaJson: serializeJsonForHtml(buildSeoPageSchema(page)),
   });
 });
 

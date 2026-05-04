@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "generate:sitemap": "node scripts/generateSitemap.js",
     "test": "jest --coverage --runInBand"
   },
   "jest": {

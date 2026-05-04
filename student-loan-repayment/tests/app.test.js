@@ -29,6 +29,12 @@ describe('Express App', () => {
     expect(response.status).toBe(200);
   });
 
+  it('should serve ads.txt from the app host', async () => {
+    const response = await request(app).get('/ads.txt');
+    expect(response.status).toBe(200);
+    expect(response.text.trim()).toBe('google.com, pub-4989908161831974, DIRECT, f08c47fec0942fa0');
+  });
+
   // Test to check if cookies are being set, with CSRF token support
   it('should set selectedPlan and selectedCountry cookies on POST /calculate with valid CSRF token', async () => {
     // Step 1: Perform a GET request to retrieve the CSRF token
