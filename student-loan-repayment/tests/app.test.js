@@ -164,11 +164,12 @@ describe('Express App', () => {
   // Spy on getThresholdData so one call throws, then invoke prefetchAllData
   // directly — no second server is started so there is no port conflict.
   describe('prefetchAllData error handling', () => {
-    it('logs when getThresholdData resolves', async () => {
+    it('prefetches every supported year including postgraduate loan data', async () => {
       getThresholdData.mockResolvedValue(THRESHOLD_DATA);
 
       await prefetchAllData();
 
+      expect(getThresholdData).toHaveBeenCalledWith('planPg', expect.any(String));
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining('Prefetch complete')
       );

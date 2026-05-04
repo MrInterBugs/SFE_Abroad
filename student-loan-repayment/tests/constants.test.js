@@ -10,6 +10,7 @@ const {
   MONTHS_PER_YEAR,
   CACHE_DURATION,
   COOKIE_MAX_AGE,
+  CACHE_PLANS,
 } = require('../config/constants');
 const {
   SITE_URL,
@@ -33,6 +34,10 @@ describe('constants — exported values', () => {
 
   test('ALLOWED_PLANS contains all four plans', () => {
     expect(ALLOWED_PLANS).toEqual(['plan1', 'plan2', 'plan4', 'plan5']);
+  });
+
+  test('CACHE_PLANS includes undergraduate and postgraduate cache sources', () => {
+    expect(CACHE_PLANS).toEqual(['plan1', 'plan2', 'plan4', 'plan5', 'planPg']);
   });
 
   test('SUPPORTED_YEARS is non-empty', () => {

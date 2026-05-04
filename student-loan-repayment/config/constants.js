@@ -27,6 +27,7 @@ const PGL_REPAYMENT_RATE = 0.06; // 6% above threshold (postgraduate loan)
 const MONTHS_PER_YEAR = 12;
 
 const ALLOWED_PLANS = ['plan1', 'plan2', 'plan4', 'plan5'];
+const CACHE_PLANS = [...ALLOWED_PLANS, 'planPg'];
 const SUPPORTED_YEARS = Object.keys(urlsByYear);
 
 // Latest supported year — used as the fallback for the "archived year" DB logic.
@@ -55,8 +56,8 @@ module.exports = {
   PGL_REPAYMENT_RATE,
   MONTHS_PER_YEAR,
   ALLOWED_PLANS,
+  CACHE_PLANS,
   DEFAULT_YEAR,
   SUPPORTED_YEARS,
   getCurrentTaxYear,
 };
-  

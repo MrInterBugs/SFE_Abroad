@@ -10,7 +10,7 @@ const logger = require('./utils/logger');
 const { csrfProtection } = require('./utils/csrf');
 const { SqliteSessionStore } = require('./utils/auth');
 const { db } = require('./utils/db');
-const { SUPPORTED_YEARS, ALLOWED_PLANS } = require('./config/constants');
+const { SUPPORTED_YEARS, CACHE_PLANS } = require('./config/constants');
 
 const port = 3000;
 
@@ -161,7 +161,7 @@ function createApp() {
 async function prefetchAllData() {
   const { getThresholdData } = require('./utils/fetchCountryData');
   for (const year of SUPPORTED_YEARS) {
-    for (const plan of ALLOWED_PLANS) {
+    for (const plan of CACHE_PLANS) {
       try {
         await getThresholdData(plan, year);
         logger.info(`Prefetch complete: ${plan} ${year}`);
