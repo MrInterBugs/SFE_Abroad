@@ -1,9 +1,31 @@
+jest.mock('../utils/fetchCountryData');
+jest.mock('../utils/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+}));
+
 const request = require('supertest');
-const { app, server, prefetchAllData } = require('../app');
+const { createApp, startServer, prefetchAllData, isStaticRequest } = require('../app');
+const { getThresholdData } = require('../utils/fetchCountryData');
+const logger = require('../utils/logger');
+
+const THRESHOLD_DATA = {
+  Germany: {
+    'Exchange rate': '1.15',
+    Currency: 'Euro',
+    'Earnings threshold (GBP)': '£22,000',
+    'Lower earnings threshold (GBP)': '£18,000',
+  },
+};
 
 describe('Express App', () => {
-  afterAll((done) => {
-    server.close(done);
+  let app;
+
+  beforeEach(() => {
+    getThresholdData.mockResolvedValue(THRESHOLD_DATA);
+    jest.clearAllMocks();
+    app = createApp();
   });
 
   it('throws during startup when SESSION_SECRET is missing', () => {
@@ -11,7 +33,8 @@ describe('Express App', () => {
     delete process.env.SESSION_SECRET;
 
     jest.isolateModules(() => {
-      expect(() => require('../app')).toThrow('SESSION_SECRET environment variable must be set');
+      const { createApp: createIsolatedApp } = require('../app');
+      expect(() => createIsolatedApp()).toThrow('SESSION_SECRET environment variable must be set');
     });
 
     process.env.SESSION_SECRET = originalSecret;
@@ -33,6 +56,30 @@ describe('Express App', () => {
     const response = await request(app).get('/ads.txt');
     expect(response.status).toBe(200);
     expect(response.text.trim()).toBe('google.com, pub-4989908161831974, DIRECT, f08c47fec0942fa0');
+  });
+
+  it('identifies static request paths', () => {
+    expect(isStaticRequest({ method: 'GET', path: '/styles.css' })).toBe(true);
+    expect(isStaticRequest({ method: 'HEAD', path: '/fonts/fonts.css' })).toBe(true);
+    expect(isStaticRequest({ method: 'GET', path: '/vendor/chart.js/chart.umd.min.js' })).toBe(true);
+    expect(isStaticRequest({ method: 'POST', path: '/styles.css' })).toBe(false);
+    expect(isStaticRequest({ method: 'GET', path: '/' })).toBe(false);
+  });
+
+  it('should not rate limit static asset paths', async () => {
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, () => request(app).get('/styles.css'))
+    );
+
+    expect(responses.every((r) => r.status === 200)).toBe(true);
+  });
+
+  it('should not rate limit static-looking paths that fall through static serving', async () => {
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, () => request(app).get('/missing.css'))
+    );
+
+    expect(responses.every((r) => r.status === 404)).toBe(true);
   });
 
   // Test to check if cookies are being set, with CSRF token support
@@ -96,12 +143,18 @@ describe('Express App', () => {
   // Spy on getThresholdData so one call throws, then invoke prefetchAllData
   // directly — no second server is started so there is no port conflict.
   describe('prefetchAllData error handling', () => {
-    it('logs a warning when getThresholdData rejects', async () => {
-      const fetchModule = require('../utils/fetchCountryData');
-      const logger = require('../utils/logger');
+    it('logs when getThresholdData resolves', async () => {
+      getThresholdData.mockResolvedValue(THRESHOLD_DATA);
 
-      jest.spyOn(fetchModule, 'getThresholdData').mockRejectedValue(new Error('mock failure'));
-      jest.spyOn(logger, 'warn');
+      await prefetchAllData();
+
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Prefetch complete')
+      );
+    });
+
+    it('logs a warning when getThresholdData rejects', async () => {
+      getThresholdData.mockRejectedValue(new Error('mock failure'));
 
       await prefetchAllData();
 
@@ -109,7 +162,25 @@ describe('Express App', () => {
         expect.stringContaining('Prefetch failed')
       );
 
-      jest.restoreAllMocks();
+    });
+  });
+
+  describe('startServer', () => {
+    it('starts the HTTP server and triggers prefetch', async () => {
+      getThresholdData.mockResolvedValue(THRESHOLD_DATA);
+      const { server } = startServer();
+
+      await new Promise((resolve) => server.once('listening', resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Server running at http://localhost:3000')
+      );
+      expect(getThresholdData).toHaveBeenCalled();
+
+      await new Promise((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
     });
   });
 });

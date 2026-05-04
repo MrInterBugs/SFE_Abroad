@@ -53,7 +53,7 @@ async function buildCountryThresholdExamples(country, year) {
       if (!countryData || !countryData[plan.field]) return null;
       return {
         plan: plan.label,
-        threshold: countryData[plan.field].replace(/[£,]/g, ''),
+        threshold: countryData[plan.field],
         exchangeRate: countryData['Exchange rate'] || 'n/a',
       };
     } catch (err) {

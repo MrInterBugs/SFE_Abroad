@@ -49,12 +49,12 @@
             <%= user.email_confirmed_at ? 'Email confirmed' : 'Email not confirmed' %>
           </div>
         </div>
-        <button data-href="/" class="profile-hero-back">
+        <a href="/" class="profile-hero-back">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M9 11L5 7l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Calculator
-        </button>
+        </a>
       </div>
 
       <% if (error) { %>
@@ -171,7 +171,7 @@
           <div class="profile-action-title">Download your data</div>
           <p class="profile-action-body">Receive your account and saved calculator profile in a machine-readable JSON file.</p>
         </div>
-        <button data-href="/profile/export" class="btn-secondary">Download JSON</button>
+        <a href="/profile/export" class="btn-secondary">Download JSON</a>
       </div>
 
       <!-- Danger zone card -->
@@ -220,6 +220,5 @@
   const pglRow = document.getElementById('profile-pgl-row');
   if (pglCheck) pglCheck.addEventListener('change', () => pglRow.classList.toggle('checked', pglCheck.checked));
 </script>
-<script src="/nav.js"></script>
 </body>
 </html>

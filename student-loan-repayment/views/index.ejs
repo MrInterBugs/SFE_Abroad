@@ -109,13 +109,13 @@
       </div>
       <nav class="header-nav">
         <% if (locals.userId) { %>
-          <button data-href="/profile" class="header-nav-user">
+          <a href="/profile" class="header-nav-user">
             <span class="header-nav-avatar-sm"><%= (locals.userEmail || '?').charAt(0).toUpperCase() %></span>
             My profile
-          </button>
+          </a>
         <% } else { %>
-          <button data-href="/login" class="header-nav-link">Sign in</button>
-          <button data-href="/register" class="header-nav-pill">Register</button>
+          <a href="/login" class="header-nav-link">Sign in</a>
+          <a href="/register" class="header-nav-pill">Register</a>
         <% } %>
       </nav>
     </div>
@@ -449,7 +449,6 @@
 
 </div>
 
-<script src="/nav.js"></script>
 <script src="/main.js"></script>
 </body>
 </html>

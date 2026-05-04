@@ -187,7 +187,7 @@ describe('routes', () => {
       expect(res.status).toBe(200);
       expect(res.text).toContain('UK Student Loan Repayment While Living in Germany');
       expect(res.text).toContain('<td>Plan 1</td>');
-      expect(res.text).toContain('<td>£22000</td>');
+      expect(res.text).toContain('<td>£22,000</td>');
     });
 
     test('GET country SEO landing page still renders when threshold data is missing', async () => {
