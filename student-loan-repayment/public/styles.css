@@ -144,6 +144,8 @@ html, body {
   background: var(--white);
   transition: border-color 0.15s, background 0.15s;
   white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
 }
 .header-nav-user:hover { border-color: var(--blue-mid); background: var(--blue-light); }
 .header-nav-avatar-sm {
@@ -253,6 +255,7 @@ html, body {
   font-size: 13px; color: var(--text-muted); text-decoration: none;
   white-space: nowrap; flex-shrink: 0;
   transition: color 0.15s;
+  cursor: pointer; background: none; border: none; font-family: inherit; padding: 0;
 }
 .profile-hero-back:hover { color: var(--blue); }
 
@@ -316,6 +319,8 @@ html, body {
   text-decoration: none;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  font-family: inherit;
 }
 .btn-secondary:hover {
   background: var(--blue);
@@ -328,6 +333,10 @@ html, body {
   box-shadow: var(--card-shadow);
   border: 1px solid #fecaca;
   padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 .danger-card-title {
   font-family: 'Space Grotesk', sans-serif;

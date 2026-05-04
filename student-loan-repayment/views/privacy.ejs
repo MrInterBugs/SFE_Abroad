@@ -27,13 +27,13 @@
       </div>
       <nav class="header-nav">
         <% if (locals.userId) { %>
-          <a href="/profile" class="header-nav-user">
+          <button data-href="/profile" class="header-nav-user">
             <span class="header-nav-avatar-sm"><%= (locals.userEmail || '?').charAt(0).toUpperCase() %></span>
             My profile
-          </a>
+          </button>
         <% } else { %>
-          <a href="/login" class="header-nav-link">Sign in</a>
-          <a href="/register" class="header-nav-pill">Register</a>
+          <button data-href="/login" class="header-nav-link">Sign in</button>
+          <button data-href="/register" class="header-nav-pill">Register</button>
         <% } %>
       </nav>
     </div>
@@ -164,5 +164,6 @@
   </footer>
 
 </div>
+<script src="/nav.js"></script>
 </body>
 </html>

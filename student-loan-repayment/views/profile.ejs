@@ -49,12 +49,12 @@
             <%= user.email_confirmed_at ? 'Email confirmed' : 'Email not confirmed' %>
           </div>
         </div>
-        <a href="/" class="profile-hero-back">
+        <button data-href="/" class="profile-hero-back">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M9 11L5 7l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Calculator
-        </a>
+        </button>
       </div>
 
       <% if (error) { %>
@@ -171,20 +171,22 @@
           <div class="profile-action-title">Download your data</div>
           <p class="profile-action-body">Receive your account and saved calculator profile in a machine-readable JSON file.</p>
         </div>
-        <a href="/profile/export" class="btn-secondary">Download JSON</a>
+        <button data-href="/profile/export" class="btn-secondary">Download JSON</button>
       </div>
 
       <!-- Danger zone card -->
       <div class="danger-card">
-        <div class="danger-card-title">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <path d="M7 1.5L12.5 11.5H1.5L7 1.5Z" stroke="#b91c1c" stroke-width="1.4" stroke-linejoin="round"/>
-            <path d="M7 5.5V8.5" stroke="#b91c1c" stroke-width="1.4" stroke-linecap="round"/>
-            <circle cx="7" cy="10.2" r="0.65" fill="#b91c1c"/>
-          </svg>
-          Danger zone
+        <div>
+          <div class="danger-card-title">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 1.5L12.5 11.5H1.5L7 1.5Z" stroke="#b91c1c" stroke-width="1.4" stroke-linejoin="round"/>
+              <path d="M7 5.5V8.5" stroke="#b91c1c" stroke-width="1.4" stroke-linecap="round"/>
+              <circle cx="7" cy="10.2" r="0.65" fill="#b91c1c"/>
+            </svg>
+            Danger zone
+          </div>
+          <p class="danger-card-body">Permanently deletes your account and all saved data. This cannot be undone.</p>
         </div>
-        <p class="danger-card-body">Permanently deletes your account and all saved data. This cannot be undone.</p>
         <form method="POST" action="/profile/delete">
           <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
           <button type="submit" class="btn-delete"
@@ -218,5 +220,6 @@
   const pglRow = document.getElementById('profile-pgl-row');
   if (pglCheck) pglCheck.addEventListener('change', () => pglRow.classList.toggle('checked', pglCheck.checked));
 </script>
+<script src="/nav.js"></script>
 </body>
 </html>
