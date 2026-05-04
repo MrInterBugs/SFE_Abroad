@@ -18,6 +18,8 @@ const path = require('path');
 const { csrfProtection } = require('../utils/csrf');
 const { fetchCountryData, getThresholdData } = require('../utils/fetchCountryData');
 const { createUser, upsertProfile } = require('../utils/db');
+const db = require('../utils/db');
+const logger = require('../utils/logger');
 const { DEFAULT_YEAR, SUPPORTED_YEARS } = require('../config/constants');
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -814,6 +816,24 @@ describe('routes', () => {
       });
       expect(res.status).toBe(500);
       expect(res.body.error).toContain('Something went wrong');
+    });
+
+    test('still returns a result when logCalculation throws', async () => {
+      getThresholdData.mockResolvedValue(THRESHOLD_DATA);
+      const spy = jest.spyOn(db, 'logCalculation').mockImplementation(() => { throw new Error('db locked'); });
+
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.monthlyRepayment).toBeDefined();
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to log calculation'));
+
+      spy.mockRestore();
     });
   });
 });

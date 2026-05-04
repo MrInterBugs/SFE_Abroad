@@ -153,6 +153,43 @@ describe('profile routes', () => {
     expect(data.profile).toBeNull();
   });
 
+  test('GET /profile/export maps calculation rows into the export', async () => {
+    const calcRow = {
+      id: 7,
+      country: 'Germany',
+      plan: 'plan1',
+      tax_year: '2025-26',
+      salary_local: 50000,
+      salary_gbp: 43478,
+      exchange_rate: 1.15,
+      threshold_gbp: 22000,
+      monthly_repayment: 160.59,
+      include_pg: 0,
+      pgl_monthly_repayment: null,
+      pgl_threshold_gbp: null,
+      calculated_at: Date.UTC(2026, 0, 10),
+    };
+    db.getCalculationsForUser.mockReturnValue([calcRow]);
+
+    const agent = await loggedInAgent(app);
+    const res = await agent.get('/profile/export');
+    const data = JSON.parse(res.text);
+
+    expect(res.status).toBe(200);
+    expect(data.calculations).toHaveLength(1);
+    expect(data.calculations[0]).toMatchObject({
+      id: 7,
+      country: 'Germany',
+      plan: 'plan1',
+      tax_year: '2025-26',
+      salary_local: 50000,
+      monthly_repayment: 160.59,
+      include_pg: false,
+      pgl_monthly_repayment: null,
+      calculated_at: '2026-01-10T00:00:00.000Z',
+    });
+  });
+
   test('GET /profile/export preserves null confirmation and profile dates', async () => {
     db.getUserById.mockReturnValue({
       id: 42,

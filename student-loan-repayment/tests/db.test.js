@@ -17,6 +17,8 @@ const {
   cleanupAuthTokens,
   revokeOutstandingAuthTokens,
   hasRecentAuthToken,
+  logCalculation,
+  getCalculationsForUser,
   getProfile,
   upsertProfile,
   deleteUser,
@@ -251,6 +253,72 @@ describe('db', () => {
     });
     expect(emptySchemaExec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN loan_value_pgl_gbp REAL');
     expect(emptySchemaExec).toHaveBeenCalledWith('ALTER TABLE profiles ADD COLUMN default_country TEXT');
+  });
+
+  test('logCalculation stores a row and getCalculationsForUser retrieves it linked to a user', () => {
+    const email = `calc_${RUN_ID}@example.com`;
+    const userId = createUser(email, 'hash');
+
+    const fields = {
+      country: 'Germany',
+      plan: 'plan1',
+      taxYear: '2025-26',
+      salaryLocal: 50000,
+      salaryGbp: 43478,
+      exchangeRate: 1.15,
+      thresholdGbp: 22000,
+      monthlyRepayment: 160.59,
+      includePg: false,
+      pglMonthlyRepayment: null,
+      pglThresholdGbp: null,
+    };
+
+    logCalculation(userId, fields);
+    logCalculation(null, { ...fields, country: 'Australia' });
+
+    const rows = getCalculationsForUser(userId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      user_id: userId,
+      country: 'Germany',
+      plan: 'plan1',
+      tax_year: '2025-26',
+      salary_local: 50000,
+      monthly_repayment: 160.59,
+      include_pg: 0,
+      pgl_monthly_repayment: null,
+    });
+
+    deleteUser(userId);
+    expect(getCalculationsForUser(userId)).toHaveLength(0);
+  });
+
+  test('logCalculation stores PGL fields and orders results newest-first', () => {
+    const email = `calc_pg_${RUN_ID}@example.com`;
+    const userId = createUser(email, 'hash');
+
+    logCalculation(userId, {
+      country: 'Germany', plan: 'plan1', taxYear: '2025-26',
+      salaryLocal: 40000, salaryGbp: 34782, exchangeRate: 1.15,
+      thresholdGbp: 22000, monthlyRepayment: 97.06,
+      includePg: true, pglMonthlyRepayment: 72.5, pglThresholdGbp: 21000,
+    });
+    logCalculation(userId, {
+      country: 'France', plan: 'plan2', taxYear: '2025-26',
+      salaryLocal: 60000, salaryGbp: 52174, exchangeRate: 1.15,
+      thresholdGbp: 22000, monthlyRepayment: 272.35,
+      includePg: false, pglMonthlyRepayment: null, pglThresholdGbp: null,
+    });
+
+    const rows = getCalculationsForUser(userId);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].country).toBe('France');
+    expect(rows[1].country).toBe('Germany');
+    expect(rows[0].include_pg).toBe(0);
+    expect(rows[1].include_pg).toBe(1);
+    expect(rows[1].pgl_monthly_repayment).toBe(72.5);
+
+    deleteUser(userId);
   });
 
   test('ensureUserColumns adds confirmation column and backfills existing users', () => {
