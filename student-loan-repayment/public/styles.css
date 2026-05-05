@@ -1036,7 +1036,7 @@ html, body {
 .graph-control-row--slider {
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: 5px;
 }
 .graph-label {
   font-size: 13px;
@@ -1082,7 +1082,8 @@ html, body {
   width: 100%;
   accent-color: var(--blue);
   cursor: pointer;
-  height: 4px;
+  height: 24px;
+  margin: 0;
 }
 .plan2-rate-note {
   font-size: 12px;
