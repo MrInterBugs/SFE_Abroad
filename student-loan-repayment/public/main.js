@@ -245,6 +245,8 @@
   let lastResult = null;
   let lastWriteoffText = null;
   let chartJsPromise = null;
+  const DEFAULT_RPI_RATE = 3.2;
+  const DEFAULT_PAY_RISE = 2;
 
   function loadChartJs() {
     if (window.Chart) return Promise.resolve();
@@ -340,6 +342,7 @@
     const writeoffEl = document.getElementById('writeoff-notice');
 
     if (ugBalance <= 0 && (!hasPGL || pglBalance <= 0)) {
+      clearRepaymentChart();
       if (writeoffEl && wo) writeoffEl.style.display = 'flex';
       return;
     }
@@ -478,21 +481,54 @@
     });
   }
 
+  function clearRepaymentChart() {
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+    const elInterest = document.getElementById('stat-interest');
+    const elPaid = document.getElementById('stat-paid');
+    if (elInterest) elInterest.textContent = '—';
+    if (elPaid) elPaid.textContent = '—';
+  }
+
+  function updateGraphSliderDisplays() {
+    const rateSlider = document.getElementById('rate-slider');
+    const rateDisplay = document.getElementById('rate-display');
+    if (rateSlider && rateDisplay) {
+      rateDisplay.textContent = parseFloat(rateSlider.value || DEFAULT_RPI_RATE).toFixed(1) + '%';
+    }
+
+    const payRiseSlider = document.getElementById('payrise-slider');
+    const payRiseDisplay = document.getElementById('payrise-display');
+    if (payRiseSlider && payRiseDisplay) {
+      payRiseDisplay.textContent = parseFloat(payRiseSlider.value || DEFAULT_PAY_RISE).toFixed(1) + '%';
+    }
+  }
+
+  function resetGraphAssumptions() {
+    const rateSlider = document.getElementById('rate-slider');
+    if (rateSlider) rateSlider.value = String(DEFAULT_RPI_RATE);
+
+    const payRiseSlider = document.getElementById('payrise-slider');
+    if (payRiseSlider) payRiseSlider.value = String(DEFAULT_PAY_RISE);
+
+    updateGraphSliderDisplays();
+  }
+
   // Wire up graph controls once
   (function setupGraphControls() {
     const rateSlider = document.getElementById('rate-slider');
-    const rateDisplay = document.getElementById('rate-display');
     if (rateSlider) {
       rateSlider.addEventListener('input', () => {
-        rateDisplay.textContent = parseFloat(rateSlider.value).toFixed(1) + '%';
+        updateGraphSliderDisplays();
         renderRepaymentGraph();
       });
     }
     const payRiseSlider = document.getElementById('payrise-slider');
-    const payRiseDisplay = document.getElementById('payrise-display');
     if (payRiseSlider) {
       payRiseSlider.addEventListener('input', () => {
-        payRiseDisplay.textContent = parseFloat(payRiseSlider.value).toFixed(1) + '%';
+        updateGraphSliderDisplays();
         renderRepaymentGraph();
       });
     }
@@ -790,6 +826,7 @@
     resultsCard.classList.add('animate-in');
 
     // Graph
+    resetGraphAssumptions();
     lastResult = r;
 
     // Show/hide PGL balance row based on whether PGL is active

@@ -493,4 +493,54 @@ describe('public/main.js frontend behavior', () => {
     expect(document.getElementById('results-card').classList.contains('visible')).toBe(true);
     expect(global.Chart).toHaveBeenCalledTimes(1);
   });
+
+  test('resets graph assumption sliders and redraws projection on each calculation', async () => {
+    const document = createFakeDocument();
+    document.getElementById('csrf-input').value = 'token-123';
+    const result = {
+      monthlyRepayment: '240.00',
+      pglMonthlyRepayment: '90.00',
+      pglThresholdGbp: '21000.00',
+      thresholdGbp: '18000.00',
+      localPerGbp: '0.8696',
+      salaryGbp: '57500.00',
+      selectedPlan: 'plan2',
+      selectedYear: '2026-27',
+      salaryCurrencySymbol: '€',
+      loanValueGbp: 12000,
+      loanValuePglGbp: 3000,
+    };
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, headers: { get: () => 'application/json' }, json: async () => result })
+      .mockResolvedValueOnce({ ok: true, headers: { get: () => 'application/json' }, json: async () => result });
+    loadMain();
+
+    const countryInput = document.getElementById('country-input');
+    countryInput.value = 'Germany';
+    countryInput.dispatch('input');
+    document.getElementById('ac-list').children[0].dispatch('mousedown');
+    document.getElementById('salary-input').value = '50000';
+
+    document.getElementById('calc-form').dispatch('submit');
+    await flushPromises();
+
+    document.getElementById('rate-slider').value = '10';
+    document.getElementById('rate-slider').dispatch('input');
+    document.getElementById('payrise-slider').value = '5';
+    document.getElementById('payrise-slider').dispatch('input');
+
+    expect(document.getElementById('rate-display').textContent).toBe('10.0%');
+    expect(document.getElementById('payrise-display').textContent).toBe('5.0%');
+    expect(document.getElementById('plan2-rate-note').textContent).toContain('13.0%');
+
+    document.getElementById('calc-form').dispatch('submit');
+    await flushPromises();
+
+    expect(document.getElementById('rate-slider').value).toBe('3.2');
+    expect(document.getElementById('rate-display').textContent).toBe('3.2%');
+    expect(document.getElementById('payrise-slider').value).toBe('2');
+    expect(document.getElementById('payrise-display').textContent).toBe('2.0%');
+    expect(document.getElementById('plan2-rate-note').textContent).toContain('6.2%');
+    expect(global.Chart).toHaveBeenCalledTimes(4);
+  });
 });
