@@ -86,7 +86,7 @@
 <body>
 
 <!-- Server data for autocomplete -->
-<script type="application/json" id="app-data" nonce="<%= locals.cspNonce || '' %>"><%- JSON.stringify({ countries: countries, graduationDate: graduationDate, loanValueGbp: locals.loanValueGbp || null, loanValuePglGbp: locals.loanValuePglGbp || null }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %></script>
+<script type="application/json" id="app-data" nonce="<%= locals.cspNonce || '' %>"><%- JSON.stringify({ countries: countries, graduationDate: graduationDate, loanValueGbp: locals.loanValueGbp || null, loanValuePglGbp: locals.loanValuePglGbp || null, availablePlansByYear: locals.availablePlansByYear || {} }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %></script>
 
 <div class="page">
 
@@ -153,51 +153,33 @@
             <span class="field-label">Repayment Plan</span>
             <div class="plan-grid" role="radiogroup" aria-label="Repayment plan">
 
-              <div class="plan-card">
-                <input type="radio" name="selectedPlan" id="plan1" value="plan1" <%= selectedPlan === 'plan1' ? 'checked' : '' %>>
-                <label for="plan1">
-                  <span class="plan-name">Plan 1</span>
-                  <span class="plan-era">Pre-2012 England &amp; Wales, all NI</span>
-                  <span class="plan-rate">9% above threshold</span>
-                </label>
-              </div>
-
-              <div class="plan-card">
-                <input type="radio" name="selectedPlan" id="plan2" value="plan2" <%= selectedPlan === 'plan2' ? 'checked' : '' %>>
-                <label for="plan2">
-                  <span class="plan-name">Plan 2</span>
-                  <span class="plan-era">2012–2023 England &amp; Wales</span>
-                  <span class="plan-rate">9% above threshold</span>
-                </label>
-              </div>
-
-              <div class="plan-card">
-                <input type="radio" name="selectedPlan" id="plan4" value="plan4" <%= selectedPlan === 'plan4' ? 'checked' : '' %>>
-                <label for="plan4">
-                  <span class="plan-name">Plan 4</span>
-                  <span class="plan-era">Scotland (SAAS)</span>
-                  <span class="plan-rate">9% above threshold</span>
-                </label>
-              </div>
-
-              <div class="plan-card">
-                <input type="radio" name="selectedPlan" id="plan5" value="plan5" <%= selectedPlan === 'plan5' ? 'checked' : '' %>>
-                <label for="plan5">
-                  <span class="plan-name">Plan 5</span>
-                  <span class="plan-era">2023–present England &amp; Wales</span>
-                  <span class="plan-rate">9% above threshold</span>
-                </label>
-              </div>
+              <% const planCards = [
+                { key: 'plan1', name: 'Plan 1', era: 'Pre-2012 England & Wales, all NI' },
+                { key: 'plan2', name: 'Plan 2', era: '2012–2023 England & Wales' },
+                { key: 'plan4', name: 'Plan 4', era: 'Scotland (SAAS)' },
+                { key: 'plan5', name: 'Plan 5', era: '2023–present England & Wales' },
+              ]; %>
+              <% planCards.forEach(function(plan) { %>
+                <% const planAvailable = (locals.availablePlans || []).includes(plan.key); %>
+                <div class="plan-card" data-plan="<%= plan.key %>" <%= planAvailable ? '' : 'hidden' %>>
+                  <input type="radio" name="selectedPlan" id="<%= plan.key %>" value="<%= plan.key %>" <%= selectedPlan === plan.key ? 'checked' : '' %> <%= planAvailable ? '' : 'disabled' %>>
+                  <label for="<%= plan.key %>">
+                    <span class="plan-name"><%= plan.name %></span>
+                    <span class="plan-era"><%= plan.era %></span>
+                    <span class="plan-rate">9% above threshold</span>
+                  </label>
+                </div>
+              <% }); %>
 
             </div>
           </div>
 
-          <hr class="form-divider">
+          <hr class="form-divider" id="pgl-divider" <%= locals.pglAvailable ? '' : 'hidden' %>>
 
           <!-- PGL checkbox -->
           <div class="form-group">
-            <label class="checkbox-row <%= includePg ? 'checked' : '' %>" id="pgl-row" for="pgl-check">
-              <input type="checkbox" id="pgl-check" name="includePg" <%= includePg ? 'checked' : '' %>>
+            <label class="checkbox-row <%= includePg ? 'checked' : '' %>" id="pgl-row" for="pgl-check" <%= locals.pglAvailable ? '' : 'hidden' %>>
+              <input type="checkbox" id="pgl-check" name="includePg" <%= includePg ? 'checked' : '' %> <%= locals.pglAvailable ? '' : 'disabled' %>>
               <div>
                 <div class="cb-text">I also have a Postgraduate Loan (PGL)</div>
                 <div class="cb-sub">6% of income above the PGL threshold</div>

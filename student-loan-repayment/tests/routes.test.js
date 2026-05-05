@@ -278,7 +278,7 @@ describe('routes', () => {
       expect(res.status).toBe(200);
       expect(res.text).toMatch(/id="plan1" value="plan1" checked/);
       expect(res.text).toContain('name="targetCountry" placeholder="e.g. Germany, Australia, Canada…" autocomplete="off" value=""');
-      expect(res.text).toContain('id="pgl-check" name="includePg" >');
+      expect(res.text).toMatch(/id="pgl-check" name="includePg"\s*>/);
     });
 
     test('reads a valid selectedPlan cookie (plan2) after preference consent', async () => {
@@ -301,6 +301,26 @@ describe('routes', () => {
         .get('/')
         .set('Cookie', ['CookieConsent=preferences%3Atrue', `selectedYear=${SUPPORTED_YEARS[0]}`]);
       expect(res.status).toBe(200);
+    });
+
+    test('hides plans and PGL that are unavailable for the selected tax year', async () => {
+      const res = await request(app)
+        .get('/')
+        .set('Cookie', [
+          'CookieConsent=preferences%3Atrue',
+          'selectedYear=2024-25',
+          'selectedPlan=plan4',
+          'includePg=true',
+        ]);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toMatch(/id="plan1" value="plan1" checked/);
+      expect(res.text).toMatch(/data-plan="plan4" hidden/);
+      expect(res.text).toMatch(/id="plan4" value="plan4"[^>]*disabled/);
+      expect(res.text).toMatch(/data-plan="plan5" hidden/);
+      expect(res.text).toMatch(/id="pgl-divider"[^>]*hidden/);
+      expect(res.text).toMatch(/id="pgl-row"[^>]*hidden/);
+      expect(res.text).toMatch(/id="pgl-check" name="includePg"[^>]*disabled/);
     });
 
     test('ignores an invalid selectedYear cookie and falls back to current year', async () => {
@@ -365,7 +385,7 @@ describe('routes', () => {
       expect(res.status).toBe(200);
       expect(res.text).toMatch(/id="plan2" value="plan2" checked/);
       expect(res.text).toContain('name="targetCountry" placeholder="e.g. Germany, Australia, Canada…" autocomplete="off" value="Australia"');
-      expect(res.text).toContain('id="pgl-check" name="includePg" >');
+      expect(res.text).toMatch(/id="pgl-check" name="includePg"\s*>/);
     });
 
     test('still renders 200 (with empty country list) when getThresholdData throws', async () => {
@@ -467,6 +487,29 @@ describe('routes', () => {
       });
       expect(res.status).toBe(400);
       expect(res.text).toContain('Invalid repayment plan selected');
+    });
+
+    test('returns 400 when selectedPlan is unavailable for the selected year', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan4',
+        selectedYear: '2024-25',
+      });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Selected repayment plan is not available for this tax year');
+    });
+
+    test('returns 400 when PGL is unavailable for the selected year', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: '2024-25',
+        includePg: 'on',
+      });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Postgraduate Loan data is not available for this tax year');
     });
 
     test('returns 400 for a non-numeric salary', async () => {

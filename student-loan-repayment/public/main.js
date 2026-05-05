@@ -4,10 +4,21 @@
   const GRADUATION_DATE = appData.graduationDate || null;
   const PROFILE_LOAN_GBP = appData.loanValueGbp || null;
   const PROFILE_PGL_GBP = appData.loanValuePglGbp || null;
+  const AVAILABLE_PLANS_BY_YEAR = appData.availablePlansByYear || {};
 
   const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
   const PLAN2_LOWER = 29385;
   const PLAN2_UPPER = 52884;
+  const FALLBACK_AVAILABLE_PLANS = ['plan1', 'plan2', 'plan4', 'plan5', 'planPg'];
+
+  function queryAll(selector) {
+    return typeof document.querySelectorAll === 'function' ? document.querySelectorAll(selector) : [];
+  }
+
+  function availablePlansForYear(year) {
+    const configured = AVAILABLE_PLANS_BY_YEAR[year];
+    return Array.isArray(configured) ? configured : FALLBACK_AVAILABLE_PLANS;
+  }
 
   function calcPlan2Surcharge(salaryGbp) {
     if (salaryGbp <= PLAN2_LOWER) return 0;
@@ -79,11 +90,13 @@
   const currencyBadge = document.getElementById('currency-badge');
   const pglCheck = document.getElementById('pgl-check');
   const pglRow = document.getElementById('pgl-row');
+  const pglDivider = document.getElementById('pgl-divider');
   const form = document.getElementById('calc-form');
   const resultsCard = document.getElementById('results-card');
   const calcBtn = document.getElementById('calc-btn');
 
   initNecessaryCookieBanner();
+  syncPlanAvailability();
 
   // Pre-select country from server-populated value (saved cookie)
   const cookieCountry = countryInput.value.trim();
@@ -174,6 +187,46 @@
   pglCheck.addEventListener('change', () => {
     pglRow.classList.toggle('checked', pglCheck.checked);
   });
+
+  queryAll('input[name="selectedYear"]').forEach((input) => {
+    input.addEventListener('change', syncPlanAvailability);
+  });
+
+  function syncPlanAvailability() {
+    const selectedYearInput = document.querySelector('input[name="selectedYear"]:checked');
+    const selectedYear = selectedYearInput ? selectedYearInput.value : '';
+    const availablePlans = availablePlansForYear(selectedYear);
+    const availableSet = new Set(availablePlans);
+    let selectedVisiblePlan = document.querySelector('input[name="selectedPlan"]:checked');
+
+    queryAll('.plan-card[data-plan]').forEach((card) => {
+      const plan = card.dataset.plan;
+      const input = card.querySelector('input[name="selectedPlan"]');
+      const available = availableSet.has(plan);
+      card.hidden = !available;
+      if (input) {
+        input.disabled = !available;
+        if (!available && input.checked) input.checked = false;
+      }
+    });
+
+    selectedVisiblePlan = document.querySelector('input[name="selectedPlan"]:checked');
+    if (!selectedVisiblePlan || selectedVisiblePlan.disabled) {
+      const firstAvailablePlan = document.querySelector('.plan-card[data-plan]:not([hidden]) input[name="selectedPlan"]');
+      if (firstAvailablePlan) firstAvailablePlan.checked = true;
+    }
+
+    const pglAvailable = availableSet.has('planPg');
+    pglRow.hidden = !pglAvailable;
+    if (pglDivider) pglDivider.hidden = !pglAvailable;
+    pglCheck.disabled = !pglAvailable;
+    if (!pglAvailable) {
+      pglCheck.checked = false;
+      pglRow.classList.remove('checked');
+    } else {
+      pglRow.classList.toggle('checked', pglCheck.checked);
+    }
+  }
 
   // ─── FORMATTING ───────────────────────────────────────────────────────────
   function fmt(n) {
@@ -571,8 +624,7 @@
         cookiebot &&
         (
           typeof cookiebot.show === 'function' ||
-          typeof cookiebot.renew === 'function' ||
-          Object.prototype.hasOwnProperty.call(cookiebot, 'consent')
+          typeof cookiebot.renew === 'function'
         )
       )
     );

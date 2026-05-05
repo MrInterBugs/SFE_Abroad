@@ -188,8 +188,14 @@ describe('Express App', () => {
       await prefetchAllData();
 
       expect(getThresholdData).toHaveBeenCalledWith('planPg', expect.any(String));
+      expect(getThresholdData).not.toHaveBeenCalledWith('plan4', '2024-25');
+      expect(getThresholdData).not.toHaveBeenCalledWith('plan5', '2024-25');
+      expect(getThresholdData).not.toHaveBeenCalledWith('planPg', '2024-25');
       expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining('Prefetch complete')
+      );
+      expect(logger.info).toHaveBeenCalledWith(
+        'Prefetch skipped: plan4 2024-25 — no public source URL configured'
       );
     });
 

@@ -10,7 +10,7 @@ const logger = require('./utils/logger');
 const { csrfProtection } = require('./utils/csrf');
 const { SqliteSessionStore } = require('./utils/auth');
 const { db } = require('./utils/db');
-const { SUPPORTED_YEARS, CACHE_PLANS } = require('./config/constants');
+const { SUPPORTED_YEARS, CACHE_PLANS, urlsByYear } = require('./config/constants');
 
 const port = 3000;
 
@@ -167,6 +167,11 @@ async function prefetchAllData() {
   const { getThresholdData } = require('./utils/fetchCountryData');
   for (const year of SUPPORTED_YEARS) {
     for (const plan of CACHE_PLANS) {
+      if (!urlsByYear[year]?.[plan]) {
+        logger.info(`Prefetch skipped: ${plan} ${year} — no public source URL configured`);
+        continue;
+      }
+
       try {
         await getThresholdData(plan, year);
         logger.info(`Prefetch complete: ${plan} ${year}`);

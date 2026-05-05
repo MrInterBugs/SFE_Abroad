@@ -3,6 +3,10 @@
 // - Postgraduate 2025-26 has the same typo (path reads "2024-25")
 // - Plan 5 2026-27 uses "2026-to-2027" instead of "2026-27"
 const urlsByYear = {
+  '2024-25': {
+    plan1:   'https://web.archive.org/web/20250330065028/https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-1-student-loans/overseas-earnings-thresholds-for-plan-1-student-loans-2024-25',
+    plan2:   'https://web.archive.org/web/20240718184554/https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-2-student-loans/overseas-earnings-thresholds-for-plan-2-student-loans-2024-25',
+  },
   '2025-26': {
     plan1:   'https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-1-student-loans/overseas-earnings-thresholds-for-plan-1-student-loans-2024-25',
     plan2:   'https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-2-student-loans/overseas-earnings-thresholds-for-plan-2-student-loans-2024-25',

@@ -4,6 +4,7 @@ const { verifyCsrfToken } = require('../utils/csrf');
 const {
   DEFAULT_YEAR, SUPPORTED_YEARS, getCurrentTaxYear,
   ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
+  urlsByYear,
 } = require('../config/constants');
 const { getThresholdData } = require('../utils/fetchCountryData');
 const { getProfile } = require('../utils/db');
@@ -44,6 +45,28 @@ function buildCountriesList(fullData) {
       symbol: currencySymbol(data['Currency'] || ''),
     };
   }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function getAvailablePlansForYear(year) {
+  return ALLOWED_PLANS.filter((plan) => Boolean(urlsByYear[year]?.[plan]));
+}
+
+function isPlanAvailableForYear(plan, year) {
+  return Boolean(urlsByYear[year]?.[plan]);
+}
+
+function buildAvailablePlansByYear() {
+  return Object.fromEntries(
+    SUPPORTED_YEARS.map((year) => [year, Object.keys(urlsByYear[year])])
+  );
+}
+
+function resolveSelectedPlan(req, profile, year) {
+  const availablePlans = getAvailablePlansForYear(year);
+  const fallbackPlan = availablePlans[0];
+  if (profile?.default_plan && availablePlans.includes(profile.default_plan)) return profile.default_plan;
+  const cookiePlan = preferenceCookie(req, 'selectedPlan');
+  return availablePlans.includes(cookiePlan) ? cookiePlan : fallbackPlan;
 }
 
 const SEO_THRESHOLD_PLANS = [
@@ -162,11 +185,10 @@ router.get('/', async (req, res) => {
 
     const profile = req.session.userId ? getProfile(req.session.userId) : null;
 
-    const selectedPlan = (profile?.default_plan && ALLOWED_PLANS.includes(profile.default_plan))
-      ? profile.default_plan
-      : (ALLOWED_PLANS.includes(preferenceCookie(req, 'selectedPlan')) ? preferenceCookie(req, 'selectedPlan') : 'plan1');
+    const selectedPlan = resolveSelectedPlan(req, profile, selectedYear);
     const selectedCountry = profile?.default_country || preferenceCookie(req, 'selectedCountry') || '';
-    const includePg = profile ? !!profile.include_pg : preferenceCookie(req, 'includePg') === 'true';
+    const pglAvailable = isPlanAvailableForYear('planPg', selectedYear);
+    const includePg = pglAvailable && (profile ? !!profile.include_pg : preferenceCookie(req, 'includePg') === 'true');
 
     res.render('index', {
       countries,
@@ -175,6 +197,9 @@ router.get('/', async (req, res) => {
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
+      availablePlans: getAvailablePlansForYear(selectedYear),
+      pglAvailable,
+      availablePlansByYear: buildAvailablePlansByYear(),
       graduationDate: profile?.graduation_date || null,
       loanValueGbp: profile?.loan_value_gbp || null,
       loanValuePglGbp: profile?.loan_value_pgl_gbp || null,
@@ -182,9 +207,10 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     logger.error(`Error loading data: ${error.message}`);
-    const selectedPlan = ALLOWED_PLANS.includes(preferenceCookie(req, 'selectedPlan')) ? preferenceCookie(req, 'selectedPlan') : 'plan1';
+    const selectedPlan = resolveSelectedPlan(req, null, selectedYear);
     const selectedCountry = preferenceCookie(req, 'selectedCountry') || '';
-    const includePg = preferenceCookie(req, 'includePg') === 'true';
+    const pglAvailable = isPlanAvailableForYear('planPg', selectedYear);
+    const includePg = pglAvailable && preferenceCookie(req, 'includePg') === 'true';
     res.render('index', {
       countries: [],
       selectedPlan,
@@ -192,6 +218,9 @@ router.get('/', async (req, res) => {
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
+      availablePlans: getAvailablePlansForYear(selectedYear),
+      pglAvailable,
+      availablePlansByYear: buildAvailablePlansByYear(),
       graduationDate: null,
       loanValueGbp: null,
       loanValuePglGbp: null,
@@ -220,6 +249,14 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
 
   if (!ALLOWED_PLANS.includes(selectedPlan)) {
     return sendError(400, 'Invalid repayment plan selected.');
+  }
+
+  if (!isPlanAvailableForYear(selectedPlan, year)) {
+    return sendError(400, 'Selected repayment plan is not available for this tax year.');
+  }
+
+  if (includePg && !isPlanAvailableForYear('planPg', year)) {
+    return sendError(400, 'Postgraduate Loan data is not available for this tax year.');
   }
 
   // Validate salary: must be a finite positive number

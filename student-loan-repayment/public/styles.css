@@ -559,6 +559,11 @@ html, body {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+[hidden],
+.plan-card[hidden],
+.checkbox-row[hidden] {
+  display: none !important;
+}
 .plan-card { display: flex; }
 .plan-card input[type="radio"] { display: none; }
 .plan-card label {

@@ -280,6 +280,17 @@ describe('public/main.js frontend behavior', () => {
     expect(document.getElementById('necessary-cookie-banner')).not.toBe(null);
   });
 
+  test('shows the fallback banner when Cookiebot only exposes consent state', () => {
+    jest.useFakeTimers();
+    const document = createFakeDocument({ graduationDate: null });
+    global.window.Cookiebot = { consent: { necessary: false } };
+    loadMain();
+
+    jest.advanceTimersByTime(1200);
+
+    expect(document.getElementById('necessary-cookie-banner')).not.toBe(null);
+  });
+
   test('does not show the fallback banner when Cookiebot loads', () => {
     jest.useFakeTimers();
     const document = createFakeDocument({ graduationDate: null });
