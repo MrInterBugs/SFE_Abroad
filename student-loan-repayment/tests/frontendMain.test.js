@@ -79,6 +79,12 @@ class FakeElement {
     return child;
   }
 
+  remove() {
+    if (!this.parentNode) return;
+    this.parentNode.children = this.parentNode.children.filter((child) => child !== this);
+    this.parentNode = null;
+  }
+
   addEventListener(type, handler) {
     this.events[type] = this.events[type] || [];
     this.events[type].push(handler);
@@ -92,6 +98,10 @@ class FakeElement {
     };
     (this.events[type] || []).forEach((handler) => handler(evt));
     return evt;
+  }
+
+  dispatchEvent(event) {
+    return this.dispatch(event.type, event);
   }
 
   querySelectorAll(selector) {
@@ -144,6 +154,7 @@ function createFakeDocument(appDataOverrides = {}) {
   elements.get('csrf-input').tagName = 'INPUT';
   elements.get('calc-form').tagName = 'FORM';
   elements.get('calc-btn').textContent = 'Calculate monthly repayment';
+  elements.get('calc-error').hidden = true;
   elements.get('currency-badge').textContent = '—';
   elements.get('loan-balance-input').value = '';
   elements.get('pgl-balance-input').value = '';
@@ -152,10 +163,25 @@ function createFakeDocument(appDataOverrides = {}) {
 
   const labelForLoanBalance = new FakeElement('label');
   const documentEvents = {};
+  const body = new FakeElement('body');
+  const head = new FakeElement('head');
+
+  function findById(root, id) {
+    if (!root) return null;
+    if (root.id === id) return root;
+    for (const child of root.children) {
+      const match = findById(child, id);
+      if (match) return match;
+    }
+    return null;
+  }
+
   const document = {
-    head: new FakeElement('head'),
+    body,
+    head,
+    cookie: '',
     createElement: (tagName) => new FakeElement(tagName),
-    getElementById: (id) => elements.get(id) || null,
+    getElementById: (id) => elements.get(id) || findById(body, id) || findById(head, id) || null,
     querySelector: (selector) => {
       if (selector === 'label[for="loan-balance-input"]') return labelForLoanBalance;
       if (selector === '.adsbygoogle') return null;
@@ -175,6 +201,8 @@ function createFakeDocument(appDataOverrides = {}) {
   global.document = document;
   global.window = {
     innerWidth: 1024,
+    location: { protocol: 'https:' },
+    setTimeout,
     Chart: jest.fn(function Chart() {
       this.destroy = jest.fn();
     }),
@@ -214,6 +242,7 @@ function flushPromises() {
 
 describe('public/main.js frontend behavior', () => {
   afterEach(() => {
+    jest.useRealTimers();
     delete global.document;
     delete global.window;
     delete global.Chart;
@@ -222,7 +251,47 @@ describe('public/main.js frontend behavior', () => {
     delete global.FormData;
   });
 
-  test('selects autocomplete countries and surfaces the necessary-cookie CSRF gate', async () => {
+  test('shows a necessary-cookie banner when Cookiebot does not load', () => {
+    jest.useFakeTimers();
+    const document = createFakeDocument({ graduationDate: null });
+    loadMain();
+
+    expect(document.getElementById('necessary-cookie-banner')).toBe(null);
+    jest.advanceTimersByTime(1200);
+
+    const banner = document.getElementById('necessary-cookie-banner');
+    expect(banner).not.toBe(null);
+    expect(banner.children[0].textContent).toContain('necessary cookies');
+    expect(banner.children[0].textContent).toContain('optional cookie choices are unavailable');
+
+    banner.children[1].children[1].dispatch('click');
+    expect(document.getElementById('necessary-cookie-banner')).toBe(null);
+    expect(document.cookie).toBe('');
+  });
+
+  test('shows the fallback banner when only a Cookiebot stub exists', () => {
+    jest.useFakeTimers();
+    const document = createFakeDocument({ graduationDate: null });
+    global.window.Cookiebot = {};
+    loadMain();
+
+    jest.advanceTimersByTime(1200);
+
+    expect(document.getElementById('necessary-cookie-banner')).not.toBe(null);
+  });
+
+  test('does not show the fallback banner when Cookiebot loads', () => {
+    jest.useFakeTimers();
+    const document = createFakeDocument({ graduationDate: null });
+    global.window.Cookiebot = { show: jest.fn() };
+    loadMain();
+
+    jest.advanceTimersByTime(1200);
+
+    expect(document.getElementById('necessary-cookie-banner')).toBe(null);
+  });
+
+  test('selects autocomplete countries and surfaces the necessary-cookie banner from the CSRF gate', async () => {
     const document = createFakeDocument({ graduationDate: null });
     global.fetch = jest.fn().mockResolvedValue({ ok: false });
     loadMain();
@@ -244,8 +313,76 @@ describe('public/main.js frontend behavior', () => {
     expect(global.fetch).toHaveBeenCalledWith('/csrf-token', {
       headers: { Accept: 'application/json' },
     });
-    expect(document.getElementById('calc-error').textContent).toBe('Please accept necessary cookies to use the calculator.');
-    expect(document.getElementById('calc-error').hidden).toBe(false);
+    expect(document.getElementById('calc-error').hidden).toBe(true);
+    expect(document.getElementById('necessary-cookie-banner').children[1].children[0].textContent).toBe('Use calculator');
+  });
+
+  test('accepts necessary cookies locally and retries when Cookiebot is blocked', async () => {
+    const document = createFakeDocument({ graduationDate: null });
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ csrfToken: 'token-123' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          monthlyRepayment: '240.00',
+          pglMonthlyRepayment: null,
+          pglThresholdGbp: null,
+          thresholdGbp: '18000.00',
+          localPerGbp: '0.8696',
+          salaryGbp: '57500.00',
+          selectedPlan: 'plan2',
+          selectedYear: '2026-27',
+          salaryCurrencySymbol: '€',
+          loanValueGbp: null,
+          loanValuePglGbp: null,
+        }),
+      });
+    loadMain();
+
+    const countryInput = document.getElementById('country-input');
+    countryInput.value = 'Germany';
+    countryInput.dispatch('input');
+    document.getElementById('ac-list').children[0].dispatch('mousedown');
+    document.getElementById('salary-input').value = '50000';
+
+    document.getElementById('calc-form').dispatch('submit');
+    await flushPromises();
+
+    document.getElementById('necessary-cookie-banner').children[1].children[0].dispatch('click');
+    await flushPromises();
+    await flushPromises();
+
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(document.cookie).toContain('CookieConsent=necessary%3Atrue');
+    expect(document.getElementById('csrf-input').value).toBe('token-123');
+  });
+
+  test('reopens the necessary-cookie banner on calculate after it was closed', async () => {
+    const document = createFakeDocument({ graduationDate: null });
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    loadMain();
+
+    const countryInput = document.getElementById('country-input');
+    countryInput.value = 'Germany';
+    countryInput.dispatch('input');
+    document.getElementById('ac-list').children[0].dispatch('mousedown');
+    document.getElementById('salary-input').value = '50000';
+
+    document.getElementById('calc-form').dispatch('submit');
+    await flushPromises();
+    document.getElementById('necessary-cookie-banner').children[1].children[1].dispatch('click');
+    expect(document.getElementById('necessary-cookie-banner')).toBe(null);
+    expect(document.cookie).toBe('');
+
+    document.getElementById('calc-form').dispatch('submit');
+    await flushPromises();
+
+    expect(document.getElementById('necessary-cookie-banner').children[1].children[0].textContent).toBe('Use calculator');
+    expect(document.cookie).toBe('');
   });
 
   test('renders successful JSON calculation results, PGL breakdown, profile balances, and graph state', async () => {

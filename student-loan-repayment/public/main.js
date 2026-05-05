@@ -70,6 +70,8 @@
   // ─── STATE ────────────────────────────────────────────────────────────────
   let selectedCountry = null;
   let acHighlightIdx = -1;
+  let retryAfterNecessaryCookieConsent = false;
+  let cookiebotLoaded = false;
 
   // ─── ELEMENTS ─────────────────────────────────────────────────────────────
   const countryInput = document.getElementById('country-input');
@@ -80,6 +82,8 @@
   const form = document.getElementById('calc-form');
   const resultsCard = document.getElementById('results-card');
   const calcBtn = document.getElementById('calc-btn');
+
+  initNecessaryCookieBanner();
 
   // Pre-select country from server-populated value (saved cookie)
   const cookieCountry = countryInput.value.trim();
@@ -481,7 +485,8 @@
         });
 
         if (!tokenResp.ok) {
-          showInlineError('Please accept necessary cookies to use the calculator.');
+          retryAfterNecessaryCookieConsent = true;
+          showNecessaryCookieBanner();
           return;
         }
 
@@ -526,10 +531,102 @@
     }
   }
 
+  function hasNecessaryCookieConsent() {
+    try {
+      return decodeURIComponent(document.cookie || '').includes('CookieConsent=necessary:true');
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function setNecessaryCookieConsent() {
+    const maxAge = 365 * 24 * 60 * 60;
+    const secure = window.location && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `CookieConsent=necessary%3Atrue; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
+  }
+
+  function initNecessaryCookieBanner() {
+    document.addEventListener('CookiebotOnLoad', () => {
+      cookiebotLoaded = true;
+    });
+
+    window.setTimeout(() => {
+      if (typeof window === 'undefined' || typeof document === 'undefined') return;
+      if (!hasNecessaryCookieConsent() && !isCookiebotReady()) {
+        showNecessaryCookieBanner();
+      }
+    }, 1200);
+  }
+
+  function isCookiebotReady() {
+    const cookiebot = window.Cookiebot;
+    return Boolean(
+      cookiebotLoaded ||
+      (
+        cookiebot &&
+        (
+          typeof cookiebot.show === 'function' ||
+          typeof cookiebot.renew === 'function' ||
+          Object.prototype.hasOwnProperty.call(cookiebot, 'consent')
+        )
+      )
+    );
+  }
+
+  function showNecessaryCookieBanner() {
+    if (hasNecessaryCookieConsent() || document.getElementById('necessary-cookie-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'necessary-cookie-banner';
+    banner.className = 'necessary-cookie-banner';
+    banner.setAttribute('role', 'dialog');
+    banner.setAttribute('aria-label', 'Necessary cookies');
+
+    const text = document.createElement('p');
+    text.textContent = 'This calculator uses necessary cookies for security and to run calculations. Cookiebot appears to be blocked, so optional cookie choices are unavailable here.';
+
+    const actions = document.createElement('div');
+    actions.className = 'necessary-cookie-actions';
+
+    const acceptBtn = document.createElement('button');
+    acceptBtn.type = 'button';
+    acceptBtn.className = 'necessary-cookie-accept';
+    acceptBtn.textContent = 'Use calculator';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'necessary-cookie-close';
+    closeBtn.setAttribute('aria-label', 'Close necessary cookie message');
+    closeBtn.textContent = 'Close';
+
+    acceptBtn.addEventListener('click', () => {
+      setNecessaryCookieConsent();
+      banner.remove();
+      hideInlineError();
+
+      if (retryAfterNecessaryCookieConsent) {
+        retryAfterNecessaryCookieConsent = false;
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      }
+    });
+    closeBtn.addEventListener('click', () => banner.remove());
+
+    actions.appendChild(acceptBtn);
+    actions.appendChild(closeBtn);
+    banner.appendChild(text);
+    banner.appendChild(actions);
+    document.body.appendChild(banner);
+  }
+
   function hideInlineError() {
     const errEl = document.getElementById('calc-error');
     if (errEl) {
       errEl.textContent = '';
+      errEl.innerHTML = '';
       errEl.hidden = true;
       errEl.style.display = 'none';
     }
