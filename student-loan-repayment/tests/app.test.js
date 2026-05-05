@@ -28,6 +28,10 @@ describe('Express App', () => {
     app = createApp();
   });
 
+  afterEach(() => {
+    app.locals.sessionStore.close();
+  });
+
   it('throws during startup when SESSION_SECRET is missing', () => {
     const originalSecret = process.env.SESSION_SECRET;
     delete process.env.SESSION_SECRET;
@@ -38,6 +42,20 @@ describe('Express App', () => {
     });
 
     process.env.SESSION_SECRET = originalSecret;
+  });
+
+  it('starts the session cleanup timer outside the test environment', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    let productionApp;
+
+    try {
+      productionApp = createApp();
+      expect(productionApp.locals.sessionStore._cleanupInterval).toBeTruthy();
+    } finally {
+      productionApp?.locals.sessionStore.close();
+      process.env.NODE_ENV = originalNodeEnv;
+    }
   });
 
   // Test to check if the server is running and responds with 200
@@ -190,7 +208,7 @@ describe('Express App', () => {
   describe('startServer', () => {
     it('starts the HTTP server and triggers prefetch', async () => {
       getThresholdData.mockResolvedValue(THRESHOLD_DATA);
-      const { server } = startServer();
+      const { app: serverApp, server } = startServer();
 
       await new Promise((resolve) => server.once('listening', resolve));
       await new Promise((resolve) => setImmediate(resolve));
@@ -203,6 +221,7 @@ describe('Express App', () => {
       await new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
       });
+      serverApp.locals.sessionStore.close();
     });
   });
 });

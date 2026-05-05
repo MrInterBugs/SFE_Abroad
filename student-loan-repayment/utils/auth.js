@@ -10,18 +10,35 @@ const authRateLimit = (req, res, next) => {
     .catch(() => res.status(429).send('Too many attempts, please try again later.'));
 };
 
+function clearAuthRateLimiter() {
+  const storage = authRateLimiter._memoryStorage;
+  for (const key of Object.keys(storage._storage)) {
+    storage.delete(key);
+  }
+}
+
 const requireAuth = (req, res, next) => {
   if (!req.session.userId) return res.redirect('/login');
   next();
 };
 
 class SqliteSessionStore extends Store {
-  constructor(db) {
+  constructor(db, options = {}) {
     super();
     this._db = db;
-    setInterval(() => {
-      this._db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now());
-    }, 15 * 60 * 1000).unref();
+    const cleanupIntervalMs = options.cleanupIntervalMs ?? 15 * 60 * 1000;
+    this._cleanupInterval = cleanupIntervalMs > 0
+      ? setInterval(() => {
+        this._db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now());
+      }, cleanupIntervalMs).unref()
+      : null;
+  }
+
+  close() {
+    if (this._cleanupInterval) {
+      clearInterval(this._cleanupInterval);
+      this._cleanupInterval = null;
+    }
   }
 
   get(sid, cb) {
@@ -61,4 +78,4 @@ class SqliteSessionStore extends Store {
   }
 }
 
-module.exports = { requireAuth, authRateLimit, SqliteSessionStore };
+module.exports = { requireAuth, authRateLimit, clearAuthRateLimiter, SqliteSessionStore };

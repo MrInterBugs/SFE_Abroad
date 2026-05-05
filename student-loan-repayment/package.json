@@ -13,6 +13,9 @@
     "setupFiles": [
       "./tests/setup.js"
     ],
+    "setupFilesAfterEnv": [
+      "./tests/teardown.js"
+    ],
     "collectCoverageFrom": [
       "app.js",
       "config/**/*.js",

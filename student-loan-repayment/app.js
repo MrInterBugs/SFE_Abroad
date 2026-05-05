@@ -118,11 +118,16 @@ function createApp() {
   if (!sessionSecret) {
     throw new Error('SESSION_SECRET environment variable must be set');
   }
+  const sessionStoreOptions = {};
+  if (process.env.NODE_ENV === 'test') sessionStoreOptions.cleanupIntervalMs = 0;
+  const sessionStore = new SqliteSessionStore(db, sessionStoreOptions);
+  app.locals.sessionStore = sessionStore;
+
   app.use(session({
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    store: new SqliteSessionStore(db),
+    store: sessionStore,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
