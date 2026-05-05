@@ -83,6 +83,7 @@
   let acHighlightIdx = -1;
   let retryAfterNecessaryCookieConsent = false;
   let cookiebotLoaded = false;
+  let necessaryCookieFallbackTimer = null;
 
   // ─── ELEMENTS ─────────────────────────────────────────────────────────────
   const countryInput = document.getElementById('country-input');
@@ -606,28 +607,44 @@
   function initNecessaryCookieBanner() {
     document.addEventListener('CookiebotOnLoad', () => {
       cookiebotLoaded = true;
+      scheduleNecessaryCookieFallbackCheck(1500);
     });
 
-    window.setTimeout(() => {
-      if (typeof window === 'undefined' || typeof document === 'undefined') return;
-      if (!hasNecessaryCookieConsent() && !isCookiebotReady()) {
-        showNecessaryCookieBanner();
-      }
-    }, 1200);
+    document.addEventListener('CookiebotOnAccept', () => {
+      if (necessaryCookieFallbackTimer) window.clearTimeout(necessaryCookieFallbackTimer);
+    });
+
+    document.addEventListener('CookiebotOnDecline', () => {
+      if (necessaryCookieFallbackTimer) window.clearTimeout(necessaryCookieFallbackTimer);
+    });
+
+    scheduleNecessaryCookieFallbackCheck(1200);
   }
 
-  function isCookiebotReady() {
-    const cookiebot = window.Cookiebot;
-    return Boolean(
-      cookiebotLoaded ||
-      (
-        cookiebot &&
-        (
-          typeof cookiebot.show === 'function' ||
-          typeof cookiebot.renew === 'function'
-        )
-      )
-    );
+  function scheduleNecessaryCookieFallbackCheck(delay) {
+    if (necessaryCookieFallbackTimer) window.clearTimeout(necessaryCookieFallbackTimer);
+    necessaryCookieFallbackTimer = window.setTimeout(() => {
+      if (typeof window === 'undefined' || typeof document === 'undefined') return;
+      if (!hasNecessaryCookieConsent() && !hasCookiebotUi()) {
+        showNecessaryCookieBanner();
+      }
+    }, delay);
+  }
+
+  function hasCookiebotUi() {
+    const selectors = [
+      '#CybotCookiebotDialog',
+      '#CookiebotWidget',
+      '#CookiebotWidgetUnderlay',
+      '.CybotCookiebotDialog'
+    ];
+    return selectors.some((selector) => {
+      const element = document.querySelector(selector);
+      if (!element || element.hidden) return false;
+      if (typeof window.getComputedStyle !== 'function') return true;
+      const style = window.getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    });
   }
 
   function showNecessaryCookieBanner() {

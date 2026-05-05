@@ -185,6 +185,10 @@ function createFakeDocument(appDataOverrides = {}) {
     querySelector: (selector) => {
       if (selector === 'label[for="loan-balance-input"]') return labelForLoanBalance;
       if (selector === '.adsbygoogle') return null;
+      if (selector.startsWith('#')) return findById(body, selector.slice(1)) || findById(head, selector.slice(1));
+      if (selector === '.CybotCookiebotDialog') {
+        return body.children.find((child) => child.classList.contains('CybotCookiebotDialog')) || null;
+      }
       return null;
     },
     addEventListener: (type, handler) => {
@@ -203,6 +207,12 @@ function createFakeDocument(appDataOverrides = {}) {
     innerWidth: 1024,
     location: { protocol: 'https:' },
     setTimeout,
+    clearTimeout,
+    getComputedStyle: (element) => ({
+      display: element.style.display || 'block',
+      visibility: element.style.visibility || 'visible',
+      opacity: element.style.opacity || '1',
+    }),
     Chart: jest.fn(function Chart() {
       this.destroy = jest.fn();
     }),
@@ -291,9 +301,23 @@ describe('public/main.js frontend behavior', () => {
     expect(document.getElementById('necessary-cookie-banner')).not.toBe(null);
   });
 
-  test('does not show the fallback banner when Cookiebot loads', () => {
+  test('shows the fallback banner when Cookiebot functions exist but no banner renders', () => {
     jest.useFakeTimers();
     const document = createFakeDocument({ graduationDate: null });
+    global.window.Cookiebot = { show: jest.fn() };
+    loadMain();
+
+    jest.advanceTimersByTime(1200);
+
+    expect(document.getElementById('necessary-cookie-banner')).not.toBe(null);
+  });
+
+  test('does not show the fallback banner when Cookiebot renders its own UI', () => {
+    jest.useFakeTimers();
+    const document = createFakeDocument({ graduationDate: null });
+    const cookiebotDialog = document.createElement('div');
+    cookiebotDialog.id = 'CybotCookiebotDialog';
+    document.body.appendChild(cookiebotDialog);
     global.window.Cookiebot = { show: jest.fn() };
     loadMain();
 
