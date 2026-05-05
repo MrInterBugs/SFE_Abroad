@@ -119,7 +119,7 @@ function sendEmailConfirmation(email, token) {
       'If you did not create an account, you can safely ignore this email.',
       '',
       '— Student Finance Overseas Repayment Calculator',
-      'https://sfe.aedanl.com',
+      appBaseUrl(),
     ].join('\n'),
     html: emailHtml({
       heading: 'Confirm your email address',
@@ -152,7 +152,7 @@ function sendPasswordReset(email, token) {
       'If you did not request a password reset, you can safely ignore this email. Your password will not change.',
       '',
       '— Student Finance Overseas Repayment Calculator',
-      'https://sfe.aedanl.com',
+      appBaseUrl(),
     ].join('\n'),
     html: emailHtml({
       heading: 'Reset your password',

@@ -7,6 +7,7 @@ const {
   ensureProfileColumns,
   ensureUserColumns,
   ensureCalculationColumns,
+  ensureSessionColumns,
   createUser,
   getUserByEmail,
   getUserById,
@@ -162,22 +163,27 @@ describe('db', () => {
   test('revokeUserSessions deletes only sessions for the requested user', () => {
     const keepSid = `keep_${RUN_ID}`;
     const revokeSid = `revoke_${RUN_ID}`;
-    const malformedSid = `malformed_${RUN_ID}`;
+    const noUserSid = `nouser_${RUN_ID}`;
     const expires = Date.now() + 10000;
 
-    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
-      .run(keepSid, JSON.stringify({ userId: 1001, cookie: {} }), expires);
-    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
-      .run(revokeSid, JSON.stringify({ userId: 1002, cookie: {} }), expires);
-    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
-      .run(malformedSid, '{bad-json', expires);
+    const keepUserId = createUser(`keep_session_${RUN_ID}@example.com`, 'hash');
+    const revokeUserId = createUser(`revoke_session_${RUN_ID}@example.com`, 'hash');
 
-    expect(revokeUserSessions(1002)).toBe(1);
+    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires, user_id) VALUES (?, ?, ?, ?)')
+      .run(keepSid, JSON.stringify({ userId: keepUserId, cookie: {} }), expires, keepUserId);
+    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires, user_id) VALUES (?, ?, ?, ?)')
+      .run(revokeSid, JSON.stringify({ userId: revokeUserId, cookie: {} }), expires, revokeUserId);
+    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
+      .run(noUserSid, JSON.stringify({ cookie: {} }), expires);
+
+    expect(revokeUserSessions(revokeUserId)).toBe(1);
     expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(revokeSid)).toBeUndefined();
     expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(keepSid)).toBeDefined();
-    expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(malformedSid)).toBeDefined();
+    expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(noUserSid)).toBeDefined();
 
-    db.prepare('DELETE FROM sessions WHERE sid IN (?, ?)').run(keepSid, malformedSid);
+    db.prepare('DELETE FROM sessions WHERE sid IN (?, ?)').run(keepSid, noUserSid);
+    deleteUser(keepUserId);
+    deleteUser(revokeUserId);
   });
 
   test('profile helpers insert, update, coerce nullable fields, and cascade on delete', () => {
@@ -463,5 +469,40 @@ describe('db', () => {
     expect(exec).toHaveBeenCalledTimes(1);
     expect(exec.mock.calls[0][0]).toContain('CREATE TABLE calculations_privacy_migration');
     expect(exec.mock.calls[0][0]).toContain('DROP TABLE calculations');
+  });
+
+  test('ensureSessionColumns adds user_id column, backfills from session JSON, and always creates the index', () => {
+    const exec = jest.fn();
+    const updateRun = jest.fn();
+    const backfillRows = [
+      { sid: 'sess-a', data: JSON.stringify({ userId: 42 }) },
+      { sid: 'sess-b', data: JSON.stringify({ cookie: {} }) },
+      { sid: 'sess-c', data: '{bad' },
+    ];
+    const fakeDb = {
+      prepare: jest.fn((sql) => {
+        if (sql.startsWith('PRAGMA')) return { all: jest.fn(() => []) };
+        if (sql.startsWith('SELECT sid')) return { all: jest.fn(() => backfillRows) };
+        if (sql.startsWith('UPDATE sessions')) return { run: updateRun };
+        return { all: jest.fn(() => []) };
+      }),
+      exec,
+      transaction: jest.fn((fn) => fn),
+    };
+
+    ensureSessionColumns(fakeDb);
+
+    expect(exec).toHaveBeenCalledWith('ALTER TABLE sessions ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE');
+    expect(exec).toHaveBeenCalledWith('CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)');
+    expect(updateRun).toHaveBeenCalledTimes(1);
+    expect(updateRun).toHaveBeenCalledWith(42, 'sess-a');
+
+    const alreadyHasColExec = jest.fn();
+    ensureSessionColumns({
+      prepare: jest.fn(() => ({ all: jest.fn(() => [{ name: 'user_id' }]) })),
+      exec: alreadyHasColExec,
+    });
+    expect(alreadyHasColExec).toHaveBeenCalledTimes(1);
+    expect(alreadyHasColExec).toHaveBeenCalledWith('CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)');
   });
 });

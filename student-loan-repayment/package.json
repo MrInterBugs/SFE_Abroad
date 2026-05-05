@@ -37,7 +37,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "argon2": "^0.44.0",
     "axios": "^1.7.7",

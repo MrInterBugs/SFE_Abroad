@@ -261,7 +261,7 @@
     return chartJsPromise;
   }
 
-  function buildBalanceOverTime(startBalance, annualRatePct, maxYears, payRisePct, initialSalaryGbp, thresholdGbp, repaymentRate) {
+  function buildBalanceOverTime(startBalance, annualRatePct, maxYears, payRisePct, initialSalaryGbp, thresholdGbp, repaymentRate, thresholdRisePct = 0) {
     const monthlyRate = annualRatePct / 100 / 12;
     let balance = startBalance;
     const data = [parseFloat(startBalance.toFixed(2))];
@@ -271,7 +271,8 @@
     for (let yr = 1; yr <= maxYears; yr++) {
       if (!paidOff) {
         const salary = initialSalaryGbp * Math.pow(1 + payRisePct / 100, yr - 1);
-        const monthlyPayment = Math.max(0, (salary - thresholdGbp) * repaymentRate / 12);
+        const effectiveThreshold = thresholdGbp * Math.pow(1 + thresholdRisePct / 100, yr - 1);
+        const monthlyPayment = Math.max(0, (salary - effectiveThreshold) * repaymentRate / 12);
         for (let m = 0; m < 12; m++) {
           const interest = balance * monthlyRate;
           const newBalance = Math.max(0, balance + interest - monthlyPayment);
@@ -344,10 +345,10 @@
     }
 
     const pglRate = rpi + 3;
-    const ugResult = buildBalanceOverTime(ugBalance, interestRate, maxYears, payRise, salaryGbp, thresholdGbp, 0.09);
+    const ugResult = buildBalanceOverTime(ugBalance, interestRate, maxYears, payRise, salaryGbp, thresholdGbp, 0.09, rpi);
     let pglResult = null;
     if (hasPGL && pglBalance > 0) {
-      pglResult = buildBalanceOverTime(pglBalance, pglRate, maxYears, payRise, salaryGbp, pglThresholdGbp, 0.06);
+      pglResult = buildBalanceOverTime(pglBalance, pglRate, maxYears, payRise, salaryGbp, pglThresholdGbp, 0.06, rpi);
     }
 
     // Trim chart to payoff year if every displayed loan is paid off before write-off

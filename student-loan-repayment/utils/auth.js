@@ -54,8 +54,9 @@ class SqliteSessionStore extends Store {
       const expires = session.cookie?.expires
         ? new Date(session.cookie.expires).getTime()
         : Date.now() + 24 * 60 * 60 * 1000;
-      this._db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires) VALUES (?, ?, ?)')
-        .run(sid, JSON.stringify(session), expires);
+      const userId = session.userId ?? null;
+      this._db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires, user_id) VALUES (?, ?, ?, ?)')
+        .run(sid, JSON.stringify(session), expires, userId);
       cb(null);
     } catch (e) { cb(e); }
   }

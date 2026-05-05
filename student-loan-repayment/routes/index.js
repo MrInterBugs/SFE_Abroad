@@ -7,7 +7,6 @@ const {
   urlsByYear,
 } = require('../config/constants');
 const { getThresholdData } = require('../utils/fetchCountryData');
-const { getProfile } = require('../utils/db');
 const db = require('../utils/db');
 const currencySymbol = require('../utils/currencySymbol');
 const { SITE_URL, getSeoPage, getSeoPagePaths } = require('../config/seoPages');
@@ -15,12 +14,12 @@ const { hasCookieConsent } = require('../utils/consent');
 
 const router = express.Router();
 
-const COOKIE_OPTS = (req) => ({
+const COOKIE_OPTS = {
   maxAge: COOKIE_MAX_AGE,
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'Strict',
-});
+};
 
 function hasPreferenceConsent(req) {
   return hasCookieConsent(req, 'preferences');
@@ -183,7 +182,7 @@ router.get('/', async (req, res) => {
     const fullData = await getThresholdData('plan1', getCurrentTaxYear());
     const countries = buildCountriesList(fullData);
 
-    const profile = req.session.userId ? getProfile(req.session.userId) : null;
+    const profile = req.session.userId ? db.getProfile(req.session.userId) : null;
 
     const selectedPlan = resolveSelectedPlan(req, profile, selectedYear);
     const selectedCountry = profile?.default_country || preferenceCookie(req, 'selectedCountry') || '';
@@ -236,7 +235,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const year = SUPPORTED_YEARS.includes(selectedYear) ? selectedYear : DEFAULT_YEAR;
   const isJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
 
-  const profile = req.session?.userId ? getProfile(req.session.userId) : null;
+  const profile = req.session?.userId ? db.getProfile(req.session.userId) : null;
   const loanValueGbp = profile?.loan_value_gbp || null;
   const loanValuePglGbp = profile?.loan_value_pgl_gbp || null;
 
@@ -288,10 +287,10 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     const amountOverThreshold = salaryGbp - thresholdGbp;
 
     if (hasPreferenceConsent(req)) {
-      res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS(req));
-      res.cookie('selectedCountry', targetCountry, COOKIE_OPTS(req));
-      res.cookie('selectedYear', year, COOKIE_OPTS(req));
-      res.cookie('includePg', String(includePg), COOKIE_OPTS(req));
+      res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS);
+      res.cookie('selectedCountry', targetCountry, COOKIE_OPTS);
+      res.cookie('selectedYear', year, COOKIE_OPTS);
+      res.cookie('includePg', String(includePg), COOKIE_OPTS);
     }
 
     const monthlyRepayment = amountOverThreshold > 0

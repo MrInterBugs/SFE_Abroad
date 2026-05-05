@@ -51,7 +51,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     sid TEXT PRIMARY KEY,
     data TEXT NOT NULL,
-    expires INTEGER NOT NULL
+    expires INTEGER NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS calculations (
@@ -152,6 +153,27 @@ function ensureCalculationColumns(database) {
 
 ensureCalculationColumns(db);
 
+function ensureSessionColumns(database) {
+  const cols = database.prepare('PRAGMA table_info(sessions)').all().map(c => c.name);
+  if (!cols.includes('user_id')) {
+    database.exec('ALTER TABLE sessions ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE');
+    const rows = database.prepare('SELECT sid, data FROM sessions').all();
+    const update = database.prepare('UPDATE sessions SET user_id = ? WHERE sid = ?');
+    const backfill = database.transaction(() => {
+      for (const row of rows) {
+        try {
+          const session = JSON.parse(row.data);
+          if (session.userId) update.run(session.userId, row.sid);
+        } catch { /* skip malformed */ }
+      }
+    });
+    backfill();
+  }
+  database.exec('CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)');
+}
+
+ensureSessionColumns(db);
+
 function saveThresholds(plan, year, countryDataDict) {
   const insert = db.prepare(`
     INSERT OR REPLACE INTO cached_thresholds (plan, year, country_name, data, fetched_at)
@@ -214,26 +236,7 @@ function updateUserPassword(userId, passwordHash) {
 }
 
 function revokeUserSessions(userId) {
-  const rows = db.prepare('SELECT sid, data FROM sessions').all();
-  const deleteSession = db.prepare('DELETE FROM sessions WHERE sid = ?');
-  let revoked = 0;
-
-  const revokeMany = db.transaction((sessions) => {
-    for (const row of sessions) {
-      try {
-        const session = JSON.parse(row.data);
-        if (session.userId === userId) {
-          deleteSession.run(row.sid);
-          revoked += 1;
-        }
-      } catch (err) {
-        logger.warn(`DB: could not parse session ${row.sid} during revocation: ${err.message}`);
-      }
-    }
-  });
-
-  revokeMany(rows);
-  return revoked;
+  return db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId).changes;
 }
 
 function hashAuthToken(token) {
@@ -375,6 +378,7 @@ module.exports = {
   ensureProfileColumns,
   ensureUserColumns,
   ensureCalculationColumns,
+  ensureSessionColumns,
   createUser,
   getUserByEmail,
   getUserById,
