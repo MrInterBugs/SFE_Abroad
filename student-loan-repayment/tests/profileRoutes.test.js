@@ -262,6 +262,7 @@ describe('profile routes', () => {
       { defaultSalary: '-1', text: 'valid salary' },
       { defaultSalary: '50000abc', text: 'valid salary' },
       { graduationDate: 'June 2024', text: 'graduation date' },
+      { graduationDate: '2026-99', text: 'graduation date' },
       { defaultPlan: 'planPg', text: 'Invalid repayment plan' },
       { defaultCountry: 'Atlantis', text: 'Invalid default country' },
     ];
@@ -362,7 +363,7 @@ describe('profile routes', () => {
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Profile update error'));
   });
 
-  test('POST /profile/delete deletes the user after destroying the session', async () => {
+  test('POST /profile/delete deletes the user before destroying the session', async () => {
     const agent = await loggedInAgent(app);
     const token = await profileCsrf(agent);
 
@@ -385,7 +386,7 @@ describe('profile routes', () => {
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Profile delete error'));
   });
 
-  test('POST /profile/delete returns an error when session destruction fails', async () => {
+  test('POST /profile/delete logs and redirects when session destruction fails after deletion', async () => {
     const agent = await loggedInAgent(app);
     const token = await profileCsrf(agent);
 
@@ -394,9 +395,9 @@ describe('profile routes', () => {
       .set('X-Break-Session-Destroy', '1')
       .send({ csrfToken: token });
 
-    expect(res.status).toBe(500);
-    expect(res.text).toContain('Something went wrong');
-    expect(db.deleteUser).not.toHaveBeenCalled();
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/');
+    expect(db.deleteUser).toHaveBeenCalledWith(42);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Profile delete session destroy error'));
   });
 });

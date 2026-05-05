@@ -385,6 +385,29 @@ describe('public/main.js frontend behavior', () => {
     expect(document.cookie).toBe('');
   });
 
+  test('surfaces plain-text calculate errors from non-JSON responses', async () => {
+    const document = createFakeDocument({ graduationDate: null });
+    document.getElementById('csrf-input').value = 'token-123';
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      headers: { get: () => 'text/plain; charset=utf-8' },
+      text: async () => 'Too many requests, please try again later.',
+    });
+    loadMain();
+
+    const countryInput = document.getElementById('country-input');
+    countryInput.value = 'Germany';
+    countryInput.dispatch('input');
+    document.getElementById('ac-list').children[0].dispatch('mousedown');
+    document.getElementById('salary-input').value = '50000';
+
+    document.getElementById('calc-form').dispatch('submit');
+    await flushPromises();
+
+    expect(document.getElementById('calc-error').hidden).toBe(false);
+    expect(document.getElementById('calc-error').textContent).toBe('Too many requests, please try again later.');
+  });
+
   test('renders successful JSON calculation results, PGL breakdown, profile balances, and graph state', async () => {
     const document = createFakeDocument();
     global.fetch = jest.fn()

@@ -507,10 +507,15 @@
         body: body.toString(),
       });
 
-      const data = await resp.json();
+      const contentType = resp.headers && typeof resp.headers.get === 'function'
+        ? resp.headers.get('content-type') || ''
+        : '';
+      const data = !contentType || contentType.includes('application/json')
+        ? await resp.json()
+        : { error: await resp.text() };
 
-      if (data.error) {
-        showInlineError(data.error);
+      if (!resp.ok || data.error) {
+        showInlineError(data.error || 'Something went wrong. Please try again.');
       } else {
         renderResults(data);
       }

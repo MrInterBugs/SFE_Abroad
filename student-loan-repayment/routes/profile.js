@@ -30,6 +30,10 @@ function parseOptionalNumber(value) {
   return Number(raw);
 }
 
+function isValidMonthInput(value) {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
 router.get('/profile', requireAuth, async (req, res) => {
   const user = getUserById(req.session.userId);
   const profile = getProfile(req.session.userId);
@@ -91,7 +95,7 @@ router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
   if (parsedLoan    !== null && (!isFinite(parsedLoan)    || parsedLoan    < 0)) return renderError('Please enter a valid undergraduate loan value.');
   if (parsedPglLoan !== null && (!isFinite(parsedPglLoan) || parsedPglLoan < 0)) return renderError('Please enter a valid postgraduate loan value.');
   if (parsedSalary  !== null && (!isFinite(parsedSalary)  || parsedSalary  < 0)) return renderError('Please enter a valid salary.');
-  if (graduationDate && !/^\d{4}-\d{2}$/.test(graduationDate))                  return renderError('Please enter a valid graduation date.');
+  if (graduationDate && !isValidMonthInput(graduationDate))                     return renderError('Please enter a valid graduation date.');
   if (defaultPlan && !UG_PLANS.includes(defaultPlan))                            return renderError('Invalid repayment plan selected.');
   if (defaultCountry && !countries.includes(defaultCountry))                     return renderError('Invalid default country selected.');
 
@@ -116,25 +120,17 @@ router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
 
 router.post('/profile/delete', requireAuth, verifyCsrfToken, (req, res) => {
   const userId = req.session.userId;
+
+  try {
+    deleteUser(userId);
+  } catch (err) {
+    logger.error(`Profile delete error: ${err.message}`);
+    return res.status(500).send('Something went wrong. Please contact support.');
+  }
+
   req.session.destroy((sessionErr) => {
     if (sessionErr) {
       logger.error(`Profile delete session destroy error: ${sessionErr.message}`);
-      return res.status(500).render('profile', {
-        user: getUserById(userId),
-        profile: getProfile(userId) || {},
-        countries: [],
-        ugPlans: UG_PLANS,
-        error: 'Something went wrong. Please try again.',
-        success: false,
-        csrfToken: res.locals.csrfToken,
-      });
-    }
-
-    try {
-      deleteUser(userId);
-    } catch (err) {
-      logger.error(`Profile delete error: ${err.message}`);
-      return res.status(500).send('Something went wrong. Please contact support.');
     }
     res.redirect('/');
   });
