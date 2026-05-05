@@ -1,85 +1,90 @@
-# [Student Loan Repayment Calculator](https://sfe.aedanl.com)
+# Student Finance Overseas Repayment Calculator
 
-A web app for UK student loan borrowers living abroad to estimate their monthly repayment based on their country of residence, salary, and repayment plan. Exchange rates and earnings thresholds are sourced directly from gov.uk and cached locally so the calculator continues to work even if older tax year pages are removed.
+[sfe.aedanl.com](https://sfe.aedanl.com)
+
+A small Express app for UK graduates living abroad who want to estimate their monthly Student Loans Company repayment. It uses the official gov.uk overseas earnings threshold tables, converts a local annual salary into GBP using the published exchange rate, and applies the relevant undergraduate or postgraduate repayment rate.
+
+This project is built to be useful as a live calculator, but also resilient as the gov.uk pages move around over time: threshold data is parsed, cached in memory, and persisted to SQLite.
 
 ## Features
 
-- **Plans 1, 2, 4 and 5** — covers all active overseas repayment plans, with an optional Postgraduate Loan add-on
-- **Multi-year support** — switch between tax years (currently 2025-26 and 2026-27); defaults to the current UK tax year automatically
-- **Offline cache** — thresholds are scraped from gov.uk and persisted to a local SQLite database; archived years are served entirely from the database once cached
-- **Currency formatting** — salary is displayed with the correct local currency symbol
-- **Remembers preferences** — selected plan, country, and year are stored in cookies and restored on next visit
-- **Account recovery** — email confirmation and password reset links are sent through Resend
-- **Form protection** — CSRF tokens on all submissions; rate limiting to prevent abuse.
+- Repayment plans 1, 2, 4, and 5
+- Optional Postgraduate Loan calculation
+- Tax-year switching for the configured supported years
+- Country autocomplete built from gov.uk threshold data
+- Local-currency display using country currency metadata
+- Saved preferences when the user has preference-cookie consent
+- Optional user accounts with email confirmation and password reset
+- Profile defaults for country, plan, salary, graduation date, and loan balances
+- Repayment projection chart powered by Chart.js
+- SEO pages and generated sitemap
+- SQLite persistence for cached thresholds, sessions, users, profiles, tokens, and calculation metadata
+- CSRF protection, rate limiting, CSP headers, secure sessions, and argon2id password hashing
 
-## How it works
+## How The Calculation Works
 
-On startup the app fetches earnings threshold tables from gov.uk for all supported plans and tax years, parses them with Cheerio, and stores the results in a SQLite database. Subsequent requests are served from an in-memory cache (7-day TTL) with the database as a fallback. For archived tax years the database is used exclusively — gov.uk is never re-fetched.
+For undergraduate loans:
 
-Repayments are calculated as:
-
-```
-monthly repayment = ((annual salary in GBP − threshold) × rate%) ÷ 12
-```
-
-- Undergraduate plans (1, 2, 4, 5): **9%** above threshold
-- Postgraduate Loan: **6%** above threshold
-
-If the salary is below the threshold, no repayment is due. When both are selected, the result shows each repayment separately and as a combined total.
-
-## Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-
-No local Node.js installation is required — everything runs inside Docker.
-
-## Running locally
-
-```bash
-git clone https://github.com/MrInterBugs/SFE_Abroad.git
-cd SFE_Abroad
-docker compose up --build
+```text
+monthly repayment = max(0, annual salary in GBP - overseas threshold) * 9% / 12
 ```
 
-The app will be available at `http://localhost:3000`.
+For Postgraduate Loans:
 
-> **Note:** The first build compiles `better-sqlite3` from source and may take a couple of minutes.
-
-### Email setup
-
-Email confirmation and password reset use Resend. Set these variables before running the production compose stack:
-
-```bash
-RESEND_API_KEY=...
-EMAIL_FROM="Student Finance Overseas <hello@your-domain.example>"
-APP_BASE_URL=https://sfe.aedanl.com
+```text
+monthly repayment = max(0, annual salary in GBP - overseas PGL threshold) * 6% / 12
 ```
 
-`APP_BASE_URL` defaults to `https://sfe.aedanl.com` in `docker-compose.yml`. In local development, email sending is skipped unless `RESEND_API_KEY` is configured.
+The salary-to-GBP conversion uses the exchange rate published in the gov.uk overseas threshold table for the selected plan and tax year. This calculator is an estimate, not an official SLC statement.
 
-### Data persistence
+## Project Layout
 
-Country data is stored in `./data/thresholds.db` on the host machine (mounted as a Docker volume). This means cached threshold data — including archived tax years — survives container restarts and rebuilds.
-
-### Running tests
-
-Tests run automatically as part of the Docker build. To run them manually inside a container:
-
-```bash
-docker run --rm sfe_abroad-student-loan-app npm test
+```text
+.
+|-- Dockerfile
+|-- docker-compose.yml
+|-- docker-entrypoint.sh
+|-- landing/
+|   |-- ads.txt
+|   `-- nginx.conf
+`-- student-loan-repayment/
+    |-- app.js
+    |-- config/
+    |   |-- constants.js
+    |   `-- seoPages.js
+    |-- public/
+    |   |-- main.js
+    |   |-- styles.css
+    |   `-- sitemap.xml
+    |-- routes/
+    |   |-- auth.js
+    |   |-- index.js
+    |   `-- profile.js
+    |-- scripts/
+    |   `-- generateSitemap.js
+    |-- tests/
+    |-- utils/
+    `-- views/
 ```
 
-## Usage
+## Tech Stack
 
-1. Select a **tax year** and **repayment plan**
-2. Tick **I also have a Postgraduate Loan** if applicable
-3. Type your **country of residence** — the field autocompletes from the gov.uk threshold table
-4. Enter your **annual salary in local currency**
-5. Click **Calculate**
+| Area | Tooling |
+|---|---|
+| Runtime | Node.js 24 Alpine in Docker |
+| Server | Express |
+| Views | EJS |
+| Frontend | Vanilla JS, CSS, Chart.js |
+| Data fetching | Axios |
+| HTML parsing | Cheerio |
+| Database | SQLite via better-sqlite3 |
+| Sessions | express-session with a custom SQLite store |
+| Auth | argon2id password hashes, hashed auth tokens |
+| Email | Resend API |
+| Tests | Jest, Supertest |
+| Production routing | Traefik labels in docker-compose.yml |
 
-The result shows your estimated monthly repayment in GBP, along with the exchange rate and earnings threshold used. If the Postgraduate Loan option is selected, undergraduate and PGL repayments are shown separately alongside a combined total.
-
-## Data source
+## Data Sources
 
 Threshold data is published by the UK government:
 
@@ -89,21 +94,181 @@ Threshold data is published by the UK government:
 - [Plan 5](https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-plan-5-student-loans)
 - [Postgraduate Loan](https://www.gov.uk/government/publications/overseas-earnings-thresholds-for-postgraduate-student-loans)
 
-> **Note:** The 2025-26 pages for Plans 1, 2, and 4 have a typo in their URL (the path reads `2024-25`). This is a gov.uk error — the data is correct. Plan 5 2026-27 uses a different URL format (`2026-to-2027`). Both quirks are handled in [config/constants.js](student-loan-repayment/config/constants.js).
+The configured source URLs live in [`student-loan-repayment/config/constants.js`](student-loan-repayment/config/constants.js). Some gov.uk paths have year-format quirks, and those are intentionally captured there.
 
-## Tech stack
+## Data And Caching
 
-| | |
-|---|---|
-| Runtime | Node.js 25 (Alpine) |
-| Framework | Express |
-| Templating | EJS |
-| Data fetching | Axios + Cheerio |
-| Database | SQLite via better-sqlite3 |
-| Security | Helmet (CSP), CSRF tokens, rate-limiter-flexible |
-| Containerisation | Docker + Docker Compose |
-| Reverse proxy (production) | Traefik |
+On startup, the app prefetches every configured plan and tax-year combination from gov.uk.
+
+The lookup order is:
+
+1. Fresh in-memory cache
+2. SQLite cache for archived or unavailable data
+3. gov.uk fetch
+
+Current-year data is refreshed from gov.uk after the in-memory cache expires. Non-current configured years prefer SQLite first because gov.uk can remove or rename archived pages.
+
+The SQLite database is created at:
+
+```text
+student-loan-repayment/data/thresholds.db
+```
+
+In Docker, this path is mounted from the repository-level `./data` directory:
+
+```text
+./data:/usr/src/app/data
+```
+
+## Environment Variables
+
+| Variable | Required | Default | Purpose |
+|---|---:|---|---|
+| `SESSION_SECRET` | Yes | None | Secret used to sign session cookies |
+| `NODE_ENV` | Recommended | Development outside Docker, `production` in Docker | Controls secure-cookie behavior and test setup |
+| `RESEND_API_KEY` | No | None | Enables email delivery through Resend |
+| `EMAIL_FROM` | No | `Student Finance Overseas Calculator <onboarding@resend.dev>` | Sender address for confirmation and reset emails |
+| `APP_BASE_URL` | No | `http://localhost:3000` in app code, `https://sfe.aedanl.com` in compose | Base URL used in email links |
+
+When `RESEND_API_KEY` is missing, email sends are skipped and logged. That is convenient locally, but accounts that require email confirmation will not receive a real confirmation link.
+
+## Running Locally With Node
+
+Use this path if you want quick feedback without Docker.
+
+```bash
+cd student-loan-repayment
+npm ci
+SESSION_SECRET=dev-session-secret npm start
+```
+
+The app listens on:
+
+```text
+http://localhost:3000
+```
+
+The first request or startup prefetch may call gov.uk and populate SQLite.
+
+## Running With Docker
+
+Build and run the app container directly:
+
+```bash
+docker build -t sfe-abroad .
+docker run --rm \
+  -p 3000:3000 \
+  -e SESSION_SECRET=dev-session-secret \
+  -e APP_BASE_URL=http://localhost:3000 \
+  -v "$PWD/data:/usr/src/app/data" \
+  sfe-abroad
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+The checked-in `docker-compose.yml` is production-oriented. It expects an external Docker network named `traefik_default` and includes Traefik labels for `sfe.aedanl.com`, plus a small nginx landing service for `aedanl.com` and `www.aedanl.com`.
+
+## Production Compose
+
+Create an `.env` file or export these variables before using the production compose file:
+
+```bash
+SESSION_SECRET=replace-with-a-long-random-secret
+RESEND_API_KEY=optional-resend-key
+EMAIL_FROM="Student Finance Overseas <hello@example.com>"
+APP_BASE_URL=https://sfe.aedanl.com
+```
+
+Then run:
+
+```bash
+docker compose up --build -d
+```
+
+Because the compose file joins `traefik_default`, make sure that network already exists:
+
+```bash
+docker network ls
+```
+
+## Testing
+
+Run the full Jest suite:
+
+```bash
+cd student-loan-repayment
+npm test
+```
+
+The project currently enforces 100% global coverage for branches, functions, lines, and statements. Tests set `SESSION_SECRET` automatically through `tests/setup.js`.
+
+Run a production dependency audit:
+
+```bash
+cd student-loan-repayment
+npm audit --omit=dev
+```
+
+## Useful Scripts
+
+From `student-loan-repayment/`:
+
+```bash
+npm start
+npm test
+npm run generate:sitemap
+```
+
+`npm run generate:sitemap` writes `student-loan-repayment/public/sitemap.xml` from the SEO page configuration.
+
+## Authentication And Privacy Notes
+
+User accounts support:
+
+- Registration
+- Email confirmation
+- Login and logout
+- Password reset
+- Profile export
+- Account deletion
+
+Security and privacy choices worth keeping:
+
+- Passwords are hashed with argon2id.
+- Email confirmation and reset tokens are stored as SHA-256 hashes.
+- Password reset revokes existing user sessions.
+- CSRF tokens are required for mutating form submissions.
+- Auth routes have a stricter rate limiter than general dynamic requests.
+- Anonymous calculations are stored as aggregate daily stats.
+- Signed-in calculation history stores metadata such as country, plan, year, and PGL inclusion. It does not store salary amounts.
+- Preference cookies are only written when preference-cookie consent is present.
+
+## Maintenance Checklist
+
+At least once per UK tax-year rollover:
+
+1. Add the new tax year and source URLs in `student-loan-repayment/config/constants.js`.
+2. Run the test suite.
+3. Start the app and confirm prefetch logs for every plan and year.
+4. Regenerate the sitemap if SEO pages changed.
+5. Check a few high-traffic countries manually against gov.uk.
+
+When gov.uk changes page structure:
+
+1. Update `parseTableData` in `student-loan-repayment/utils/fetchCountryData.js`.
+2. Add or update parser fixtures in the tests.
+3. Verify cached data can still be loaded from SQLite as a fallback.
+
+## Known Operational Caveats
+
+- Supported tax years are explicit. If a new tax year starts before `constants.js` is updated, the app falls back to the latest configured year.
+- The home-page country autocomplete is currently based on current-year Plan 1 data. Calculation still validates against the selected plan and year on the server.
+- The production compose file is not a generic local-development compose file because it depends on the external Traefik network.
 
 ## License
 
-Licensed under the [Apache 2.0 License](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE).
