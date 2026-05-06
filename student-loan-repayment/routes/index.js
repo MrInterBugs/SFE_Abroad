@@ -2,7 +2,7 @@ const express = require('express');
 const logger = require('../utils/logger');
 const { verifyCsrfToken } = require('../utils/csrf');
 const {
-  DEFAULT_YEAR, SUPPORTED_YEARS, getCurrentTaxYear,
+  DEFAULT_YEAR, SUPPORTED_YEARS, computeCurrentTaxYear, getDefaultTaxYear,
   ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
   urlsByYear,
 } = require('../config/constants');
@@ -145,7 +145,7 @@ router.get('/methodology', (req, res) => {
 router.get(getSeoPagePaths(), async (req, res) => {
   const slug = req.path.slice(1);
   const page = getSeoPage(slug);
-  const taxYear = getCurrentTaxYear();
+  const taxYear = getDefaultTaxYear();
   const thresholds = page.kind === 'country'
     ? await buildCountryThresholdExamples(page.country, taxYear)
     : [];
@@ -179,12 +179,18 @@ router.get('/', async (req, res) => {
   }
 
   const selectedYearCookie = preferenceCookie(req, 'selectedYear');
+  const realCurrentTaxYear = computeCurrentTaxYear();
+  const currentTaxYearSupported = SUPPORTED_YEARS.includes(realCurrentTaxYear);
+  const defaultTaxYear = currentTaxYearSupported ? realCurrentTaxYear : DEFAULT_YEAR;
   const selectedYear = SUPPORTED_YEARS.includes(selectedYearCookie)
     ? selectedYearCookie
-    : getCurrentTaxYear();
+    : defaultTaxYear;
+  const taxYearNotice = currentTaxYearSupported
+    ? null
+    : `The ${realCurrentTaxYear} overseas thresholds are not available yet. Showing latest available data: ${DEFAULT_YEAR}.`;
 
   try {
-    const fullData = await getThresholdData('plan1', getCurrentTaxYear());
+    const fullData = await getThresholdData('plan1', selectedYear);
     const countries = buildCountriesList(fullData);
 
     const profile = req.session.userId ? db.getProfile(req.session.userId) : null;
@@ -201,6 +207,9 @@ router.get('/', async (req, res) => {
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
+      realCurrentTaxYear,
+      currentTaxYearSupported,
+      taxYearNotice,
       availablePlans: getAvailablePlansForYear(selectedYear),
       pglAvailable,
       availablePlansByYear: buildAvailablePlansByYear(),
@@ -222,6 +231,9 @@ router.get('/', async (req, res) => {
       selectedYear,
       includePg,
       supportedYears: SUPPORTED_YEARS,
+      realCurrentTaxYear,
+      currentTaxYearSupported,
+      taxYearNotice,
       availablePlans: getAvailablePlansForYear(selectedYear),
       pglAvailable,
       availablePlansByYear: buildAvailablePlansByYear(),
@@ -237,7 +249,7 @@ router.get('/', async (req, res) => {
 router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const { targetCountry, selectedPlan, selectedYear } = req.body;
   const includePg = req.body.includePg === 'on';
-  const year = SUPPORTED_YEARS.includes(selectedYear) ? selectedYear : DEFAULT_YEAR;
+  const year = selectedYear;
 
   const profile = req.session?.userId ? db.getProfile(req.session.userId) : null;
   const loanValueGbp = profile?.loan_value_gbp || null;
@@ -247,6 +259,10 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
 
   function sendError(status, message) {
     return res.status(status).json({ error: message });
+  }
+
+  if (!SUPPORTED_YEARS.includes(year)) {
+    return sendError(400, 'Invalid tax year selected.');
   }
 
   if (!ALLOWED_PLANS.includes(selectedPlan)) {

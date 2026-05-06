@@ -1,7 +1,9 @@
 'use strict';
 
 const {
+  computeCurrentTaxYear,
   getCurrentTaxYear,
+  getDefaultTaxYear,
   SUPPORTED_YEARS,
   DEFAULT_YEAR,
   ALLOWED_PLANS,
@@ -56,12 +58,15 @@ describe('getCurrentTaxYear', () => {
   test('returns previous tax year when date is before 6 April', () => {
     // 5 April 2026 → still in the 2025-26 tax year
     jest.setSystemTime(new Date('2026-04-05T12:00:00'));
+    expect(computeCurrentTaxYear()).toBe('2025-26');
     expect(getCurrentTaxYear()).toBe('2025-26');
+    expect(getDefaultTaxYear()).toBe('2025-26');
   });
 
   test('returns current tax year on exactly 6 April', () => {
     // 6 April 2026 → first day of 2026-27 tax year
     jest.setSystemTime(new Date('2026-04-06T00:00:00'));
+    expect(computeCurrentTaxYear()).toBe('2026-27');
     expect(getCurrentTaxYear()).toBe('2026-27');
   });
 
@@ -76,10 +81,16 @@ describe('getCurrentTaxYear', () => {
     expect(getCurrentTaxYear()).toBe('2025-26');
   });
 
-  test('falls back to DEFAULT_YEAR when computed year is not in SUPPORTED_YEARS', () => {
-    // Far-future date: computed year will be something like '2099-00', not supported
-    jest.setSystemTime(new Date('2099-07-01T00:00:00'));
-    expect(getCurrentTaxYear()).toBe(DEFAULT_YEAR);
+  test('reports unsupported real tax years instead of pretending the latest data is current', () => {
+    jest.setSystemTime(new Date('2027-04-06T00:00:00'));
+    expect(computeCurrentTaxYear()).toBe('2027-28');
+    expect(getCurrentTaxYear()).toBeNull();
+    expect(getDefaultTaxYear()).toBe(DEFAULT_YEAR);
+  });
+
+  test('computes tax years from an explicit date argument', () => {
+    expect(computeCurrentTaxYear(new Date('2030-04-05T12:00:00'))).toBe('2029-30');
+    expect(computeCurrentTaxYear(new Date('2030-04-06T12:00:00'))).toBe('2030-31');
   });
 });
 

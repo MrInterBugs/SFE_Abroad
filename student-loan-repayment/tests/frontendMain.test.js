@@ -352,6 +352,25 @@ describe('public/main.js frontend behavior', () => {
     expect(document.getElementById('necessary-cookie-banner').children[1].children[0].textContent).toBe('Use calculator');
   });
 
+  test('rejects partially numeric salaries before submitting', async () => {
+    const document = createFakeDocument({ graduationDate: null });
+    global.fetch = jest.fn();
+    loadMain();
+
+    const countryInput = document.getElementById('country-input');
+    countryInput.value = 'Germany';
+    countryInput.dispatch('input');
+    document.getElementById('ac-list').children[0].dispatch('mousedown');
+    document.getElementById('salary-input').value = '50000abc';
+
+    document.getElementById('calc-form').dispatch('submit');
+    await flushPromises();
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(document.getElementById('salary-error').classList.contains('show')).toBe(true);
+    expect(document.getElementById('salary-input').classList.contains('error')).toBe(true);
+  });
+
   test('accepts necessary cookies locally and retries when Cookiebot is blocked', async () => {
     const document = createFakeDocument({ graduationDate: null });
     global.fetch = jest.fn()

@@ -34,22 +34,32 @@ const ALLOWED_PLANS = ['plan1', 'plan2', 'plan4', 'plan5'];
 const CACHE_PLANS = [...ALLOWED_PLANS, 'planPg'];
 const SUPPORTED_YEARS = Object.keys(urlsByYear);
 
-// Latest supported year — used as the fallback for the "archived year" DB logic.
+// Latest supported year — used when the real current year is not configured yet.
 const DEFAULT_YEAR = SUPPORTED_YEARS[SUPPORTED_YEARS.length - 1];
 
-// Returns the UK tax year string for today (e.g. '2026-27').
+// Returns the real UK tax year string for a date (e.g. '2026-27').
 // The UK tax year starts on 6 April, so before that date we're still in the
-// previous year. Falls back to DEFAULT_YEAR if the computed year isn't supported.
-function getCurrentTaxYear() {
-  const now = new Date();
+// previous year.
+function computeCurrentTaxYear(date = new Date()) {
+  const now = date;
   const year = now.getFullYear();
   const month = now.getMonth() + 1; // 1-indexed
   const day = now.getDate();
   const afterTaxYearStart = month > 4 || (month === 4 && day >= 6);
   const startYear = afterTaxYearStart ? year : year - 1;
   const endYear = startYear + 1;
-  const computed = `${startYear}-${String(endYear).slice(2)}`;
-  return SUPPORTED_YEARS.includes(computed) ? computed : DEFAULT_YEAR;
+  return `${startYear}-${String(endYear).slice(2)}`;
+}
+
+// Returns the real current tax year only when it is configured.
+function getCurrentTaxYear() {
+  const computed = computeCurrentTaxYear();
+  return SUPPORTED_YEARS.includes(computed) ? computed : null;
+}
+
+// Returns the best year to show in UI: current if supported, otherwise latest.
+function getDefaultTaxYear() {
+  return getCurrentTaxYear() || DEFAULT_YEAR;
 }
 
 module.exports = {
@@ -63,5 +73,7 @@ module.exports = {
   CACHE_PLANS,
   DEFAULT_YEAR,
   SUPPORTED_YEARS,
+  computeCurrentTaxYear,
   getCurrentTaxYear,
+  getDefaultTaxYear,
 };

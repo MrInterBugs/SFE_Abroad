@@ -138,6 +138,9 @@
           <!-- Tax year -->
           <div class="form-group">
             <span class="field-label">Tax Year</span>
+            <% if (locals.taxYearNotice) { %>
+              <div class="tax-year-notice" role="status"><%= taxYearNotice %></div>
+            <% } %>
             <div class="seg-control" role="radiogroup" aria-label="Tax year">
               <% supportedYears.forEach(function(year) { %>
                 <input type="radio" name="selectedYear" id="ty-<%= year.replace('-','') %>" value="<%= year %>" <%= year === selectedYear ? 'checked' : '' %>>

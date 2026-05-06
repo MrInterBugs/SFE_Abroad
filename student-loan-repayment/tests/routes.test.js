@@ -139,7 +139,10 @@ describe('routes', () => {
     app = buildApp();
   });
 
-  afterEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.clearAllMocks();
+  });
 
   // ─── GET / ──────────────────────────────────────────────────────────────────
 
@@ -299,10 +302,12 @@ describe('routes', () => {
     });
 
     test('reads a valid selectedYear cookie', async () => {
+      const archivedYear = SUPPORTED_YEARS[0];
       const res = await request(app)
         .get('/')
-        .set('Cookie', ['CookieConsent=preferences%3Atrue', `selectedYear=${SUPPORTED_YEARS[0]}`]);
+        .set('Cookie', ['CookieConsent=preferences%3Atrue', `selectedYear=${archivedYear}`]);
       expect(res.status).toBe(200);
+      expect(getThresholdData).toHaveBeenCalledWith('plan1', archivedYear);
     });
 
     test('hides plans and PGL that are unavailable for the selected tax year', async () => {
@@ -325,11 +330,24 @@ describe('routes', () => {
       expect(res.text).toMatch(/id="pgl-check" name="includePg"[^>]*disabled/);
     });
 
-    test('ignores an invalid selectedYear cookie and falls back to current year', async () => {
+    test('ignores an invalid selectedYear cookie and falls back to the default tax year', async () => {
       const res = await request(app)
         .get('/')
         .set('Cookie', ['CookieConsent=preferences%3Atrue', 'selectedYear=not-a-year']);
       expect(res.status).toBe(200);
+    });
+
+    test('shows latest available data when the real current tax year is unsupported', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2027-04-06T12:00:00'));
+
+      const res = await request(app).get('/');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('The 2027-28 overseas thresholds are not available yet.');
+      expect(res.text).toContain(`Showing latest available data: ${DEFAULT_YEAR}.`);
+      expect(res.text).toMatch(new RegExp(`id="ty-${DEFAULT_YEAR.replace('-', '')}" value="${DEFAULT_YEAR}" checked`));
+      expect(getThresholdData).toHaveBeenCalledWith('plan1', DEFAULT_YEAR);
     });
 
     test('reads includePg=true cookie', async () => {
@@ -565,19 +583,17 @@ describe('routes', () => {
       expect(res.status).toBe(400);
     });
 
-    test('falls back to DEFAULT_YEAR when selectedYear is unrecognised', async () => {
+    test('returns 400 when selectedYear is unrecognised', async () => {
       const res = await postCalculate(app, {
         targetCountry: 'Germany',
         salaryLocalCurrency: '50000',
         selectedPlan: 'plan1',
         selectedYear: 'bad-year',
       }, ['CookieConsent=preferences%3Atrue']);
-      expect(res.status).toBe(200);
-      expect(res.headers['set-cookie']).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining(`selectedYear=${DEFAULT_YEAR}`),
-        ])
-      );
+      const setCookie = (res.headers['set-cookie'] || []).join(';');
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Invalid tax year selected');
+      expect(setCookie).not.toContain('selectedYear=');
     });
 
     test('returns an error when the country is not found in threshold data', async () => {

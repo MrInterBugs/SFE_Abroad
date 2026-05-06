@@ -9,6 +9,7 @@ const request = require('supertest');
 const { createApp, startServer, prefetchAllData, isStaticRequest, isPrivatePage } = require('../app');
 const { getThresholdData } = require('../utils/fetchCountryData');
 const logger = require('../utils/logger');
+const { DEFAULT_YEAR } = require('../config/constants');
 
 const THRESHOLD_DATA = {
   Germany: {
@@ -138,6 +139,7 @@ describe('Express App', () => {
         targetCountry: 'Germany',
         salaryLocalCurrency: 50000,
         selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
         csrfToken  // Include the CSRF token in the form data
       });
 
@@ -146,7 +148,8 @@ describe('Express App', () => {
     expect(postResponse.headers['set-cookie']).toEqual(
       expect.arrayContaining([
         expect.stringContaining('selectedPlan=plan1'),
-        expect.stringContaining('selectedCountry=Germany')
+        expect.stringContaining('selectedCountry=Germany'),
+        expect.stringContaining(`selectedYear=${DEFAULT_YEAR}`)
       ])
     );
   });

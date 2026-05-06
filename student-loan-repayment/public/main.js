@@ -560,8 +560,9 @@
     }
 
     const salaryInput = document.getElementById('salary-input');
-    const salary = parseFloat(salaryInput.value);
-    if (!salary || salary <= 0) {
+    const salaryRaw = String(salaryInput.value || '').trim();
+    const salary = salaryRaw ? Number(salaryRaw) : NaN;
+    if (!Number.isFinite(salary) || salary <= 0) {
       document.getElementById('salary-error').classList.add('show');
       salaryInput.classList.add('error');
       valid = false;

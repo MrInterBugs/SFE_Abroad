@@ -2,7 +2,7 @@ const express = require('express');
 const { verifyCsrfToken } = require('../utils/csrf');
 const { getUserById, getProfile, upsertProfile, deleteUser, loadCountryList, getCalculationsForUser } = require('../utils/db');
 const { requireAuth } = require('../utils/auth');
-const { getCurrentTaxYear, ALLOWED_PLANS } = require('../config/constants');
+const { getDefaultTaxYear, ALLOWED_PLANS } = require('../config/constants');
 const { getThresholdData } = require('../utils/fetchCountryData');
 const logger = require('../utils/logger');
 
@@ -11,7 +11,7 @@ const UG_PLANS = ALLOWED_PLANS.filter(p => p !== 'planPg');
 const router = express.Router();
 
 async function getCountries() {
-  const year = getCurrentTaxYear();
+  const year = getDefaultTaxYear();
   const cachedCountries = loadCountryList('plan1', year);
   if (cachedCountries.length > 0) return cachedCountries;
 
