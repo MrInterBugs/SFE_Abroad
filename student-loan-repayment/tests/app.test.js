@@ -16,6 +16,7 @@ const THRESHOLD_DATA = {
     Currency: 'Euro',
     'Earnings threshold (GBP)': '£22,000',
     'Lower earnings threshold (GBP)': '£18,000',
+    'Upper earnings threshold (GBP)': '£42,000',
   },
 };
 

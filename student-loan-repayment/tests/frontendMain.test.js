@@ -367,6 +367,8 @@ describe('public/main.js frontend behavior', () => {
           pglMonthlyRepayment: null,
           pglThresholdGbp: null,
           thresholdGbp: '18000.00',
+          plan2LowerThresholdGbp: '18000.00',
+          plan2UpperThresholdGbp: '42000.00',
           localPerGbp: '0.8696',
           salaryGbp: '57500.00',
           selectedPlan: 'plan2',
@@ -457,6 +459,8 @@ describe('public/main.js frontend behavior', () => {
           pglMonthlyRepayment: '90.00',
           pglThresholdGbp: '21000.00',
           thresholdGbp: '18000.00',
+          plan2LowerThresholdGbp: '18000.00',
+          plan2UpperThresholdGbp: '42000.00',
           localPerGbp: '0.8696',
           salaryGbp: '57500.00',
           selectedPlan: 'plan2',
@@ -502,6 +506,8 @@ describe('public/main.js frontend behavior', () => {
       pglMonthlyRepayment: '90.00',
       pglThresholdGbp: '21000.00',
       thresholdGbp: '18000.00',
+      plan2LowerThresholdGbp: '18000.00',
+      plan2UpperThresholdGbp: '42000.00',
       localPerGbp: '0.8696',
       salaryGbp: '57500.00',
       selectedPlan: 'plan2',
@@ -532,6 +538,7 @@ describe('public/main.js frontend behavior', () => {
     expect(document.getElementById('rate-display').textContent).toBe('10.0%');
     expect(document.getElementById('payrise-display').textContent).toBe('5.0%');
     expect(document.getElementById('plan2-rate-note').textContent).toContain('13.0%');
+    expect(document.getElementById('plan2-rate-note').textContent).toContain('income above £42,000');
 
     document.getElementById('calc-form').dispatch('submit');
     await flushPromises();

@@ -7,8 +7,6 @@
   const AVAILABLE_PLANS_BY_YEAR = appData.availablePlansByYear || {};
 
   const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
-  const PLAN2_LOWER = 29385;
-  const PLAN2_UPPER = 52884;
   const FALLBACK_AVAILABLE_PLANS = ['plan1', 'plan2', 'plan4', 'plan5', 'planPg'];
 
   function queryAll(selector) {
@@ -20,10 +18,19 @@
     return Array.isArray(configured) ? configured : FALLBACK_AVAILABLE_PLANS;
   }
 
-  function calcPlan2Surcharge(salaryGbp) {
-    if (salaryGbp <= PLAN2_LOWER) return 0;
-    if (salaryGbp >= PLAN2_UPPER) return 3;
-    return ((salaryGbp - PLAN2_LOWER) / (PLAN2_UPPER - PLAN2_LOWER)) * 3;
+  function plan2InterestThresholds(result) {
+    if (!result || result.selectedPlan !== 'plan2') return null;
+    const lower = parseFloat(result.plan2LowerThresholdGbp || result.thresholdGbp);
+    const upper = parseFloat(result.plan2UpperThresholdGbp);
+    if (!Number.isFinite(lower) || !Number.isFinite(upper) || upper <= lower) return null;
+    return { lower, upper };
+  }
+
+  function calcPlan2Surcharge(salaryGbp, thresholds) {
+    if (!thresholds) return 0;
+    if (salaryGbp <= thresholds.lower) return 0;
+    if (salaryGbp >= thresholds.upper) return 3;
+    return ((salaryGbp - thresholds.lower) / (thresholds.upper - thresholds.lower)) * 3;
   }
 
   function updatePlan2Note(rpi) {
@@ -33,13 +40,16 @@
       note.style.display = 'none';
       return;
     }
-    const surcharge = calcPlan2Surcharge(parseFloat(lastResult.salaryGbp));
+    const thresholds = plan2InterestThresholds(lastResult);
+    const surcharge = calcPlan2Surcharge(parseFloat(lastResult.salaryGbp), thresholds);
     const effective = rpi + surcharge;
     let detail;
-    if (surcharge === 0) {
-      detail = `RPI only — income below £${PLAN2_LOWER.toLocaleString('en-GB')}`;
+    if (!thresholds || surcharge === 0) {
+      detail = thresholds
+        ? `RPI only — income below £${Math.round(thresholds.lower).toLocaleString('en-GB')}`
+        : 'RPI only';
     } else if (surcharge >= 3) {
-      detail = `RPI + 3% — income above £${PLAN2_UPPER.toLocaleString('en-GB')}`;
+      detail = `RPI + 3% — income above £${Math.round(thresholds.upper).toLocaleString('en-GB')}`;
     } else {
       detail = `RPI + ${surcharge.toFixed(1)}% income surcharge`;
     }
@@ -308,7 +318,7 @@
     const payRiseParsed = parseFloat(payRiseSlider && payRiseSlider.value);
     const payRise = isFinite(payRiseParsed) ? payRiseParsed : 2;
     const plan2Surcharge = lastResult.selectedPlan === 'plan2'
-      ? calcPlan2Surcharge(parseFloat(lastResult.salaryGbp))
+      ? calcPlan2Surcharge(parseFloat(lastResult.salaryGbp), plan2InterestThresholds(lastResult))
       : 0;
     const interestRate = rpi + plan2Surcharge;
     updatePlan2Note(rpi);

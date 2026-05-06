@@ -31,12 +31,14 @@ const THRESHOLD_DATA = {
     Currency: 'Australian Dollar',
     'Earnings threshold (GBP)': '£19,084',
     'Lower earnings threshold (GBP)': '£15,000',
+    'Upper earnings threshold (GBP)': '£35,000',
   },
   Germany: {
     'Exchange rate': '1.15',
     Currency: 'Euro',
     'Earnings threshold (GBP)': '£22,000',
     'Lower earnings threshold (GBP)': '£18,000',
+    'Upper earnings threshold (GBP)': '£42,000',
   },
 };
 
@@ -97,8 +99,8 @@ async function postCalculate(app, body, extraCookies = []) {
 }
 
 /**
- * Like postCalculate but sends Accept: application/json so the route returns
- * JSON instead of rendering result.ejs.
+ * Like postCalculate but also sends Accept: application/json. /calculate is
+ * JSON-only; this helper preserves coverage for explicit JSON clients.
  */
 async function postCalculateJson(app, body, extraCookies = []) {
   const { token, cookies } = await getCsrfToken(app);
@@ -578,7 +580,7 @@ describe('routes', () => {
       );
     });
 
-    test('renders an error when the country is not found in threshold data', async () => {
+    test('returns an error when the country is not found in threshold data', async () => {
       const res = await postCalculate(app, {
         targetCountry: 'Narnia',
         salaryLocalCurrency: '50000',
@@ -602,7 +604,7 @@ describe('routes', () => {
       expect(setCookie).not.toContain('selectedPlan=plan1');
     });
 
-    test('renders an error when the exchange rate is not a number', async () => {
+    test('returns an error when the exchange rate is not a number', async () => {
       getThresholdData.mockResolvedValue({
         Germany: {
           'Exchange rate': 'not-a-number',
@@ -620,7 +622,7 @@ describe('routes', () => {
       expect(res.text).toContain('Unexpected data format');
     });
 
-    test('renders an error when the threshold field is missing', async () => {
+    test('returns an error when the threshold field is missing', async () => {
       getThresholdData.mockResolvedValue({
         Germany: {
           'Exchange rate': '1.15',
@@ -638,7 +640,7 @@ describe('routes', () => {
       expect(res.text).toContain('Unexpected data format');
     });
 
-    test('shows £0.00 repayment when salary is below the threshold', async () => {
+    test('returns £0.00 repayment when salary is below the threshold', async () => {
       // Very low exchange rate → GBP salary well below £22,000 threshold
       getThresholdData.mockResolvedValue({
         Germany: {
@@ -654,10 +656,11 @@ describe('routes', () => {
         selectedYear: DEFAULT_YEAR,
       });
       expect(res.status).toBe(200);
-      expect(res.text).toContain('below the');
+      expect(res.body.monthlyRepayment).toBe('0.00');
+      expect(res.body.salaryGbp).toBe('1.00');
     });
 
-    test('renders an error when getThresholdData throws', async () => {
+    test('returns JSON 500 when getThresholdData throws', async () => {
       getThresholdData.mockRejectedValue(new Error('Database offline'));
       const res = await postCalculate(app, {
         targetCountry: 'Germany',
@@ -665,8 +668,8 @@ describe('routes', () => {
         selectedPlan: 'plan1',
         selectedYear: DEFAULT_YEAR,
       });
-      expect(res.status).toBe(200);
-      expect(res.text).toContain('Something went wrong');
+      expect(res.status).toBe(500);
+      expect(res.body.error).toContain('Something went wrong');
     });
 
     test('returns 403 when no CSRF token is supplied', async () => {
@@ -694,7 +697,7 @@ describe('routes', () => {
       expect(res.status).toBe(200);
     });
 
-    test('shows £0.00 PGL repayment when salary is below PGL threshold', async () => {
+    test('returns £0.00 PGL repayment when salary is below PGL threshold', async () => {
       getThresholdData.mockImplementation((plan) =>
         plan === 'planPg'
           ? Promise.resolve({
@@ -714,7 +717,9 @@ describe('routes', () => {
         includePg: 'on',
       });
       expect(res.status).toBe(200);
-      expect(res.text).toContain('below the Postgraduate Loan');
+      expect(res.body.monthlyRepayment).toBe('0.00');
+      expect(res.body.pglMonthlyRepayment).toBe('0.00');
+      expect(res.body.pglThresholdGbp).toBe('1000000.00');
     });
 
     test('returns an error when country is absent from PG data', async () => {
@@ -770,6 +775,66 @@ describe('routes', () => {
       });
       expect(res.status).toBe(502);
       expect(res.text).toContain('Unexpected postgraduate loan data format');
+    });
+
+    test('returns an error when undergraduate threshold is not numeric', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '1.15',
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': 'not-a-number',
+        },
+      });
+
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+
+      expect(res.status).toBe(502);
+      expect(res.text).toContain('Unexpected data format');
+    });
+
+    test('returns an error when undergraduate threshold is not a string', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '1.15',
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': 22000,
+        },
+      });
+
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+
+      expect(res.status).toBe(502);
+      expect(res.text).toContain('Unexpected data format');
+    });
+
+    test('returns an error when Plan 2 upper threshold is missing', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '1.15',
+          Currency: 'Euro',
+          'Lower earnings threshold (GBP)': '£18,000',
+        },
+      });
+
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan2',
+        selectedYear: DEFAULT_YEAR,
+      });
+
+      expect(res.status).toBe(502);
+      expect(res.text).toContain('Unexpected data format');
     });
 
     test('includePg cookie is stored as "false" when checkbox is absent', async () => {
@@ -828,6 +893,20 @@ describe('routes', () => {
       expect(res.body.selectedPlan).toBe('plan1');
       expect(res.body.pglMonthlyRepayment).toBeNull();
       expect(res.body.pglThresholdGbp).toBeNull();
+    });
+
+    test('includes country-specific Plan 2 interest thresholds in JSON responses', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan2',
+        selectedYear: DEFAULT_YEAR,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.thresholdGbp).toBe('18000.00');
+      expect(res.body.plan2LowerThresholdGbp).toBe('18000.00');
+      expect(res.body.plan2UpperThresholdGbp).toBe('42000.00');
     });
 
     test('returns zero monthlyRepayment in JSON when salary is below threshold', async () => {

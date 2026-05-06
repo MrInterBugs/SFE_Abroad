@@ -35,6 +35,11 @@ function parseRequiredNumber(value) {
   return Number(raw);
 }
 
+function parseGbpAmount(value) {
+  if (typeof value !== 'string') return NaN;
+  return parseFloat(value.replace(/[£,]/g, ''));
+}
+
 function buildCountriesList(fullData) {
   return Object.entries(fullData).map(([name, data]) => {
     const rawCurrency = (data['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
@@ -233,7 +238,6 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const { targetCountry, selectedPlan, selectedYear } = req.body;
   const includePg = req.body.includePg === 'on';
   const year = SUPPORTED_YEARS.includes(selectedYear) ? selectedYear : DEFAULT_YEAR;
-  const isJson = req.headers['accept'] && req.headers['accept'].includes('application/json');
 
   const profile = req.session?.userId ? db.getProfile(req.session.userId) : null;
   const loanValueGbp = profile?.loan_value_gbp || null;
@@ -242,8 +246,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}`);
 
   function sendError(status, message) {
-    if (isJson) return res.status(status).json({ error: message });
-    return res.status(status).render('result', { error: message });
+    return res.status(status).json({ error: message });
   }
 
   if (!ALLOWED_PLANS.includes(selectedPlan)) {
@@ -282,7 +285,24 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       return sendError(502, 'Unexpected data format for this country. Please try again later.');
     }
 
-    const thresholdGbp = parseFloat(thresholdRaw.replace(/[£,]/g, ''));
+    const thresholdGbp = parseGbpAmount(thresholdRaw);
+    if (!Number.isFinite(thresholdGbp)) {
+      return sendError(502, 'Unexpected data format for this country. Please try again later.');
+    }
+
+    const plan2LowerThresholdGbp = selectedPlan === 'plan2'
+      ? thresholdGbp
+      : null;
+    const plan2UpperThresholdRaw = selectedPlan === 'plan2'
+      ? countryData['Upper earnings threshold (GBP)']
+      : null;
+    const plan2UpperThresholdGbp = plan2UpperThresholdRaw
+      ? parseGbpAmount(plan2UpperThresholdRaw)
+      : null;
+    if (selectedPlan === 'plan2' && !Number.isFinite(plan2UpperThresholdGbp)) {
+      return sendError(502, 'Unexpected data format for this country. Please try again later.');
+    }
+
     const salaryGbp = salary * exchangeRate;
     const amountOverThreshold = salaryGbp - thresholdGbp;
 
@@ -308,7 +328,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
         return sendError(502, 'Unexpected postgraduate loan data format for this country. Please try again later.');
       }
 
-      pglThresholdGbp = parseFloat(pgThresholdRaw.replace(/[£,]/g, ''));
+      pglThresholdGbp = parseGbpAmount(pgThresholdRaw);
       if (!Number.isFinite(pglThresholdGbp)) {
         return sendError(502, 'Unexpected postgraduate loan data format for this country. Please try again later.');
       }
@@ -339,43 +359,24 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       logger.warn(`Failed to log calculation: ${logErr.message}`);
     }
 
-    if (isJson) {
-      return res.json({
-        monthlyRepayment: monthlyRepayment.toFixed(2),
-        pglMonthlyRepayment: pglMonthlyRepayment !== null ? pglMonthlyRepayment.toFixed(2) : null,
-        pglThresholdGbp: pglThresholdGbp !== null ? pglThresholdGbp.toFixed(2) : null,
-        thresholdGbp: thresholdGbp.toFixed(2),
-        localPerGbp: (1 / exchangeRate).toFixed(4),
-        salaryGbp: salaryGbp.toFixed(2),
-        selectedPlan,
-        selectedYear: year,
-        salaryCurrencySymbol,
-        loanValueGbp,
-        loanValuePglGbp,
-      });
-    }
-
-    res.render('result', {
-      error: null,
+    return res.json({
       monthlyRepayment: monthlyRepayment.toFixed(2),
       pglMonthlyRepayment: pglMonthlyRepayment !== null ? pglMonthlyRepayment.toFixed(2) : null,
       pglThresholdGbp: pglThresholdGbp !== null ? pglThresholdGbp.toFixed(2) : null,
-      targetCountry,
-      salaryLocalCurrency: salary.toFixed(2),
-      salaryGbp: salaryGbp.toFixed(2),
-      salaryCurrencySymbol,
-      exchangeRate: exchangeRate.toFixed(2),
       thresholdGbp: thresholdGbp.toFixed(2),
+      plan2LowerThresholdGbp: plan2LowerThresholdGbp !== null ? plan2LowerThresholdGbp.toFixed(2) : null,
+      plan2UpperThresholdGbp: plan2UpperThresholdGbp !== null ? plan2UpperThresholdGbp.toFixed(2) : null,
+      localPerGbp: (1 / exchangeRate).toFixed(4),
+      salaryGbp: salaryGbp.toFixed(2),
       selectedPlan,
       selectedYear: year,
+      salaryCurrencySymbol,
       loanValueGbp,
       loanValuePglGbp,
-      graduationDate: profile?.graduation_date || null,
     });
   } catch (error) {
     logger.error(`POST /calculate error: ${error.message}`);
-    if (isJson) return res.status(500).json({ error: 'Something went wrong. Please try again.' });
-    res.render('result', { error: `Something went wrong. Please try again.` });
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
 
