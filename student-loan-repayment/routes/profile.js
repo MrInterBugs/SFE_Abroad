@@ -98,6 +98,7 @@ router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
   if (graduationDate && !isValidMonthInput(graduationDate))                     return renderError('Please enter a valid graduation date.');
   if (defaultPlan && !UG_PLANS.includes(defaultPlan))                            return renderError('Invalid repayment plan selected.');
   if (defaultCountry && !countries.includes(defaultCountry))                     return renderError('Invalid default country selected.');
+  const resolvedDefaultPlan = defaultPlan || 'plan1';
 
   try {
     upsertProfile(req.session.userId, {
@@ -105,7 +106,7 @@ router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
       loanValueGbp:    parsedLoan,
       loanValuePglGbp: parsedPglLoan,
       defaultCountry:  defaultCountry  || null,
-      defaultPlan:     defaultPlan     || null,
+      defaultPlan:     resolvedDefaultPlan,
       includePg:       includePg === 'on',
       defaultSalary:   parsedSalary,
     });

@@ -983,6 +983,29 @@ describe('routes', () => {
       expect(res.body.error).toContain('valid positive salary');
     });
 
+    test('returns JSON 400 for a non-string country', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: ['Germany'],
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('valid country');
+    });
+
+    test('returns JSON 400 for boolean includePg', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        includePg: true,
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Invalid Postgraduate Loan selection');
+    });
+
     test('returns JSON 400 for a missing salary', async () => {
       const res = await postCalculateJson(app, {
         targetCountry: 'Germany',

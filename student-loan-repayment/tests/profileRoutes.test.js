@@ -302,7 +302,7 @@ describe('profile routes', () => {
     expect(res.text).toContain('Profile saved');
   });
 
-  test('POST /profile stores blank optional fields as null or false', async () => {
+  test('POST /profile stores blank optional fields as null, plan1, or false', async () => {
     const agent = await loggedInAgent(app);
     const token = await profileCsrf(agent);
 
@@ -322,7 +322,7 @@ describe('profile routes', () => {
       loanValueGbp: null,
       loanValuePglGbp: null,
       defaultCountry: null,
-      defaultPlan: null,
+      defaultPlan: 'plan1',
       includePg: false,
       defaultSalary: null,
     });
@@ -345,7 +345,7 @@ describe('profile routes', () => {
       loanValueGbp: null,
       loanValuePglGbp: null,
       defaultCountry: null,
-      defaultPlan: null,
+      defaultPlan: 'plan1',
       includePg: false,
       defaultSalary: null,
     });

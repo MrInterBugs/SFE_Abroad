@@ -248,18 +248,25 @@ router.get('/', async (req, res) => {
 // Handle POST calculate request
 router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const { targetCountry, selectedPlan, selectedYear } = req.body;
-  const includePg = req.body.includePg === 'on';
   const year = selectedYear;
 
   const profile = req.session?.userId ? db.getProfile(req.session.userId) : null;
   const loanValueGbp = profile?.loan_value_gbp || null;
   const loanValuePglGbp = profile?.loan_value_pgl_gbp || null;
 
-  logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}`);
-
   function sendError(status, message) {
     return res.status(status).json({ error: message });
   }
+
+  if (typeof targetCountry !== 'string' || !targetCountry.trim()) {
+    return sendError(400, 'Please select a valid country.');
+  }
+
+  if (req.body.includePg !== undefined && req.body.includePg !== 'on') {
+    return sendError(400, 'Invalid Postgraduate Loan selection.');
+  }
+  const includePg = req.body.includePg === 'on';
+  logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}`);
 
   if (!SUPPORTED_YEARS.includes(year)) {
     return sendError(400, 'Invalid tax year selected.');
