@@ -182,6 +182,9 @@ describe('routes', () => {
       expect(res.text).toContain('Plan 2 Overseas Student Loan Repayment');
       expect(res.text).toContain('<link rel="canonical" href="https://sfe.aedanl.com/plan-2-overseas-repayment">');
       expect(res.text).toContain('BreadcrumbList');
+      expect(res.text).toContain('Who usually uses Plan 2?');
+      expect(res.text).toContain('Before calculating');
+      expect(res.text).toContain('This page was last reviewed on 8 May 2026');
     });
 
     test('all configured SEO pages are routed', async () => {
@@ -195,8 +198,20 @@ describe('routes', () => {
       const res = await request(app).get('/student-loan-overseas-repayment-germany');
       expect(res.status).toBe(200);
       expect(res.text).toContain('UK Student Loan Repayment While Living in Germany');
+      expect(res.text).toContain('Local salary currency');
+      expect(res.text).toContain('GBP threshold range');
       expect(res.text).toContain('<td>Plan 1</td>');
       expect(res.text).toContain('<td>£22,000</td>');
+      expect(res.text).toContain('<td>€19,130</td>');
+      expect(res.text).toContain('Worked repayment example');
+      expect(res.text).toContain('about €27,826');
+      expect(res.text).toContain('about £75 per month');
+      expect(res.text).toContain('Use your gross annual euro salary before German income tax');
+      expect(res.text).toContain('Sample EUR salary estimates');
+      expect(res.text).toContain('<td>€30,000</td>');
+      expect(res.text).toContain('<td>£34,500</td>');
+      expect(res.text).toContain('<td>£124</td>');
+      expect(res.text).toContain('Source note: thresholds and exchange rates are based on public GOV.UK');
     });
 
     test('GET country SEO landing page still renders when threshold data is missing', async () => {
@@ -228,6 +243,47 @@ describe('routes', () => {
       const res = await request(app).get('/student-loan-overseas-repayment-germany');
       expect(res.status).toBe(200);
       expect(res.text).toContain('<td>n/a</td>');
+    });
+
+    test('GET country SEO landing page formats local thresholds without a known currency code', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '2',
+          Currency: 'Test Credits',
+          'Earnings threshold (GBP)': '£22,000',
+          'Lower earnings threshold (GBP)': '£18,000',
+        },
+      });
+      const res = await request(app).get('/student-loan-overseas-repayment-germany');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<td>11,000</td>');
+      expect(res.text).toContain('about 16,000');
+    });
+
+    test('GET country SEO landing page tolerates unparseable threshold examples', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '2',
+          'Earnings threshold (GBP)': 'not published',
+          'Lower earnings threshold (GBP)': 'not published',
+        },
+      });
+      const res = await request(app).get('/student-loan-overseas-repayment-germany');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<td>not published</td>');
+      expect(res.text).toContain('<td>n/a</td>');
+      expect(res.text).not.toContain('Worked repayment example');
+    });
+
+    test('GET country SEO landing page uses another plan for sample salaries when Plan 2 is unavailable', async () => {
+      getThresholdData.mockImplementation((plan) => {
+        if (plan === 'plan2') return Promise.resolve({});
+        return Promise.resolve(THRESHOLD_DATA);
+      });
+      const res = await request(app).get('/student-loan-overseas-repayment-germany');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('The examples below use Plan 1');
+      expect(res.text).toContain('<td>€30,000</td>');
     });
 
     test('renders the index page with a 200', async () => {

@@ -40,6 +40,33 @@ function parseGbpAmount(value) {
   return parseFloat(value.replace(/[£,]/g, ''));
 }
 
+function parseExchangeRate(value) {
+  return parseFloat(String(value ?? '').replace(/,/g, ''));
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('en-GB', {
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
+}
+
+function formatGbp(value) {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
+}
+
+function formatLocalAmount(value, currencyCode) {
+  if (!currencyCode) return formatNumber(value);
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: currencyCode,
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
+}
+
 function buildCountriesList(fullData) {
   return Object.entries(fullData).map(([name, data]) => {
     const rawCurrency = (data['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
@@ -74,11 +101,11 @@ function resolveSelectedPlan(req, profile, year) {
 }
 
 const SEO_THRESHOLD_PLANS = [
-  { key: 'plan1', label: 'Plan 1', field: 'Earnings threshold (GBP)' },
-  { key: 'plan2', label: 'Plan 2', field: 'Lower earnings threshold (GBP)' },
-  { key: 'plan4', label: 'Plan 4', field: 'Earnings threshold (GBP)' },
-  { key: 'plan5', label: 'Plan 5', field: 'Earnings threshold (GBP)' },
-  { key: 'planPg', label: 'Postgraduate Loan', field: 'Earnings threshold (GBP)' },
+  { key: 'plan1', label: 'Plan 1', field: 'Earnings threshold (GBP)', rate: REPAYMENT_RATE },
+  { key: 'plan2', label: 'Plan 2', field: 'Lower earnings threshold (GBP)', rate: REPAYMENT_RATE },
+  { key: 'plan4', label: 'Plan 4', field: 'Earnings threshold (GBP)', rate: REPAYMENT_RATE },
+  { key: 'plan5', label: 'Plan 5', field: 'Earnings threshold (GBP)', rate: REPAYMENT_RATE },
+  { key: 'planPg', label: 'Postgraduate Loan', field: 'Earnings threshold (GBP)', rate: PGL_REPAYMENT_RATE },
 ];
 
 async function buildCountryThresholdExamples(country, year) {
@@ -87,10 +114,33 @@ async function buildCountryThresholdExamples(country, year) {
       const data = await getThresholdData(plan.key, year);
       const countryData = data[country];
       if (!countryData || !countryData[plan.field]) return null;
+      const exchangeRate = parseExchangeRate(countryData['Exchange rate']);
+      const thresholdGbp = parseGbpAmount(countryData[plan.field]);
+      const rawCurrency = (countryData['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
+      const currencyCode = currencySymbol.NAME_TO_ISO[rawCurrency] || '';
+      const exampleSalaryGbp = Number.isFinite(thresholdGbp) ? thresholdGbp + 10000 : NaN;
+      const exampleSalaryLocal = Number.isFinite(exampleSalaryGbp) && Number.isFinite(exchangeRate) && exchangeRate > 0
+        ? exampleSalaryGbp / exchangeRate
+        : NaN;
+      const thresholdLocal = Number.isFinite(thresholdGbp) && Number.isFinite(exchangeRate) && exchangeRate > 0
+        ? thresholdGbp / exchangeRate
+        : NaN;
+      const exampleMonthly = Number.isFinite(exampleSalaryGbp) && Number.isFinite(thresholdGbp)
+        ? ((exampleSalaryGbp - thresholdGbp) * plan.rate) / MONTHS_PER_YEAR
+        : NaN;
       return {
         plan: plan.label,
         threshold: countryData[plan.field],
         exchangeRate: countryData['Exchange rate'] || 'n/a',
+        exchangeRateValue: Number.isFinite(exchangeRate) ? exchangeRate : null,
+        thresholdGbp,
+        thresholdLocal: Number.isFinite(thresholdLocal) ? formatLocalAmount(thresholdLocal, currencyCode) : null,
+        exampleSalaryLocal: Number.isFinite(exampleSalaryLocal) ? formatLocalAmount(exampleSalaryLocal, currencyCode) : null,
+        exampleSalaryGbp: Number.isFinite(exampleSalaryGbp) ? formatGbp(exampleSalaryGbp) : null,
+        exampleMonthly: Number.isFinite(exampleMonthly) ? formatGbp(exampleMonthly) : null,
+        ratePercent: `${Math.round(plan.rate * 100)}%`,
+        rate: plan.rate,
+        currencyCode,
       };
     } catch (err) {
       logger.warn(`SEO threshold example failed: ${plan.key} ${country} ${year} — ${err.message}`);
@@ -98,6 +148,46 @@ async function buildCountryThresholdExamples(country, year) {
     }
   }));
   return rows.filter(Boolean);
+}
+
+function buildCountryPageSummary(page, thresholds) {
+  const numericThresholds = thresholds
+    .map((row) => row.thresholdGbp)
+    .filter((threshold) => Number.isFinite(threshold));
+  const primary = thresholds.find((row) => row.exampleSalaryLocal && row.exampleMonthly) || null;
+  const currencyCodes = thresholds
+    .map((row) => row.currencyCode)
+    .filter(Boolean);
+  const currencyCode = currencyCodes[0] || page.currency;
+
+  return {
+    currencyCode,
+    planCount: thresholds.length,
+    primaryExample: primary,
+    thresholdRange: numericThresholds.length
+      ? `${formatGbp(Math.min(...numericThresholds))} to ${formatGbp(Math.max(...numericThresholds))}`
+      : null,
+  };
+}
+
+function buildCountrySalaryExamples(page, thresholds) {
+  const canCalculate = (row) => Number.isFinite(row.exchangeRateValue) && Number.isFinite(row.thresholdGbp);
+  const plan2 = thresholds.find((row) => row.plan === 'Plan 2' && canCalculate(row));
+  const primary = plan2 || thresholds.find(canCalculate);
+  if (!primary || !Array.isArray(page.sampleSalaries)) return [];
+
+  return page.sampleSalaries.map((salaryLocal) => {
+    const salaryGbp = salaryLocal * primary.exchangeRateValue;
+    const annualRepayment = Math.max(0, salaryGbp - primary.thresholdGbp) * primary.rate;
+    const monthlyRepayment = annualRepayment / MONTHS_PER_YEAR;
+    return {
+      salaryLocal: formatLocalAmount(salaryLocal, page.currency),
+      salaryGbp: formatGbp(salaryGbp),
+      monthlyRepayment: formatGbp(monthlyRepayment),
+      plan: primary.plan,
+      ratePercent: primary.ratePercent,
+    };
+  });
 }
 
 function buildSeoPageSchema(page) {
@@ -149,12 +239,21 @@ router.get(getSeoPagePaths(), async (req, res) => {
   const thresholds = page.kind === 'country'
     ? await buildCountryThresholdExamples(page.country, taxYear)
     : [];
+  const countrySummary = page.kind === 'country'
+    ? buildCountryPageSummary(page, thresholds)
+    : null;
+  const salaryExamples = page.kind === 'country'
+    ? buildCountrySalaryExamples(page, thresholds)
+    : [];
 
   return res.render('seo-page', {
     page,
     siteUrl: SITE_URL,
     taxYear,
     thresholds,
+    countrySummary,
+    salaryExamples,
+    lastReviewed: '8 May 2026',
     schemaJson: serializeJsonForHtml(buildSeoPageSchema(page)),
   });
 });

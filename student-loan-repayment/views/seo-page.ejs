@@ -57,15 +57,44 @@
           <p>
             Use the calculator to enter your gross annual salary in <%= page.currency %>, choose Plan 1, Plan 2, Plan 4, Plan 5, and optionally include a Postgraduate Loan.
           </p>
+          <% if (page.localNotes && page.localNotes.length) { %>
+            <h2>Local income notes for <%= page.country %></h2>
+            <ul>
+              <% page.localNotes.forEach(function(note) { %>
+                <li><%= note %></li>
+              <% }); %>
+            </ul>
+          <% } %>
 
           <% if (thresholds.length) { %>
+            <div class="seo-fact-grid" aria-label="<%= page.country %> repayment facts">
+              <div class="seo-fact">
+                <span class="seo-fact-label">Local salary currency</span>
+                <strong><%= countrySummary.currencyCode %></strong>
+              </div>
+              <div class="seo-fact">
+                <span class="seo-fact-label">Published plans available</span>
+                <strong><%= countrySummary.planCount %></strong>
+              </div>
+              <% if (countrySummary.thresholdRange) { %>
+                <div class="seo-fact">
+                  <span class="seo-fact-label">GBP threshold range</span>
+                  <strong><%= countrySummary.thresholdRange %></strong>
+                </div>
+              <% } %>
+            </div>
+
             <h2><%= taxYear %> threshold examples</h2>
+            <p>
+              These figures show the published GBP threshold for <%= page.country %>, the exchange rate in the threshold table, and the approximate equivalent salary in <%= countrySummary.currencyCode %>. The local equivalents are rounded for readability.
+            </p>
             <div class="seo-table-wrap">
               <table class="seo-table">
                 <thead>
                   <tr>
                     <th>Plan</th>
                     <th>Overseas threshold</th>
+                    <th>Approx. local threshold</th>
                     <th>Exchange rate</th>
                   </tr>
                 </thead>
@@ -74,12 +103,63 @@
                     <tr>
                       <td><%= row.plan %></td>
                       <td><%= row.threshold %></td>
+                      <td><%= row.thresholdLocal || 'n/a' %></td>
                       <td><%= row.exchangeRate %></td>
                     </tr>
                   <% }); %>
                 </tbody>
               </table>
             </div>
+
+            <% if (countrySummary.primaryExample) { %>
+              <h2>Worked repayment example</h2>
+              <p>
+                For <%= countrySummary.primaryExample.plan %>, a gross salary of about <%= countrySummary.primaryExample.exampleSalaryLocal %> in <%= page.country %> converts to roughly <%= countrySummary.primaryExample.exampleSalaryGbp %>. That is £10,000 above the listed threshold, so the estimated repayment is about <%= countrySummary.primaryExample.exampleMonthly %> per month at <%= countrySummary.primaryExample.ratePercent %>.
+              </p>
+            <% } %>
+
+            <% if (salaryExamples.length) { %>
+              <h2>Sample <%= page.currency %> salary estimates</h2>
+              <p>
+                The examples below use <%= salaryExamples[0].plan %> at <%= salaryExamples[0].ratePercent %> so you can see how different gross salaries change the monthly estimate. Choose your actual plan in the calculator for a personalised result.
+              </p>
+              <div class="seo-table-wrap">
+                <table class="seo-table">
+                  <thead>
+                    <tr>
+                      <th>Gross local salary</th>
+                      <th>GBP equivalent</th>
+                      <th>Estimated monthly repayment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% salaryExamples.forEach(function(row) { %>
+                      <tr>
+                        <td><%= row.salaryLocal %></td>
+                        <td><%= row.salaryGbp %></td>
+                        <td><%= row.monthlyRepayment %></td>
+                      </tr>
+                    <% }); %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+
+            <h2>What to check before using the estimate</h2>
+            <ul>
+              <li>Use gross annual income before local tax or social contributions.</li>
+              <li>Choose the plan named on your Student Loans Company account or repayment letter.</li>
+              <li>Check whether you also have a Postgraduate Loan, because it is calculated separately and can be due alongside an undergraduate plan.</li>
+              <li>Use the latest tax year available in the calculator if your repayment notice refers to a newer threshold table.</li>
+            </ul>
+            <p class="seo-source-note">
+              Source note: thresholds and exchange rates are based on public GOV.UK and Student Loans Company overseas threshold publications for <%= taxYear %>. This page was last reviewed on <%= lastReviewed %>.
+            </p>
+          <% } else { %>
+            <h2>Threshold data currently unavailable</h2>
+            <p>
+              The calculator can still be used from the main page, but the country-specific threshold table for <%= page.country %> could not be loaded for this guide. If you have a Student Loans Company letter, compare its threshold and exchange rate with the calculator result before relying on the estimate.
+            </p>
           <% } %>
         <% } else { %>
           <h2>What counts for <%= page.plan %> overseas repayments?</h2>
@@ -87,9 +167,32 @@
           <p>
             The calculator supports the current published overseas threshold tables for <%= taxYear %>. Enter your country of residence and annual gross salary in local currency to estimate your monthly repayment.
           </p>
+          <% if (page.who) { %>
+            <h2>Who usually uses <%= page.plan %>?</h2>
+            <p><%= page.who %></p>
+          <% } %>
           <h2>Repayment rate</h2>
           <p>
             <%= page.plan === 'Postgraduate Loan' ? 'Postgraduate Loans are repaid at 6% of income above the overseas threshold.' : page.plan + ' repayments are usually 9% of income above the overseas threshold.' %>
+          </p>
+          <% if (page.overseasNotes && page.overseasNotes.length) { %>
+            <h2>Overseas calculation notes</h2>
+            <ul>
+              <% page.overseasNotes.forEach(function(note) { %>
+                <li><%= note %></li>
+              <% }); %>
+            </ul>
+          <% } %>
+          <% if (page.checklist && page.checklist.length) { %>
+            <h2>Before calculating</h2>
+            <ul>
+              <% page.checklist.forEach(function(item) { %>
+                <li><%= item %></li>
+              <% }); %>
+            </ul>
+          <% } %>
+          <p class="seo-source-note">
+            Source note: repayment rates and overseas threshold handling are based on public GOV.UK and Student Loans Company guidance for supported tax years. This page was last reviewed on <%= lastReviewed %>.
           </p>
         <% } %>
 

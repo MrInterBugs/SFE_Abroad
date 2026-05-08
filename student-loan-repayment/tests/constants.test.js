@@ -109,6 +109,17 @@ describe('SEO page configuration', () => {
     expect(getSeoPage('missing-page')).toBeNull();
   });
 
+  test('country and plan SEO pages include authored guidance fields', () => {
+    const germany = getSeoPage('student-loan-overseas-repayment-germany');
+    expect(germany.localNotes.length).toBeGreaterThanOrEqual(2);
+    expect(germany.sampleSalaries).toEqual([30000, 50000, 70000]);
+
+    const plan2 = getSeoPage('plan-2-overseas-repayment');
+    expect(plan2.who).toContain('Plan 2');
+    expect(plan2.overseasNotes.length).toBeGreaterThanOrEqual(2);
+    expect(plan2.checklist.length).toBeGreaterThanOrEqual(3);
+  });
+
   test('derives route paths and sitemap entries from configured SEO pages', () => {
     expect(getSeoPagePaths()).toContain('/plan-2-overseas-repayment');
     expect(getSeoPagePaths()).toContain('/student-loan-overseas-repayment-germany');

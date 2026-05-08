@@ -443,6 +443,9 @@ html, body {
 .ad-unit {
   margin: 16px 0 8px;
 }
+.ad-unit-home {
+  margin: 28px 0 0;
+}
 
 .container {
   width: 100%;
@@ -932,9 +935,50 @@ html, body {
   .results-placeholder { display: none; }
 }
 
+.home-info-section {
+  margin-top: 36px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+  gap: 28px;
+  align-items: start;
+}
+.home-info-copy h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+.home-info-copy p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+.home-info-copy p + p {
+  margin-top: 10px;
+}
+.home-info-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 2px;
+}
+.home-info-links a {
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+}
+.home-info-links a:hover {
+  text-decoration: underline;
+}
+
 /* FAQ section */
 .faq-section {
-  margin-top: 40px;
+  margin-top: 32px;
   padding-top: 32px;
   border-top: 1px solid var(--border);
 }
@@ -969,6 +1013,7 @@ html, body {
   .card { padding: 20px; }
   .page-heading h1 { font-size: 22px; }
   .plan-grid { grid-template-columns: 1fr 1fr; }
+  .home-info-section { grid-template-columns: 1fr; gap: 18px; }
   .results-meta { grid-template-columns: 1fr 1fr; }
   .results-meta .meta-item:last-child { grid-column: span 2; }
   .breakdown-grid { grid-template-columns: 1fr; }
@@ -1167,6 +1212,30 @@ html, body {
 .seo-content ul {
   margin: 10px 0 0 20px;
 }
+.seo-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0 4px;
+}
+.seo-fact {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: var(--bg);
+}
+.seo-fact-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin-bottom: 5px;
+}
+.seo-fact strong {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.35;
+}
 .seo-table-wrap {
   overflow-x: auto;
   margin-top: 12px;
@@ -1197,6 +1266,17 @@ html, body {
   color: var(--blue);
   font-weight: 700;
   text-decoration: none;
+}
+.seo-source-note {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .seo-fact-grid { grid-template-columns: 1fr; }
 }
 .seo-code {
   background: var(--bg);

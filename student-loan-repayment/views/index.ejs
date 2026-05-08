@@ -356,23 +356,40 @@
             <p class="graph-disclaimer">Assumes fixed annual salary growth, a constant interest rate, and a repayment threshold that rises with RPI. Actual repayments may vary.</p>
           </div>
 
-          <% if (locals.allowMarketingScripts) { %>
-          <!-- Ad unit -->
-          <div class="ad-unit">
-            <ins class="adsbygoogle"
-                style="display:block"
-                data-ad-client="ca-pub-4989908161831974"
-                data-ad-slot="8240706849"
-                data-ad-format="auto"
-                data-full-width-responsive="true"></ins>
-          </div>
-          <% } %>
-
         </div>
       </div><!-- /results-card -->
 
       </div><!-- /calc-col-results -->
       </div><!-- /calc-layout -->
+
+      <section class="home-info-section" aria-labelledby="estimate-notes-title">
+        <div class="home-info-copy">
+          <h2 id="estimate-notes-title">What this estimate includes</h2>
+          <p>
+            The calculator uses the published overseas repayment thresholds for your selected tax year, converts your local salary to GBP using the threshold table exchange rate, and applies the repayment rate for your loan plan.
+          </p>
+          <p>
+            It is designed as a planning estimate, not an official repayment notice. Student Loans Company letters may use account-specific details or updated exchange rates, so treat the result as a guide before checking the final amount.
+          </p>
+        </div>
+        <div class="home-info-links" aria-label="Helpful repayment resources">
+          <a href="/methodology">Read the calculation methodology</a>
+          <a href="https://www.gov.uk/repaying-your-student-loan/living-or-working-overseas" target="_blank" rel="noopener">GOV.UK overseas repayment guidance</a>
+          <a href="https://www.gov.uk/contact-student-loans-company" target="_blank" rel="noopener">Contact the Student Loans Company</a>
+        </div>
+      </section>
+
+      <% if (locals.allowMarketingScripts) { %>
+      <!-- Ad unit -->
+      <div class="ad-unit ad-unit-home">
+        <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="ca-pub-4989908161831974"
+            data-ad-slot="8240706849"
+            data-ad-format="auto"
+            data-full-width-responsive="true"></ins>
+      </div>
+      <% } %>
 
       <!-- FAQ -->
       <section class="faq-section" aria-label="Frequently asked questions">
