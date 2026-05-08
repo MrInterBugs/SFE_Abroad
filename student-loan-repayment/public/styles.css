@@ -963,7 +963,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-top: 2px;
+  padding-top: 40px;
 }
 .home-info-links a {
   color: var(--blue);
@@ -1014,6 +1014,7 @@ html, body {
   .page-heading h1 { font-size: 22px; }
   .plan-grid { grid-template-columns: 1fr 1fr; }
   .home-info-section { grid-template-columns: 1fr; gap: 18px; }
+  .home-info-links { padding-top: 0; }
   .results-meta { grid-template-columns: 1fr 1fr; }
   .results-meta .meta-item:last-child { grid-column: span 2; }
   .breakdown-grid { grid-template-columns: 1fr; }
