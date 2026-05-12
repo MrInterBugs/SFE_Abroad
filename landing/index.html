@@ -10,11 +10,13 @@
     :root {
       color-scheme: light;
       --bg: #f5f7fa;
+      --panel: #eef3f8;
       --text: #121820;
       --muted: #52606d;
       --border: #d8dee6;
       --blue: #1d70b8;
       --blue-dark: #164f85;
+      --blue-light: #e7f1fb;
       --white: #fff;
     }
     * { box-sizing: border-box; }
@@ -26,18 +28,45 @@
       line-height: 1.6;
     }
     .page {
-      max-width: 960px;
+      max-width: 1080px;
       margin: 0 auto;
-      padding: 32px 20px 48px;
+      padding: 24px 20px 48px;
     }
-    header,
+    .topbar {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 0 18px;
+    }
+    .brand {
+      color: var(--text);
+      font-size: 0.98rem;
+      font-weight: 800;
+    }
+    .toplinks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: flex-end;
+    }
+    .toplinks a {
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .hero {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 28px;
+      padding: clamp(28px, 5vw, 48px);
+    }
     section,
     footer {
       border-bottom: 1px solid var(--border);
-      padding: 28px 0;
-    }
-    header {
-      padding-top: 12px;
+      padding: 34px 0;
     }
     h1,
     h2 {
@@ -45,11 +74,12 @@
       margin: 0 0 12px;
     }
     h1 {
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      max-width: 780px;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      letter-spacing: -0.02em;
+      max-width: 840px;
     }
     h2 {
-      font-size: 1.3rem;
+      font-size: 1.45rem;
       margin-top: 4px;
     }
     p {
@@ -73,12 +103,15 @@
       gap: 12px;
       margin-top: 18px;
     }
+    .actions {
+      align-items: center;
+    }
     .button {
       background: var(--blue);
       border-radius: 6px;
       color: var(--white);
       display: inline-flex;
-      padding: 11px 16px;
+      padding: 12px 18px;
     }
     .button:hover {
       background: var(--blue-dark);
@@ -89,8 +122,15 @@
       background: var(--white);
       border: 1px solid var(--border);
       border-radius: 6px;
-      flex: 1 1 240px;
-      padding: 16px;
+      flex: 1 1 260px;
+      min-height: 128px;
+      padding: 18px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .link-card:hover {
+      border-color: var(--blue);
+      text-decoration: none;
+      transform: translateY(-1px);
     }
     .link-card span {
       color: var(--muted);
@@ -104,16 +144,70 @@
       margin: 10px 0 0;
       padding-left: 20px;
     }
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(260px, 0.6fr);
+      gap: 32px;
+      align-items: start;
+    }
+    .check-panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px;
+    }
+    .check-panel strong {
+      color: var(--text);
+      display: block;
+      line-height: 1.35;
+      margin-bottom: 8px;
+    }
+    .check-panel p {
+      margin-bottom: 0;
+    }
     footer {
       border-bottom: 0;
       color: var(--muted);
       font-size: 0.95rem;
+      padding-bottom: 0;
+    }
+    @media (max-width: 760px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .toplinks {
+        justify-content: flex-start;
+      }
+      .hero {
+        margin-top: 22px;
+        padding: 26px 20px;
+      }
+      .content-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      .actions a {
+        width: 100%;
+      }
+      .button {
+        justify-content: center;
+      }
     }
   </style>
 </head>
 <body>
   <main class="page">
-    <header>
+    <nav class="topbar" aria-label="Primary">
+      <a class="brand" href="https://aedanl.com/">Aedan L</a>
+      <div class="toplinks">
+        <a href="https://sfe.aedanl.com/">Calculator</a>
+        <a href="https://sfe.aedanl.com/methodology">Methodology</a>
+        <a href="https://sfe.aedanl.com/about">About</a>
+      </div>
+    </nav>
+
+    <header class="hero">
       <h1>Independent repayment tools for UK graduates living abroad</h1>
       <p>
         Aedan L publishes practical calculators and guides for UK student loan borrowers overseas. The main tool helps graduates estimate monthly Student Loans Company repayments using overseas threshold tables, repayment plan rules, country-specific exchange rates, and gross local salary.
@@ -125,16 +219,26 @@
     </header>
 
     <section>
-      <h2>What the calculator covers</h2>
-      <p>
-        The calculator supports Plan 1, Plan 2, Plan 4, Plan 5, and Postgraduate Loan estimates for supported tax years. It converts a local gross salary into GBP using the published overseas threshold table, compares that income with the relevant country threshold, and estimates the monthly repayment due above the threshold.
-      </p>
-      <ul>
-        <li>Country-specific overseas thresholds and exchange rates.</li>
-        <li>Separate undergraduate and Postgraduate Loan repayment rates.</li>
-        <li>Worked country examples and plan-specific guidance.</li>
-        <li>Clear caveats so users can compare estimates with official SLC notices.</li>
-      </ul>
+      <div class="content-grid">
+        <div>
+          <h2>What the calculator covers</h2>
+          <p>
+            The calculator supports Plan 1, Plan 2, Plan 4, Plan 5, and Postgraduate Loan estimates for supported tax years. It converts a local gross salary into GBP using the published overseas threshold table, compares that income with the relevant country threshold, and estimates the monthly repayment due above the threshold.
+          </p>
+          <ul>
+            <li>Country-specific overseas thresholds and exchange rates.</li>
+            <li>Separate undergraduate and Postgraduate Loan repayment rates.</li>
+            <li>Worked country examples and plan-specific guidance.</li>
+            <li>Clear caveats so users can compare estimates with official SLC notices.</li>
+          </ul>
+        </div>
+        <aside class="check-panel">
+          <strong>Built for planning, not official notices</strong>
+          <p>
+            Estimates are designed to help borrowers sense-check likely monthly payments before comparing the result with Student Loans Company correspondence.
+          </p>
+        </aside>
+      </div>
     </section>
 
     <section>
