@@ -7,6 +7,7 @@ services:
       - ./landing/index.html:/usr/share/nginx/html/index.html:ro
       - ./landing/ads.txt:/usr/share/nginx/html/ads.txt:ro
       - ./landing/robots.txt:/usr/share/nginx/html/robots.txt:ro
+      - ./landing/sitemap.xml:/usr/share/nginx/html/sitemap.xml:ro
       - ./landing/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - traefik_default
