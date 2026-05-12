@@ -267,45 +267,40 @@ function buildGuideFaqs(page, taxYear) {
   return page.kind === 'country' ? buildCountryFaqs(page, taxYear) : buildPlanFaqs(page);
 }
 
-function buildSeoPageSchema(page, guideFaqs = []) {
+function buildSeoPageSchema(page, guideFaqs) {
   const pageUrl = `${SITE_URL}/${page.slug}`;
-  const graph = [
-    {
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Calculator', item: `${SITE_URL}/` },
-        { '@type': 'ListItem', position: 2, name: page.title, item: pageUrl },
-      ],
-    },
-    {
-      '@type': 'Article',
-      headline: page.title,
-      description: page.description,
-      mainEntityOfPage: pageUrl,
-      publisher: {
-        '@type': 'Person',
-        name: 'Aedan L',
-      },
-    },
-  ];
-
-  if (guideFaqs.length) {
-    graph.push({
-      '@type': 'FAQPage',
-      mainEntity: guideFaqs.map((faq) => ({
-        '@type': 'Question',
-        name: faq.question,
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: faq.answer,
-        },
-      })),
-    });
-  }
-
   return {
     '@context': 'https://schema.org',
-    '@graph': graph,
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Calculator', item: `${SITE_URL}/` },
+          { '@type': 'ListItem', position: 2, name: page.title, item: pageUrl },
+        ],
+      },
+      {
+        '@type': 'Article',
+        headline: page.title,
+        description: page.description,
+        mainEntityOfPage: pageUrl,
+        publisher: {
+          '@type': 'Person',
+          name: 'Aedan L',
+        },
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: guideFaqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+    ],
   };
 }
 
