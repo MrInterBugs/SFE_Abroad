@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Student Loan Overseas Repayment Guides</title>
+<meta name="description" content="Country and repayment plan guides for UK graduates estimating Student Loans Company overseas repayments, thresholds, exchange rates, and plan rules.">
+<link rel="canonical" href="<%= siteUrl %>/overseas-repayment-guides">
+<meta property="og:title" content="UK Student Loan Overseas Repayment Guides">
+<meta property="og:description" content="Browse country and plan guides for estimating UK student loan repayments while living abroad.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="<%= siteUrl %>/overseas-repayment-guides">
+<%- include('partials/cookiebot') %>
+<script type="application/ld+json" nonce="<%= locals.cspNonce || '' %>">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "UK Student Loan Overseas Repayment Guides",
+  "description": "Country and repayment plan guides for UK graduates estimating overseas student loan repayments.",
+  "url": "<%= siteUrl %>/overseas-repayment-guides",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "Student Finance Overseas Repayment Calculator",
+    "url": "<%= siteUrl %>/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+<script>document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+</head>
+<body>
+<div class="page">
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-crown" href="/">
+        <span class="header-title">Student Finance Overseas Repayment Calculator</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/methodology" class="header-nav-link">Methodology</a>
+        <a href="/" class="header-nav-pill">Calculator</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container seo-container guide-container">
+      <div class="page-heading">
+        <h1>Overseas repayment guides</h1>
+        <p>Browse plan and country notes before using the calculator for a personalised estimate.</p>
+      </div>
+
+      <section class="seo-content guide-section" aria-labelledby="featured-countries-title">
+        <h2 id="featured-countries-title">Popular country guides</h2>
+        <div class="guide-link-grid">
+          <% featuredCountries.forEach(function(page) { %>
+            <a class="guide-link-card" href="/<%= page.slug %>">
+              <span><%= page.country === 'United States of America' ? 'United States' : page.country %></span>
+              <small><%= page.currency %> salary examples and overseas thresholds</small>
+            </a>
+          <% }); %>
+        </div>
+      </section>
+
+      <section class="seo-content guide-section" aria-labelledby="plan-guides-title">
+        <h2 id="plan-guides-title">Repayment plan guides</h2>
+        <div class="guide-link-grid">
+          <% planPages.forEach(function(page) { %>
+            <a class="guide-link-card" href="/<%= page.slug %>">
+              <span><%= page.plan %></span>
+              <small><%= page.plan === 'Postgraduate Loan' ? '6% repayment rate above threshold' : '9% repayment rate above threshold' %></small>
+            </a>
+          <% }); %>
+        </div>
+      </section>
+
+      <section class="seo-content guide-section" aria-labelledby="all-countries-title">
+        <h2 id="all-countries-title">All country guides</h2>
+        <div class="guide-country-list">
+          <% countryPages.forEach(function(page) { %>
+            <a href="/<%= page.slug %>"><%= page.country === 'United States of America' ? 'United States' : page.country %></a>
+          <% }); %>
+        </div>
+      </section>
+
+      <section class="seo-content guide-section" aria-labelledby="guide-source-title">
+        <h2 id="guide-source-title">How these guides are maintained</h2>
+        <p>
+          Each guide uses public GOV.UK and Student Loans Company overseas threshold publications, then explains how the calculator applies the relevant repayment rate, exchange rate, and gross salary figure.
+        </p>
+        <p class="seo-source-note">Last reviewed on <%= lastReviewed %>.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="/">Calculator</a>
+        <a href="/methodology">Methodology</a>
+        <a href="/about">About</a>
+        <a href="/privacy">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
+</div>
+<script src="/theme.js" defer></script>
+</body>
+</html>
