@@ -342,8 +342,18 @@ const COUNTRY_PAGES = [
 const SEO_PAGES = [...PLAN_PAGES, ...COUNTRY_PAGES];
 const STATIC_INDEXABLE_PAGES = [
   { path: '/', changefreq: 'monthly', priority: '1.0' },
+  { path: '/overseas-repayment-guides', changefreq: 'monthly', priority: '0.9' },
   { path: '/methodology', changefreq: 'monthly', priority: '0.8' },
   { path: '/about', changefreq: 'yearly', priority: '0.6' },
+];
+
+const FEATURED_COUNTRY_SLUGS = [
+  'student-loan-overseas-repayment-germany',
+  'student-loan-overseas-repayment-australia',
+  'student-loan-overseas-repayment-usa',
+  'student-loan-overseas-repayment-canada',
+  'student-loan-overseas-repayment-france',
+  'student-loan-overseas-repayment-netherlands',
 ];
 
 function getSeoPage(slug) {
@@ -375,6 +385,7 @@ module.exports = {
   COUNTRY_PAGES,
   SEO_PAGES,
   STATIC_INDEXABLE_PAGES,
+  FEATURED_COUNTRY_SLUGS,
   getSeoPage,
   getSeoPagePaths,
   getSitemapEntries,

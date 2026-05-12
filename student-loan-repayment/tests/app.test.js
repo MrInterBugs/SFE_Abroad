@@ -95,6 +95,7 @@ describe('Express App', () => {
     expect(isPrivatePage({ method: 'GET', path: '/' })).toBe(false);
     expect(isPrivatePage({ method: 'GET', path: '/privacy' })).toBe(false);
     expect(isPrivatePage({ method: 'GET', path: '/about' })).toBe(false);
+    expect(isPrivatePage({ method: 'GET', path: '/overseas-repayment-guides' })).toBe(false);
   });
 
   it('loads Cookiebot on public pages but not private account pages', async () => {

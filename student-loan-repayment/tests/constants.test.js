@@ -20,6 +20,7 @@ const {
   COUNTRY_PAGES,
   SEO_PAGES,
   STATIC_INDEXABLE_PAGES,
+  FEATURED_COUNTRY_SLUGS,
   getSeoPage,
   getSeoPagePaths,
   getSitemapEntries,
@@ -100,7 +101,13 @@ describe('SEO page configuration', () => {
     expect(PLAN_PAGES.length).toBe(5);
     expect(COUNTRY_PAGES.length).toBe(17);
     expect(SEO_PAGES).toHaveLength(PLAN_PAGES.length + COUNTRY_PAGES.length);
-    expect(STATIC_INDEXABLE_PAGES.map((page) => page.path)).toEqual(['/', '/methodology', '/about']);
+    expect(STATIC_INDEXABLE_PAGES.map((page) => page.path)).toEqual([
+      '/',
+      '/overseas-repayment-guides',
+      '/methodology',
+      '/about',
+    ]);
+    expect(FEATURED_COUNTRY_SLUGS).toContain('student-loan-overseas-repayment-germany');
   });
 
   test('finds configured pages by slug and returns null for misses', () => {
@@ -132,6 +139,12 @@ describe('SEO page configuration', () => {
       lastmod: '2026-05-04',
       changefreq: 'monthly',
       priority: '1.0',
+    });
+    expect(entries).toContainEqual({
+      loc: 'https://sfe.aedanl.com/overseas-repayment-guides',
+      lastmod: '2026-05-04',
+      changefreq: 'monthly',
+      priority: '0.9',
     });
     expect(entries).toContainEqual({
       loc: 'https://sfe.aedanl.com/student-loan-overseas-repayment-germany',

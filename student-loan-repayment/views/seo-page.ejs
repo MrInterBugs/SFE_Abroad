@@ -148,10 +148,16 @@
 
             <h2>What to check before using the estimate</h2>
             <ul>
-              <li>Use gross annual income before local tax or social contributions.</li>
-              <li>Choose the plan named on your Student Loans Company account or repayment letter.</li>
-              <li>Check whether you also have a Postgraduate Loan, because it is calculated separately and can be due alongside an undergraduate plan.</li>
-              <li>Use the latest tax year available in the calculator if your repayment notice refers to a newer threshold table.</li>
+              <% estimateChecks.forEach(function(item) { %>
+                <li><%= item %></li>
+              <% }); %>
+            </ul>
+
+            <h2>Common mistakes to avoid</h2>
+            <ul>
+              <% commonMistakes.forEach(function(item) { %>
+                <li><%= item %></li>
+              <% }); %>
             </ul>
             <p class="seo-source-note">
               Source note: thresholds and exchange rates are based on public GOV.UK and Student Loans Company overseas threshold publications for <%= taxYear %>. This page was last reviewed on <%= lastReviewed %>.
@@ -195,6 +201,18 @@
           <p class="seo-source-note">
             Source note: repayment rates and overseas threshold handling are based on public GOV.UK and Student Loans Company guidance for supported tax years. This page was last reviewed on <%= lastReviewed %>.
           </p>
+        <% } %>
+
+        <% if (guideFaqs && guideFaqs.length) { %>
+          <h2>Frequently asked questions</h2>
+          <dl class="seo-faq-list">
+            <% guideFaqs.forEach(function(faq) { %>
+              <div class="seo-faq-item">
+                <dt><%= faq.question %></dt>
+                <dd><%= faq.answer %></dd>
+              </div>
+            <% }); %>
+          </dl>
         <% } %>
 
         <h2>Important caveats</h2>

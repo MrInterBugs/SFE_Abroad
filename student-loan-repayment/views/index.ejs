@@ -107,6 +107,7 @@
         <span class="header-title">Student Finance Overseas Repayment Calculator</span>
       </div>
       <nav class="header-nav">
+        <a href="/overseas-repayment-guides" class="header-nav-link">Guides</a>
         <% if (locals.userId) { %>
           <a href="/profile" class="header-nav-user">
             <span class="header-nav-avatar-sm"><%= (locals.userEmail || '?').charAt(0).toUpperCase() %></span>
@@ -374,9 +375,66 @@
           </p>
         </div>
         <div class="home-info-links" aria-label="Helpful repayment resources">
+          <a href="/overseas-repayment-guides">Browse country and plan guides</a>
           <a href="/methodology">Read the calculation methodology</a>
           <a href="https://www.gov.uk/repaying-your-student-loan/living-or-working-overseas" target="_blank" rel="noopener">GOV.UK overseas repayment guidance</a>
           <a href="https://www.gov.uk/contact-student-loans-company" target="_blank" rel="noopener">Contact the Student Loans Company</a>
+        </div>
+      </section>
+
+      <section class="home-guide-section" aria-labelledby="home-guide-title">
+        <div class="home-section-header">
+          <h2 id="home-guide-title">Country and plan guides</h2>
+          <a href="/overseas-repayment-guides">View all guides</a>
+        </div>
+
+        <div class="home-guide-columns">
+          <div>
+            <h3>Popular countries</h3>
+            <div class="home-guide-grid">
+              <% (locals.featuredCountryPages || []).forEach(function(page) { %>
+                <a href="/<%= page.slug %>">
+                  <span><%= page.country === 'United States of America' ? 'United States' : page.country %></span>
+                  <small><%= page.currency %> salary examples</small>
+                </a>
+              <% }); %>
+            </div>
+          </div>
+
+          <div>
+            <h3>Repayment plans</h3>
+            <div class="home-guide-grid">
+              <% (locals.planGuidePages || []).forEach(function(page) { %>
+                <a href="/<%= page.slug %>">
+                  <span><%= page.plan %></span>
+                  <small><%= page.plan === 'Postgraduate Loan' ? '6% above threshold' : '9% above threshold' %></small>
+                </a>
+              <% }); %>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-context-section" aria-labelledby="home-context-title">
+        <div>
+          <h2 id="home-context-title">What to check before estimating</h2>
+          <p>
+            Overseas repayments depend on your SLC repayment plan, country of residence, gross annual salary, and the tax-year threshold table. Use local gross salary before income tax, social insurance, pension deductions, or payroll withholding.
+          </p>
+        </div>
+        <div class="home-context-list">
+          <div>
+            <strong>Current data shown</strong>
+            <span><%= selectedYear %> overseas threshold tables</span>
+          </div>
+          <div>
+            <strong>Undergraduate plans</strong>
+            <span>Plan 1, Plan 2, Plan 4, and Plan 5 use 9% above threshold</span>
+          </div>
+          <div>
+            <strong>Postgraduate Loan</strong>
+            <span>Calculated separately at 6% above threshold when selected</span>
+          </div>
         </div>
       </section>
 

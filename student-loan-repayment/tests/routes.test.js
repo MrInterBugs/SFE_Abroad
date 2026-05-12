@@ -176,6 +176,18 @@ describe('routes', () => {
       expect(res.text).not.toContain('noindex');
     });
 
+    test('GET /overseas-repayment-guides renders an indexable guide hub', async () => {
+      const res = await request(app).get('/overseas-repayment-guides');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<link rel="canonical" href="https://sfe.aedanl.com/overseas-repayment-guides">');
+      expect(res.text).toContain('Popular country guides');
+      expect(res.text).toContain('Repayment plan guides');
+      expect(res.text).toContain('All country guides');
+      expect(res.text).toContain('/student-loan-overseas-repayment-germany');
+      expect(res.text).toContain('/plan-2-overseas-repayment');
+      expect(res.text).not.toContain('noindex');
+    });
+
     test('GET plan SEO landing page renders with canonical metadata', async () => {
       const res = await request(app).get('/plan-2-overseas-repayment');
       expect(res.status).toBe(200);
@@ -184,6 +196,8 @@ describe('routes', () => {
       expect(res.text).toContain('BreadcrumbList');
       expect(res.text).toContain('Who usually uses Plan 2?');
       expect(res.text).toContain('Before calculating');
+      expect(res.text).toContain('Frequently asked questions');
+      expect(res.text).toContain('Is Plan 2 repaid at the same rate when I live overseas?');
       expect(res.text).toContain('This page was last reviewed on 8 May 2026');
     });
 
@@ -211,6 +225,11 @@ describe('routes', () => {
       expect(res.text).toContain('<td>€30,000</td>');
       expect(res.text).toContain('<td>£34,500</td>');
       expect(res.text).toContain('<td>£124</td>');
+      expect(res.text).toContain('Common mistakes to avoid');
+      expect(res.text).toContain('Entering monthly take-home pay instead of annual gross EUR income.');
+      expect(res.text).toContain('Frequently asked questions');
+      expect(res.text).toContain('Should I use gross or take-home pay in Germany?');
+      expect(res.text).toContain('"@type":"FAQPage"');
       expect(res.text).toContain('Source note: thresholds and exchange rates are based on public GOV.UK');
     });
 
@@ -292,6 +311,10 @@ describe('routes', () => {
       expect(res.text).toContain('csrfToken');
       expect(res.text).toContain('id="calc-error"');
       expect(res.text).toContain('UK Student Loan Overseas Repayment Calculator');
+      expect(res.text).toContain('/overseas-repayment-guides');
+      expect(res.text).toContain('/student-loan-overseas-repayment-germany');
+      expect(res.text).toContain('/plan-2-overseas-repayment');
+      expect(res.text).toContain('What to check before estimating');
       expect(res.text).not.toContain('/vendor/chart.js/chart.umd.min.js"></script>');
     });
 
