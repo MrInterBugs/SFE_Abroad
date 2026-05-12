@@ -111,11 +111,27 @@
       border-radius: 6px;
       color: var(--white);
       display: inline-flex;
+      align-items: center;
+      min-height: 48px;
       padding: 12px 18px;
     }
     .button:hover {
       background: var(--blue-dark);
       color: var(--white);
+      text-decoration: none;
+    }
+    .secondary-button {
+      align-items: center;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--blue);
+      display: inline-flex;
+      min-height: 48px;
+      padding: 12px 18px;
+    }
+    .secondary-button:hover {
+      border-color: var(--blue);
       text-decoration: none;
     }
     .link-card {
@@ -214,7 +230,7 @@
       </p>
       <div class="actions">
         <a class="button" href="https://sfe.aedanl.com/">Open the repayment calculator</a>
-        <a href="https://sfe.aedanl.com/methodology">Read the methodology</a>
+        <a class="secondary-button" href="https://sfe.aedanl.com/methodology">Read the methodology</a>
       </div>
     </header>
 
