@@ -416,11 +416,12 @@
     let combinedPaid = ugResult.totalPaid;
     let combinedInterest = ugResult.totalInterest;
 
+    const isDark = document.documentElement && document.documentElement.dataset && document.documentElement.dataset.theme === 'dark';
     const datasets = [{
       label: planLabel + ' Loan',
       data: ugResult.data.slice(0, displayYears + 1),
-      borderColor: '#1d70b8',
-      backgroundColor: 'rgba(29,112,184,0.07)',
+      borderColor: isDark ? '#4d9de0' : '#1d70b8',
+      backgroundColor: isDark ? 'rgba(77,157,224,0.1)' : 'rgba(29,112,184,0.07)',
       fill: true, tension: 0.2, pointRadius: 0, borderWidth: 2,
     }];
 
@@ -430,8 +431,8 @@
       datasets.push({
         label: 'Postgraduate Loan',
         data: pglResult.data.slice(0, displayYears + 1),
-        borderColor: '#00703c',
-        backgroundColor: 'rgba(0,112,60,0.05)',
+        borderColor: isDark ? '#2db87a' : '#00703c',
+        backgroundColor: isDark ? 'rgba(45,184,122,0.08)' : 'rgba(0,112,60,0.05)',
         fill: true, tension: 0.2, pointRadius: 0, borderWidth: 2, spanGaps: false,
       });
     }
@@ -480,12 +481,12 @@
         layout: { padding: { top: 18 } },
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { display: datasets.length > 1, position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12, padding: 16 } },
+          legend: { display: datasets.length > 1, position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, color: isDark ? '#9aa5b0' : undefined, boxWidth: 12, padding: 16 } },
           tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: £${Math.round(ctx.raw ?? 0).toLocaleString('en-GB')}` } },
         },
         scales: {
-          x: { ticks: { font: { family: 'DM Sans', size: 11 }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
-          y: { min: 0, ticks: { font: { family: 'DM Sans', size: 11 }, callback: v => '£' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v), maxTicksLimit: 6 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+          x: { ticks: { font: { family: 'DM Sans', size: 11 }, color: isDark ? '#6b7786' : undefined, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' } },
+          y: { min: 0, ticks: { font: { family: 'DM Sans', size: 11 }, color: isDark ? '#6b7786' : undefined, callback: v => '£' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v), maxTicksLimit: 6 }, grid: { color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' } },
         },
       },
     });
@@ -856,6 +857,8 @@
 
     renderRepaymentGraph();
   }
+
+  window.onThemeChange = function () { renderRepaymentGraph(); };
 })();
 
 if (window.adsbygoogle && document.querySelector('.adsbygoogle')) {

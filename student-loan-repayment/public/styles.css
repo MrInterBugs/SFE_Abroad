@@ -20,6 +20,23 @@
   --radius-sm: 6px;
 }
 
+[data-theme="dark"] {
+  --blue-dark: #7ab8ec;
+  --blue-light: #1a2e4a;
+  --blue-mid: #263d5a;
+  --green: #2db87a;
+  --green-light: #0d2218;
+  --text: #e8eaed;
+  --text-secondary: #9aa5b0;
+  --text-muted: #6b7786;
+  --border: #2d3748;
+  --border-focus: #4d9de0;
+  --bg: #0f1117;
+  --white: #1a1d28;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  --card-shadow-hover: 0 2px 8px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.35);
+}
+
 html, body {
   height: 100%;
   background: var(--bg);
@@ -703,6 +720,9 @@ html, body {
   background-position: center;
   pointer-events: none;
 }
+[data-theme="dark"] .select-wrap::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%239aa5b0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
 
 /* Autocomplete */
 .autocomplete-wrap { position: relative; }
@@ -1289,4 +1309,74 @@ html, body {
   margin: 12px 0 0;
   overflow-x: auto;
   padding: 12px;
+}
+
+/* Dark mode overrides for hardcoded alert colours */
+[data-theme="dark"] .alert-error {
+  background: #2c1a1a;
+  border-color: #5a2d2d;
+  color: #f87171;
+}
+[data-theme="dark"] .alert-success {
+  background: #0d2218;
+  border-color: #1a5c3a;
+  color: #6ee7b7;
+}
+[data-theme="dark"] .tax-year-notice {
+  background: #2a1f0a;
+  border-color: #6b4c10;
+  color: #fbbf24;
+}
+[data-theme="dark"] .necessary-cookie-banner {
+  background: var(--white);
+  border-color: var(--border);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+[data-theme="dark"] .necessary-cookie-close {
+  background: var(--white);
+  border-color: var(--border);
+  color: var(--text);
+}
+[data-theme="dark"] .necessary-cookie-close:hover {
+  background: var(--bg);
+}
+[data-theme="dark"] .danger-card {
+  border-color: #5a2d2d;
+}
+[data-theme="dark"] .danger-card-title {
+  color: #f87171;
+}
+[data-theme="dark"] .btn-delete {
+  border-color: #f87171;
+  color: #f87171;
+}
+[data-theme="dark"] .btn-delete:hover {
+  background: #f87171;
+  color: #0f1117;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  color: var(--blue);
+  background: var(--blue-light);
+}
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
