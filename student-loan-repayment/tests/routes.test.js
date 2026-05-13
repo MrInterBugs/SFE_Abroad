@@ -185,6 +185,7 @@ describe('routes', () => {
       expect(res.text).toContain('All country guides');
       expect(res.text).toContain('/student-loan-overseas-repayment-germany');
       expect(res.text).toContain('/plan-2-overseas-repayment');
+      expect(res.text).toMatch(/<script nonce="[^"]*">document\.documentElement\.dataset\.theme=/);
       expect(res.text).not.toContain('noindex');
     });
 

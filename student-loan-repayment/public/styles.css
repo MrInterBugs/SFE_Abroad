@@ -13,6 +13,7 @@
   --border: #d9dde1;
   --border-focus: #1d70b8;
   --bg: #f8f9fb;
+  --surface: #ffffff;
   --white: #ffffff;
   --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
   --card-shadow-hover: 0 2px 8px rgba(0,0,0,0.10), 0 8px 24px rgba(0,0,0,0.07);
@@ -32,6 +33,7 @@
   --border: #2d3748;
   --border-focus: #4d9de0;
   --bg: #0f1117;
+  --surface: #1a1d28;
   --white: #1a1d28;
   --card-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
   --card-shadow-hover: 0 2px 8px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.35);
