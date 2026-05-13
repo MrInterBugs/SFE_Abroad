@@ -82,6 +82,7 @@ html, body {
   flex-shrink: 0;
 }
 .header-title {
+  display: block;
   font-family: 'Space Grotesk', sans-serif;
   font-size: 16px;
   font-weight: 600;
@@ -89,6 +90,7 @@ html, body {
   letter-spacing: -0.01em;
   line-height: 1.2;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .header-divider {
   width: 1px; height: 20px;
@@ -1169,10 +1171,6 @@ html, body {
   .header-sub { display: none; }
   .header-divider { display: none; }
   .header-nav-email { display: none; }
-}
-
-@media (max-width: 480px) {
-  .header-nav-optional { display: none; }
 }
 
 @media (max-width: 360px) {
