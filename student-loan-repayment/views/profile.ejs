@@ -200,20 +200,7 @@
     </div>
   </main>
 
-  <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-note">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <circle cx="7" cy="7" r="6.5" stroke="#8a9198"/>
-          <path d="M7 6v4M7 4.5v.5" stroke="#8a9198" stroke-width="1.2" stroke-linecap="round"/>
-        </svg>
-        Your calculator profile is private and never shared with advertisers.
-      </div>
-      <div class="footer-links">
-        <a href="/privacy">Privacy Policy</a>
-      </div>
-    </div>
-  </footer>
+  <%- include('partials/footer') %>
 
 </div>
 <script nonce="<%= locals.cspNonce || '' %>">
