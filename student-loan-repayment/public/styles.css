@@ -87,6 +87,8 @@ html, body {
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.01em;
+  line-height: 1.2;
+  min-width: 0;
 }
 .header-divider {
   width: 1px; height: 20px;
@@ -1154,9 +1156,31 @@ html, body {
   .breakdown-grid { grid-template-columns: 1fr; }
   .breakdown-item.combined { grid-column: 1; }
   .results-main-amount { font-size: 36px; }
+  .header { padding: 0 16px; }
+  .header-inner { gap: 10px; min-height: 52px; padding: 8px 0; }
+  .header-crown { gap: 8px; }
+  .crown-icon { width: 24px; height: 24px; }
+  .header-title { font-size: 14px; }
+  .header-nav { gap: 2px; }
+  .header-nav-link { font-size: 12px; padding: 5px 8px; }
+  .header-nav-pill { font-size: 12px; padding: 4px 10px; }
+  .header-nav-user { font-size: 12px; gap: 6px; padding-right: 9px; }
+  .header-nav-avatar-sm { width: 24px; height: 24px; }
   .header-sub { display: none; }
   .header-divider { display: none; }
   .header-nav-email { display: none; }
+}
+
+@media (max-width: 480px) {
+  .header-nav-optional { display: none; }
+}
+
+@media (max-width: 360px) {
+  .header { padding: 0 12px; }
+  .header-inner { gap: 8px; }
+  .header-title { font-size: 13px; }
+  .header-nav-link { padding-left: 6px; padding-right: 6px; }
+  .header-nav-pill { padding-left: 8px; padding-right: 8px; }
 }
 
 /* Privacy policy page */
