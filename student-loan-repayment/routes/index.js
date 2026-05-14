@@ -27,6 +27,7 @@ const COOKIE_OPTS = {
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'Strict',
 };
+const MAX_CALCULATION_SALARY = 1_000_000_000;
 
 function hasPreferenceConsent(req) {
   return hasCookieConsent(req, 'preferences');
@@ -49,6 +50,10 @@ function parseGbpAmount(value) {
 
 function parseExchangeRate(value) {
   return parseFloat(String(value ?? '').replace(/,/g, ''));
+}
+
+function repaymentRateForPlan(plan) {
+  return plan === 'planPg' ? PGL_REPAYMENT_RATE : REPAYMENT_RATE;
 }
 
 function formatNumber(value) {
@@ -383,6 +388,7 @@ router.get('/', async (req, res) => {
     res.clearCookie('selectedCountry', clearOpts);
     res.clearCookie('selectedYear', clearOpts);
     res.clearCookie('includePg', clearOpts);
+    res.clearCookie('noUndergradLoan', clearOpts);
   }
 
   const selectedYearCookie = preferenceCookie(req, 'selectedYear');
@@ -405,7 +411,8 @@ router.get('/', async (req, res) => {
     const selectedPlan = resolveSelectedPlan(req, profile, selectedYear);
     const selectedCountry = profile?.default_country || preferenceCookie(req, 'selectedCountry') || '';
     const pglAvailable = isPlanAvailableForYear('planPg', selectedYear);
-    const includePg = pglAvailable && (profile ? !!profile.include_pg : preferenceCookie(req, 'includePg') === 'true');
+    const noUndergradLoan = pglAvailable && preferenceCookie(req, 'noUndergradLoan') === 'true';
+    const includePg = pglAvailable && (noUndergradLoan || (profile ? !!profile.include_pg : preferenceCookie(req, 'includePg') === 'true'));
 
     res.render('index', {
       countries,
@@ -413,6 +420,7 @@ router.get('/', async (req, res) => {
       selectedCountry,
       selectedYear,
       includePg,
+      noUndergradLoan,
       supportedYears: SUPPORTED_YEARS,
       realCurrentTaxYear,
       currentTaxYearSupported,
@@ -434,13 +442,15 @@ router.get('/', async (req, res) => {
     const selectedPlan = resolveSelectedPlan(req, null, selectedYear);
     const selectedCountry = preferenceCookie(req, 'selectedCountry') || '';
     const pglAvailable = isPlanAvailableForYear('planPg', selectedYear);
-    const includePg = pglAvailable && preferenceCookie(req, 'includePg') === 'true';
+    const noUndergradLoan = pglAvailable && preferenceCookie(req, 'noUndergradLoan') === 'true';
+    const includePg = pglAvailable && (noUndergradLoan || preferenceCookie(req, 'includePg') === 'true');
     res.render('index', {
       countries: [],
       selectedPlan,
       selectedCountry,
       selectedYear,
       includePg,
+      noUndergradLoan,
       supportedYears: SUPPORTED_YEARS,
       realCurrentTaxYear,
       currentTaxYearSupported,
@@ -480,18 +490,22 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   if (req.body.includePg !== undefined && req.body.includePg !== 'on') {
     return sendError(400, 'Invalid Postgraduate Loan selection.');
   }
+  if (req.body.noUndergradLoan !== undefined && req.body.noUndergradLoan !== 'on') {
+    return sendError(400, 'Invalid undergraduate loan selection.');
+  }
   const includePg = req.body.includePg === 'on';
-  logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}`);
+  const noUndergradLoan = req.body.noUndergradLoan === 'on';
+  logger.info(`Handling POST /calculate: country=${targetCountry}, plan=${selectedPlan}, year=${year}, includePg=${includePg}, noUndergradLoan=${noUndergradLoan}`);
 
   if (!SUPPORTED_YEARS.includes(year)) {
     return sendError(400, 'Invalid tax year selected.');
   }
 
-  if (!ALLOWED_PLANS.includes(selectedPlan)) {
+  if (!noUndergradLoan && !ALLOWED_PLANS.includes(selectedPlan)) {
     return sendError(400, 'Invalid repayment plan selected.');
   }
 
-  if (!isPlanAvailableForYear(selectedPlan, year)) {
+  if (!noUndergradLoan && !isPlanAvailableForYear(selectedPlan, year)) {
     return sendError(400, 'Selected repayment plan is not available for this tax year.');
   }
 
@@ -499,14 +513,21 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     return sendError(400, 'Postgraduate Loan data is not available for this tax year.');
   }
 
+  if (noUndergradLoan && !includePg) {
+    return sendError(400, 'Select Postgraduate Loan to calculate without an undergraduate loan.');
+  }
+
   // Validate salary: must be a finite positive number
   const salary = parseRequiredNumber(req.body.salaryLocalCurrency);
-  if (!Number.isFinite(salary) || salary <= 0) {
+  if (!Number.isFinite(salary) || salary <= 0 || salary > MAX_CALCULATION_SALARY) {
     return sendError(400, 'Please enter a valid positive salary.');
   }
 
   try {
-    const countryDataDict = await getThresholdData(selectedPlan, year);
+    const selectedUndergradPlan = noUndergradLoan ? null : selectedPlan;
+    const countryDataDict = noUndergradLoan
+      ? await getThresholdData('planPg', year)
+      : await getThresholdData(selectedUndergradPlan, year);
     const countryData = countryDataDict[targetCountry];
 
     if (!countryData) {
@@ -514,12 +535,13 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     }
 
     const exchangeRate = parseFloat(countryData['Exchange rate']);
-    const thresholdField = (selectedPlan === 'plan2')
+    const effectivePlan = noUndergradLoan ? 'planPg' : selectedUndergradPlan;
+    const thresholdField = selectedUndergradPlan === 'plan2'
       ? 'Lower earnings threshold (GBP)'
       : 'Earnings threshold (GBP)';
     const thresholdRaw = countryData[thresholdField];
 
-    if (!isFinite(exchangeRate) || !thresholdRaw) {
+    if (!Number.isFinite(exchangeRate) || exchangeRate <= 0 || !thresholdRaw) {
       return sendError(502, 'Unexpected data format for this country. Please try again later.');
     }
 
@@ -528,39 +550,49 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       return sendError(502, 'Unexpected data format for this country. Please try again later.');
     }
 
-    const plan2LowerThresholdGbp = selectedPlan === 'plan2'
+    const plan2LowerThresholdGbp = selectedUndergradPlan === 'plan2'
       ? thresholdGbp
       : null;
-    const plan2UpperThresholdRaw = selectedPlan === 'plan2'
+    const plan2UpperThresholdRaw = selectedUndergradPlan === 'plan2'
       ? countryData['Upper earnings threshold (GBP)']
       : null;
     const plan2UpperThresholdGbp = plan2UpperThresholdRaw
       ? parseGbpAmount(plan2UpperThresholdRaw)
       : null;
-    if (selectedPlan === 'plan2' && !Number.isFinite(plan2UpperThresholdGbp)) {
+    if (selectedUndergradPlan === 'plan2' && !Number.isFinite(plan2UpperThresholdGbp)) {
       return sendError(502, 'Unexpected data format for this country. Please try again later.');
     }
 
     const salaryGbp = salary * exchangeRate;
+    if (!Number.isFinite(salaryGbp)) {
+      return sendError(400, 'Please enter a valid positive salary.');
+    }
     const amountOverThreshold = salaryGbp - thresholdGbp;
 
     if (hasPreferenceConsent(req)) {
-      res.cookie('selectedPlan', selectedPlan, COOKIE_OPTS);
+      if (selectedUndergradPlan) {
+        res.cookie('selectedPlan', selectedUndergradPlan, COOKIE_OPTS);
+      } else {
+        res.clearCookie('selectedPlan', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+      }
       res.cookie('selectedCountry', targetCountry, COOKIE_OPTS);
       res.cookie('selectedYear', year, COOKIE_OPTS);
       res.cookie('includePg', String(includePg), COOKIE_OPTS);
+      res.cookie('noUndergradLoan', String(noUndergradLoan), COOKIE_OPTS);
     }
 
-    const monthlyRepayment = amountOverThreshold > 0
-      ? (amountOverThreshold * REPAYMENT_RATE) / MONTHS_PER_YEAR
+    const primaryRepaymentRate = repaymentRateForPlan(effectivePlan);
+    const monthlyRepayment = !noUndergradLoan && amountOverThreshold > 0
+      ? (amountOverThreshold * primaryRepaymentRate) / MONTHS_PER_YEAR
       : 0;
 
     // Postgraduate loan calculation (optional)
     let pglMonthlyRepayment = null;
     let pglThresholdGbp = null;
     if (includePg) {
-      const pgDataDict = await getThresholdData('planPg', year);
-      const pgCountryData = pgDataDict[targetCountry];
+      const pgCountryData = noUndergradLoan
+        ? countryData
+        : (await getThresholdData('planPg', year))[targetCountry];
       const pgThresholdRaw = pgCountryData?.['Earnings threshold (GBP)'];
       if (!pgCountryData || !pgThresholdRaw) {
         return sendError(502, 'Unexpected postgraduate loan data format for this country. Please try again later.');
@@ -582,7 +614,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
     try {
       db.logCalculation(req.session.userId ?? null, {
         country: targetCountry,
-        plan: selectedPlan,
+        plan: noUndergradLoan ? 'planPg' : selectedPlan,
         taxYear: year,
         salaryLocal: salary,
         salaryGbp,
@@ -606,7 +638,9 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       plan2UpperThresholdGbp: plan2UpperThresholdGbp !== null ? plan2UpperThresholdGbp.toFixed(2) : null,
       localPerGbp: (1 / exchangeRate).toFixed(4),
       salaryGbp: salaryGbp.toFixed(2),
-      selectedPlan,
+      selectedPlan: selectedUndergradPlan,
+      effectivePlan,
+      noUndergradLoan,
       selectedYear: year,
       salaryCurrencySymbol,
       loanValueGbp,

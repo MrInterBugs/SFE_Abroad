@@ -1,6 +1,8 @@
 const https = require('https');
 const logger = require('./logger');
 
+const DEFAULT_RESEND_TIMEOUT_MS = 10000;
+
 function appBaseUrl() {
   return (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
 }
@@ -9,8 +11,14 @@ function emailFrom() {
   return process.env.EMAIL_FROM || 'Student Finance Overseas Calculator <onboarding@resend.dev>';
 }
 
+function resendTimeoutMs() {
+  const configured = Number(process.env.RESEND_TIMEOUT_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_RESEND_TIMEOUT_MS;
+}
+
 function postResend(payload) {
   const body = JSON.stringify(payload);
+  const timeoutMs = resendTimeoutMs();
 
   return new Promise((resolve, reject) => {
     const req = https.request({
@@ -34,6 +42,9 @@ function postResend(payload) {
     });
 
     req.on('error', reject);
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`Resend request timed out after ${timeoutMs}ms`));
+    });
     req.write(body);
     req.end();
   });
@@ -168,4 +179,4 @@ function sendPasswordReset(email, token) {
   });
 }
 
-module.exports = { sendEmail, sendEmailConfirmation, sendPasswordReset, appBaseUrl, emailFrom };
+module.exports = { sendEmail, sendEmailConfirmation, sendPasswordReset, appBaseUrl, emailFrom, resendTimeoutMs };

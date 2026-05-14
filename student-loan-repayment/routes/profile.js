@@ -6,7 +6,7 @@ const { getDefaultTaxYear, ALLOWED_PLANS } = require('../config/constants');
 const { getThresholdData } = require('../utils/fetchCountryData');
 const logger = require('../utils/logger');
 
-const UG_PLANS = ALLOWED_PLANS.filter(p => p !== 'planPg');
+const PROFILE_PLANS = ALLOWED_PLANS;
 
 const router = express.Router();
 
@@ -37,7 +37,7 @@ function isValidMonthInput(value) {
 router.get('/profile', requireAuth, async (req, res) => {
   const user = getUserById(req.session.userId);
   const profile = getProfile(req.session.userId);
-  res.render('profile', { user, profile: profile || {}, countries: await getCountries(), ugPlans: UG_PLANS, error: null, success: false, csrfToken: res.locals.csrfToken });
+  res.render('profile', { user, profile: profile || {}, countries: await getCountries(), ugPlans: PROFILE_PLANS, error: null, success: false, csrfToken: res.locals.csrfToken });
 });
 
 router.get('/profile/export', requireAuth, (req, res) => {
@@ -90,13 +90,13 @@ router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
   const parsedPglLoan = parseOptionalNumber(loanValuePglGbp);
   const parsedSalary  = parseOptionalNumber(defaultSalary);
 
-  const renderError = (msg) => res.status(400).render('profile', { user, profile: req.body, countries, ugPlans: UG_PLANS, error: msg, success: false, csrfToken: res.locals.csrfToken });
+  const renderError = (msg) => res.status(400).render('profile', { user, profile: req.body, countries, ugPlans: PROFILE_PLANS, error: msg, success: false, csrfToken: res.locals.csrfToken });
 
   if (parsedLoan    !== null && (!isFinite(parsedLoan)    || parsedLoan    < 0)) return renderError('Please enter a valid undergraduate loan value.');
   if (parsedPglLoan !== null && (!isFinite(parsedPglLoan) || parsedPglLoan < 0)) return renderError('Please enter a valid postgraduate loan value.');
   if (parsedSalary  !== null && (!isFinite(parsedSalary)  || parsedSalary  < 0)) return renderError('Please enter a valid salary.');
   if (graduationDate && !isValidMonthInput(graduationDate))                     return renderError('Please enter a valid graduation date.');
-  if (defaultPlan && !UG_PLANS.includes(defaultPlan))                            return renderError('Invalid repayment plan selected.');
+  if (defaultPlan && !PROFILE_PLANS.includes(defaultPlan))                       return renderError('Invalid repayment plan selected.');
   if (defaultCountry && !countries.includes(defaultCountry))                     return renderError('Invalid default country selected.');
   const resolvedDefaultPlan = defaultPlan || 'plan1';
 
@@ -112,10 +112,10 @@ router.post('/profile', requireAuth, verifyCsrfToken, async (req, res) => {
     });
     logger.info(`Profile updated for user id=${req.session.userId}`);
     const updatedProfile = getProfile(req.session.userId);
-    res.render('profile', { user, profile: updatedProfile || {}, countries, ugPlans: UG_PLANS, error: null, success: true, csrfToken: res.locals.csrfToken });
+    res.render('profile', { user, profile: updatedProfile || {}, countries, ugPlans: PROFILE_PLANS, error: null, success: true, csrfToken: res.locals.csrfToken });
   } catch (err) {
     logger.error(`Profile update error: ${err.message}`);
-    res.status(500).render('profile', { user, profile: req.body, countries, ugPlans: UG_PLANS, error: 'Something went wrong. Please try again.', success: false, csrfToken: res.locals.csrfToken });
+    res.status(500).render('profile', { user, profile: req.body, countries, ugPlans: PROFILE_PLANS, error: 'Something went wrong. Please try again.', success: false, csrfToken: res.locals.csrfToken });
   }
 });
 

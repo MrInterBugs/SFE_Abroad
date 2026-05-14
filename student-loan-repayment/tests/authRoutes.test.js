@@ -13,8 +13,10 @@ jest.mock('../utils/db', () => ({
   revokeUserSessions: jest.fn(),
   createAuthToken: jest.fn(),
   consumeAuthToken: jest.fn(),
+  resetPasswordWithToken: jest.fn(),
   cleanupAuthTokens: jest.fn(),
   hasRecentAuthToken: jest.fn(),
+  revokeOutstandingAuthTokens: jest.fn(),
 }));
 jest.mock('../utils/email', () => ({
   sendEmailConfirmation: jest.fn(),
@@ -89,6 +91,7 @@ describe('auth routes', () => {
     db.createUser.mockReturnValue(123);
     db.getUserByEmail.mockReturnValue(null);
     db.consumeAuthToken.mockReturnValue(null);
+    db.resetPasswordWithToken.mockReturnValue(null);
     db.hasRecentAuthToken.mockReturnValue(false);
     email.sendEmailConfirmation.mockResolvedValue(true);
     email.sendPasswordReset.mockResolvedValue(true);
@@ -149,6 +152,26 @@ describe('auth routes', () => {
     expect(email.sendEmailConfirmation).toHaveBeenCalledWith('newuser@example.com', expect.any(String));
     expect(logger.info).toHaveBeenCalledWith('Email sent: type=email-confirmation userId=123');
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('New user registered'));
+  });
+
+  test('register revokes the confirmation token if email delivery fails', async () => {
+    email.sendEmailConfirmation.mockRejectedValueOnce(new Error('resend offline'));
+    const { token, cookies } = await csrf(app, '/register');
+
+    const res = await request(app)
+      .post('/register')
+      .set('Cookie', cookies)
+      .send({
+        csrfToken: token,
+        email: 'newuser@example.com',
+        password: 'long-enough-password',
+        confirmPassword: 'long-enough-password',
+      });
+
+    expect(res.status).toBe(500);
+    expect(db.createAuthToken).toHaveBeenCalledWith(123, 'email-confirmation', expect.any(String), expect.any(Number));
+    expect(db.revokeOutstandingAuthTokens).toHaveBeenCalledWith(123, 'email-confirmation');
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Register error'));
   });
 
   test('check email page renders and resend confirmation handles missing, confirmed, and unconfirmed accounts', async () => {
@@ -222,6 +245,7 @@ describe('auth routes', () => {
 
     expect(res.status).toBe(500);
     expect(res.text).toContain('Something went wrong');
+    expect(db.revokeOutstandingAuthTokens).toHaveBeenCalledWith(9, 'email-confirmation');
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Confirmation resend error'));
   });
 
@@ -492,6 +516,19 @@ describe('auth routes', () => {
 
     expect(res.status).toBe(500);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Password reset request error'));
+
+    db.getUserByEmail.mockReturnValueOnce({ id: 9, email: 'known@example.com' });
+    email.sendPasswordReset.mockRejectedValueOnce(new Error('resend offline'));
+    const second = await csrf(app, '/forgot-password');
+
+    const emailFailure = await request(app)
+      .post('/forgot-password')
+      .set('Cookie', second.cookies)
+      .send({ csrfToken: second.token, email: 'known@example.com' });
+
+    expect(emailFailure.status).toBe(500);
+    expect(db.revokeOutstandingAuthTokens).toHaveBeenCalledWith(9, 'password-reset');
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Password reset request error'));
   });
 
   test('reset password validates input and rejects invalid tokens', async () => {
@@ -524,10 +561,11 @@ describe('auth routes', () => {
       .send({ csrfToken: get.token, password: 'long-enough-password', confirmPassword: 'long-enough-password' });
     expect(invalid.status).toBe(400);
     expect(invalid.text).toContain('reset link is invalid');
+    expect(argon2.hash).toHaveBeenCalledWith('long-enough-password', expect.objectContaining({ type: argon2.argon2id }));
   });
 
   test('reset password updates hash and redirects', async () => {
-    db.consumeAuthToken.mockReturnValue({ userId: 9, email: 'known@example.com' });
+    db.resetPasswordWithToken.mockReturnValue({ userId: 9, email: 'known@example.com' });
     const { token, cookies } = await csrf(app, '/reset-password/reset-token');
 
     const res = await request(app)
@@ -538,12 +576,13 @@ describe('auth routes', () => {
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe('/login?reset=1');
     expect(argon2.hash).toHaveBeenCalledWith('new-long-password', expect.objectContaining({ type: argon2.argon2id }));
-    expect(db.updateUserPassword).toHaveBeenCalledWith(9, 'hashed-password');
-    expect(db.revokeUserSessions).toHaveBeenCalledWith(9);
+    expect(db.resetPasswordWithToken).toHaveBeenCalledWith('reset-token', 'hashed-password');
+    expect(db.updateUserPassword).not.toHaveBeenCalled();
+    expect(db.revokeUserSessions).not.toHaveBeenCalled();
   });
 
   test('reset password handles hashing or update errors', async () => {
-    db.consumeAuthToken.mockReturnValue({ userId: 9, email: 'known@example.com' });
+    db.resetPasswordWithToken.mockReturnValue({ userId: 9, email: 'known@example.com' });
     argon2.hash.mockRejectedValueOnce(new Error('hash failed'));
     const { token, cookies } = await csrf(app, '/reset-password/reset-token');
 

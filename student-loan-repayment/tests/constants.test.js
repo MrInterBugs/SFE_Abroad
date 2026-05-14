@@ -35,7 +35,7 @@ describe('constants — exported values', () => {
   test('COOKIE_MAX_AGE is 30 days in ms', () =>
     expect(COOKIE_MAX_AGE).toBe(30 * 24 * 60 * 60 * 1000));
 
-  test('ALLOWED_PLANS contains all four plans', () => {
+  test('ALLOWED_PLANS contains undergraduate primary plans', () => {
     expect(ALLOWED_PLANS).toEqual(['plan1', 'plan2', 'plan4', 'plan5']);
   });
 

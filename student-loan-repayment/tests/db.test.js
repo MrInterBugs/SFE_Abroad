@@ -16,6 +16,7 @@ const {
   revokeUserSessions,
   createAuthToken,
   consumeAuthToken,
+  resetPasswordWithToken,
   cleanupAuthTokens,
   revokeOutstandingAuthTokens,
   hasRecentAuthToken,
@@ -156,6 +157,25 @@ describe('db', () => {
     createAuthToken(userId, 'email-confirmation', 'confirm-token', Date.now() + 10000);
     expect(revokeOutstandingAuthTokens(userId, 'email-confirmation')).toBe(1);
     expect(consumeAuthToken('confirm-token', 'email-confirmation')).toBeNull();
+
+    deleteUser(userId);
+  });
+
+  test('resetPasswordWithToken updates password, revokes sessions, and consumes token atomically', () => {
+    const email = `reset_tx_${RUN_ID}@example.com`;
+    const userId = createUser(email, 'old-hash');
+    const sid = `reset_tx_session_${RUN_ID}`;
+    db.prepare('INSERT OR REPLACE INTO sessions (sid, data, expires, user_id) VALUES (?, ?, ?, ?)')
+      .run(sid, JSON.stringify({ userId, cookie: {} }), Date.now() + 10000, userId);
+    createAuthToken(userId, 'password-reset', 'reset-token', Date.now() + 10000);
+
+    expect(resetPasswordWithToken('wrong-token', 'new-hash')).toBeNull();
+    expect(getUserByEmail(email).password_hash).toBe('old-hash');
+
+    expect(resetPasswordWithToken('reset-token', 'new-hash')).toMatchObject({ userId, email });
+    expect(getUserByEmail(email).password_hash).toBe('new-hash');
+    expect(db.prepare('SELECT sid FROM sessions WHERE sid = ?').get(sid)).toBeUndefined();
+    expect(consumeAuthToken('reset-token', 'password-reset')).toBeNull();
 
     deleteUser(userId);
   });

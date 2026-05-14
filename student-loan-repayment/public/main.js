@@ -6,7 +6,7 @@
   const PROFILE_PGL_GBP = appData.loanValuePglGbp || null;
   const AVAILABLE_PLANS_BY_YEAR = appData.availablePlansByYear || {};
 
-  const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40 };
+  const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40, planPg: 30 };
   const FALLBACK_AVAILABLE_PLANS = ['plan1', 'plan2', 'plan4', 'plan5', 'planPg'];
 
   function queryAll(selector) {
@@ -60,7 +60,9 @@
   function updatePglNote(rpi) {
     const note = document.getElementById('pgl-rate-note');
     if (!note) return;
-    if (!lastResult || lastResult.pglMonthlyRepayment === null || lastResult.pglMonthlyRepayment === undefined) {
+    const primaryPgl = lastResult && (lastResult.noUndergradLoan || lastResult.effectivePlan === 'planPg');
+    const secondaryPgl = lastResult && lastResult.pglMonthlyRepayment !== null && lastResult.pglMonthlyRepayment !== undefined;
+    if (!primaryPgl && !secondaryPgl) {
       note.style.display = 'none';
       return;
     }
@@ -101,6 +103,8 @@
   const currencyBadge = document.getElementById('currency-badge');
   const pglCheck = document.getElementById('pgl-check');
   const pglRow = document.getElementById('pgl-row');
+  const noUgCheck = document.getElementById('no-ug-check');
+  const noUgRow = document.getElementById('no-ug-row');
   const pglDivider = document.getElementById('pgl-divider');
   const form = document.getElementById('calc-form');
   const resultsCard = document.getElementById('results-card');
@@ -196,11 +200,37 @@
 
   // ─── PGL CHECKBOX ─────────────────────────────────────────────────────────
   pglCheck.addEventListener('change', () => {
+    if (!pglCheck.checked && noUgCheck) {
+      noUgCheck.checked = false;
+      noUgRow.classList.remove('checked');
+    }
     pglRow.classList.toggle('checked', pglCheck.checked);
   });
+  if (noUgCheck) {
+    noUgCheck.addEventListener('change', () => {
+      noUgRow.classList.toggle('checked', noUgCheck.checked);
+      if (noUgCheck.checked) {
+        queryAll('input[name="selectedPlan"]').forEach((input) => { input.checked = false; });
+        pglCheck.checked = true;
+        pglRow.classList.add('checked');
+      } else if (!document.querySelector('input[name="selectedPlan"]:checked')) {
+        const firstAvailablePlan = document.querySelector('.plan-card[data-plan]:not([hidden]) input[name="selectedPlan"]');
+        if (firstAvailablePlan) firstAvailablePlan.checked = true;
+      }
+    });
+  }
 
   queryAll('input[name="selectedYear"]').forEach((input) => {
     input.addEventListener('change', syncPlanAvailability);
+  });
+  queryAll('input[name="selectedPlan"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (input.checked && noUgCheck) {
+        noUgCheck.checked = false;
+        noUgRow.classList.remove('checked');
+      }
+      syncPlanAvailability();
+    });
   });
 
   function syncPlanAvailability() {
@@ -221,21 +251,31 @@
       }
     });
 
-    selectedVisiblePlan = document.querySelector('input[name="selectedPlan"]:checked');
-    if (!selectedVisiblePlan || selectedVisiblePlan.disabled) {
-      const firstAvailablePlan = document.querySelector('.plan-card[data-plan]:not([hidden]) input[name="selectedPlan"]');
-      if (firstAvailablePlan) firstAvailablePlan.checked = true;
-    }
-
     const pglAvailable = availableSet.has('planPg');
     pglRow.hidden = !pglAvailable;
+    if (noUgRow) noUgRow.hidden = !pglAvailable;
     if (pglDivider) pglDivider.hidden = !pglAvailable;
     pglCheck.disabled = !pglAvailable;
+    if (noUgCheck) noUgCheck.disabled = !pglAvailable;
     if (!pglAvailable) {
       pglCheck.checked = false;
+      if (noUgCheck) noUgCheck.checked = false;
       pglRow.classList.remove('checked');
+      if (noUgRow) noUgRow.classList.remove('checked');
     } else {
+      if (noUgCheck && noUgCheck.checked) pglCheck.checked = true;
       pglRow.classList.toggle('checked', pglCheck.checked);
+      if (noUgRow) noUgRow.classList.toggle('checked', Boolean(noUgCheck && noUgCheck.checked));
+    }
+
+    if (noUgCheck && noUgCheck.checked && pglAvailable) {
+      queryAll('input[name="selectedPlan"]').forEach((input) => { input.checked = false; });
+    } else {
+      selectedVisiblePlan = document.querySelector('input[name="selectedPlan"]:checked');
+      if (!selectedVisiblePlan || selectedVisiblePlan.disabled) {
+        const firstAvailablePlan = document.querySelector('.plan-card[data-plan]:not([hidden]) input[name="selectedPlan"]');
+        if (firstAvailablePlan) firstAvailablePlan.checked = true;
+      }
     }
   }
 
@@ -317,10 +357,11 @@
     const rpi = isFinite(interestRateParsed) ? interestRateParsed : 3.2;
     const payRiseParsed = parseFloat(payRiseSlider && payRiseSlider.value);
     const payRise = isFinite(payRiseParsed) ? payRiseParsed : 2;
+    const primaryPgl = Boolean(lastResult.noUndergradLoan || lastResult.effectivePlan === 'planPg');
     const plan2Surcharge = lastResult.selectedPlan === 'plan2'
       ? calcPlan2Surcharge(parseFloat(lastResult.salaryGbp), plan2InterestThresholds(lastResult))
       : 0;
-    const interestRate = rpi + plan2Surcharge;
+    const interestRate = primaryPgl ? rpi + 3 : rpi + plan2Surcharge;
     updatePlan2Note(rpi);
     updatePglNote(rpi);
 
@@ -332,8 +373,8 @@
       return;
     }
 
-    const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5' };
-    const planLabel = planLabels[lastResult.selectedPlan] || 'UG';
+    const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5', planPg: 'Postgraduate Loan' };
+    const planLabel = primaryPgl ? 'Postgraduate Loan' : (planLabels[lastResult.selectedPlan] || 'UG');
     const balanceLabel = document.querySelector('label[for="loan-balance-input"]');
     if (balanceLabel) balanceLabel.textContent = planLabel + ' loan balance';
 
@@ -343,24 +384,26 @@
     const pglThresholdGbp = lastResult.pglThresholdGbp ? parseFloat(lastResult.pglThresholdGbp) : 0;
 
     const currentYear = new Date().getFullYear();
-    const wo = calcWriteOff(GRADUATION_DATE, lastResult.selectedPlan);
+    const wo = calcWriteOff(GRADUATION_DATE, primaryPgl ? 'planPg' : lastResult.selectedPlan);
     const writeOffCalYear = wo
       ? wo.writeOffYear
-      : currentYear + (WRITE_OFF_YEARS[lastResult.selectedPlan] || 30);
+      : currentYear + (WRITE_OFF_YEARS[primaryPgl ? 'planPg' : lastResult.selectedPlan] || 30);
     const maxYears = Math.max(1, writeOffCalYear - currentYear);
 
     const writeoffEl = document.getElementById('writeoff-notice');
 
-    if (ugBalance <= 0 && (!hasPGL || pglBalance <= 0)) {
+    const primaryBalance = primaryPgl ? pglBalance : ugBalance;
+    if (primaryBalance <= 0 && (!hasPGL || primaryPgl || pglBalance <= 0)) {
       clearRepaymentChart();
       if (writeoffEl && wo) writeoffEl.style.display = 'flex';
       return;
     }
 
     const pglRate = rpi + 3;
-    const ugResult = buildBalanceOverTime(ugBalance, interestRate, maxYears, payRise, salaryGbp, thresholdGbp, 0.09, rpi);
+    const primaryRepaymentRate = primaryPgl ? 0.06 : 0.09;
+    const ugResult = buildBalanceOverTime(primaryBalance, interestRate, maxYears, payRise, salaryGbp, thresholdGbp, primaryRepaymentRate, rpi);
     let pglResult = null;
-    if (hasPGL && pglBalance > 0) {
+    if (hasPGL && !primaryPgl && pglBalance > 0) {
       pglResult = buildBalanceOverTime(pglBalance, pglRate, maxYears, payRise, salaryGbp, pglThresholdGbp, 0.06, rpi);
     }
 
@@ -386,7 +429,7 @@
         let text;
 
         if (!pglResult) {
-          text = `Based on your current balance, your ${planLabel} loan will be fully repaid by ${ugPOYear}.`;
+          text = `Based on your current balance, your ${planLabel}${primaryPgl ? '' : ' loan'} will be fully repaid by ${ugPOYear}.`;
         } else if (ugPO && pglPO) {
           text = ugPOYear === pglPOYear
             ? `Based on your current balance, your ${planLabel} and Postgraduate loans will both be fully repaid by ${ugPOYear}.`
@@ -407,7 +450,7 @@
           writeoffText.textContent = lastWriteoffText;
         } else {
           // No graduation date (not signed in): use estimated write-off year
-          writeoffText.textContent = `Based on your current balance and repayment rate, your ${planLabel} loan will be written off by ${writeOffCalYear} (or sooner, depending on when you graduated) rather than fully repaid.`;
+          writeoffText.textContent = `Based on your current balance and repayment rate, your ${planLabel}${primaryPgl ? '' : ' loan'} will be written off by ${writeOffCalYear} (or sooner, depending on when you graduated) rather than fully repaid.`;
         }
         writeoffEl.style.display = 'flex';
       }
@@ -418,7 +461,7 @@
 
     const isDark = document.documentElement && document.documentElement.dataset && document.documentElement.dataset.theme === 'dark';
     const datasets = [{
-      label: planLabel + ' Loan',
+      label: primaryPgl ? planLabel : planLabel + ' Loan',
       data: ugResult.data.slice(0, displayYears + 1),
       borderColor: isDark ? '#4d9de0' : '#1d70b8',
       backgroundColor: isDark ? 'rgba(77,157,224,0.1)' : 'rgba(29,112,184,0.07)',
@@ -759,6 +802,7 @@
   function renderResults(r) {
     hideInlineError();
     const hasPGL = r.pglMonthlyRepayment !== null && r.pglMonthlyRepayment !== undefined;
+    const noUndergradLoan = Boolean(r.noUndergradLoan);
     const ugMonthly = parseFloat(r.monthlyRepayment);
     const pglMonthly = hasPGL ? parseFloat(r.pglMonthlyRepayment) : 0;
     const totalMonthly = ugMonthly + pglMonthly;
@@ -787,8 +831,10 @@
     if (hasPGL) {
       breakdown.classList.add('show');
       document.getElementById('bd-ug').textContent = fmt(ugMonthly);
-      const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5' };
-      document.getElementById('bd-ug-rate').textContent = (planLabels[r.selectedPlan] || r.selectedPlan) + ' · 9%';
+      const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5', planPg: 'Postgraduate Loan' };
+      document.getElementById('bd-ug-rate').textContent = noUndergradLoan
+        ? 'No undergraduate loan'
+        : (planLabels[r.selectedPlan] || r.selectedPlan) + ' · 9%';
       document.getElementById('bd-pgl').textContent = fmt(pglMonthly);
       document.getElementById('bd-total').textContent = fmt(totalMonthly);
     } else {
@@ -798,14 +844,16 @@
     // Write-off notice
     const writeoffEl = document.getElementById('writeoff-notice');
     const writeoffText = document.getElementById('writeoff-text');
-    const wo = calcWriteOff(GRADUATION_DATE, r.selectedPlan);
+    const wo = calcWriteOff(GRADUATION_DATE, noUndergradLoan ? 'planPg' : r.selectedPlan);
     if (wo && writeoffEl) {
-      const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5' };
+      const planLabels = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5', planPg: 'Postgraduate Loan' };
       const planLabel = planLabels[wo.plan] || wo.plan;
       const caveat = wo.plan === 'plan1' ? ' (or when you turn 65, whichever is sooner)' : '';
       const pglWriteOffYear = wo.firstRepayYear + 30;
       let text;
-      if (hasPGL && pglWriteOffYear === wo.writeOffYear) {
+      if (noUndergradLoan) {
+        text = `Your Postgraduate Loan will be written off in April ${wo.writeOffYear} — ${timeUntilApril(wo.writeOffYear)} from now.`;
+      } else if (hasPGL && pglWriteOffYear === wo.writeOffYear) {
         text = `Your ${planLabel} and Postgraduate loans will both be written off in April ${wo.writeOffYear} — ${timeUntilApril(wo.writeOffYear)} from now${caveat}.`;
       } else if (hasPGL) {
         text = `Your ${planLabel} loan will be written off in April ${wo.writeOffYear} (${timeUntilApril(wo.writeOffYear)} from now${caveat}), and your Postgraduate Loan in April ${pglWriteOffYear} (${timeUntilApril(pglWriteOffYear)} from now).`;
@@ -844,6 +892,8 @@
     // Show/hide PGL balance row based on whether PGL is active
     const pglRow = document.getElementById('pgl-balance-row');
     if (pglRow) pglRow.style.display = hasPGL ? '' : 'none';
+    const ugRow = document.getElementById('ug-balance-row');
+    if (ugRow) ugRow.style.display = noUndergradLoan ? 'none' : '';
 
     // Pre-populate balance inputs from profile on first use
     const balanceInput = document.getElementById('loan-balance-input');

@@ -263,7 +263,7 @@ describe('profile routes', () => {
       { defaultSalary: '50000abc', text: 'valid salary' },
       { graduationDate: 'June 2024', text: 'graduation date' },
       { graduationDate: '2026-99', text: 'graduation date' },
-      { defaultPlan: 'planPg', text: 'Invalid repayment plan' },
+      { defaultPlan: 'planX', text: 'Invalid repayment plan' },
       { defaultCountry: 'Atlantis', text: 'Invalid default country' },
     ];
 

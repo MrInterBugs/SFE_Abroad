@@ -578,6 +578,31 @@ describe('routes', () => {
       expect(res.status).toBe(200);
     });
 
+    test('calculates Postgraduate Loan only when no undergraduate loan is checked', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve(PG_THRESHOLD_DATA)
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+        noUndergradLoan: 'on',
+      }, ['CookieConsent=preferences%3Atrue; selectedPlan=plan1']);
+      expect(res.status).toBe(200);
+      expect(res.body.selectedPlan).toBeNull();
+      expect(res.body.effectivePlan).toBe('planPg');
+      expect(res.body.noUndergradLoan).toBe(true);
+      expect(res.body.monthlyRepayment).toBe('0.00');
+      expect(res.body.pglMonthlyRepayment).toBe('182.50');
+      const setCookie = (res.headers['set-cookie'] || []).join(';');
+      expect(setCookie).toContain('selectedPlan=;');
+      expect(setCookie).toContain('noUndergradLoan=true');
+      expect(getThresholdData).toHaveBeenCalledWith('planPg', DEFAULT_YEAR);
+    });
+
     test('returns 400 when selectedPlan is not in ALLOWED_PLANS', async () => {
       const res = await postCalculate(app, {
         targetCountry: 'Germany',
@@ -663,6 +688,17 @@ describe('routes', () => {
       expect(res.status).toBe(400);
     });
 
+    test('returns 400 for salary values above the supported calculation range', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '1000000001',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('valid positive salary');
+    });
+
     test('returns 400 when selectedYear is unrecognised', async () => {
       const res = await postCalculate(app, {
         targetCountry: 'Germany',
@@ -716,6 +752,42 @@ describe('routes', () => {
       });
       expect(res.status).toBe(502);
       expect(res.text).toContain('Unexpected data format');
+    });
+
+    test('returns an error when the exchange rate is zero', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': '0',
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+      });
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(502);
+      expect(res.text).toContain('Unexpected data format');
+    });
+
+    test('returns 400 when derived GBP salary overflows', async () => {
+      getThresholdData.mockResolvedValue({
+        Germany: {
+          'Exchange rate': String(Number.MAX_VALUE),
+          Currency: 'Euro',
+          'Earnings threshold (GBP)': '£22,000',
+        },
+      });
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '2',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('valid positive salary');
     });
 
     test('returns an error when the threshold field is missing', async () => {
@@ -871,6 +943,30 @@ describe('routes', () => {
       });
       expect(res.status).toBe(502);
       expect(res.text).toContain('Unexpected postgraduate loan data format');
+    });
+
+    test('rejects no undergraduate loan without the PGL checkbox', async () => {
+      const res = await postCalculate(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        noUndergradLoan: 'on',
+      });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Select Postgraduate Loan');
+    });
+
+    test('returns JSON 400 for boolean noUndergradLoan', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+        noUndergradLoan: true,
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Invalid undergraduate loan selection');
     });
 
     test('returns an error when undergraduate threshold is not numeric', async () => {
@@ -1039,6 +1135,27 @@ describe('routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.pglMonthlyRepayment).not.toBeNull();
       expect(res.body.pglThresholdGbp).not.toBeNull();
+    });
+
+    test('returns JSON repayment data for no-undergraduate PGL-only calculations', async () => {
+      getThresholdData.mockImplementation((plan) =>
+        plan === 'planPg'
+          ? Promise.resolve(PG_THRESHOLD_DATA)
+          : Promise.resolve(THRESHOLD_DATA)
+      );
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedYear: DEFAULT_YEAR,
+        includePg: 'on',
+        noUndergradLoan: 'on',
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.selectedPlan).toBeNull();
+      expect(res.body.effectivePlan).toBe('planPg');
+      expect(res.body.monthlyRepayment).toBe('0.00');
+      expect(res.body.pglMonthlyRepayment).toBe('182.50');
+      expect(res.body.noUndergradLoan).toBe(true);
     });
 
     test('returns JSON 400 for an invalid plan', async () => {

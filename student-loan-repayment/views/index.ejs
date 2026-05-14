@@ -156,7 +156,7 @@
           <!-- Repayment plan -->
           <div class="form-group">
             <span class="field-label">Repayment Plan</span>
-            <div class="plan-grid" role="radiogroup" aria-label="Repayment plan">
+            <div class="plan-grid" role="group" aria-label="Repayment plan">
 
               <% const planCards = [
                 { key: 'plan1', name: 'Plan 1', era: 'Pre-2012 England & Wales, all NI' },
@@ -167,14 +167,23 @@
               <% planCards.forEach(function(plan) { %>
                 <% const planAvailable = (locals.availablePlans || []).includes(plan.key); %>
                 <div class="plan-card" data-plan="<%= plan.key %>" <%= planAvailable ? '' : 'hidden' %>>
-                  <input type="radio" name="selectedPlan" id="<%= plan.key %>" value="<%= plan.key %>" <%= selectedPlan === plan.key ? 'checked' : '' %> <%= planAvailable ? '' : 'disabled' %>>
+                  <input type="radio" name="selectedPlan" id="<%= plan.key %>" value="<%= plan.key %>" <%= !locals.noUndergradLoan && selectedPlan === plan.key ? 'checked' : '' %> <%= planAvailable ? '' : 'disabled' %>>
                   <label for="<%= plan.key %>">
                     <span class="plan-name"><%= plan.name %></span>
                     <span class="plan-era"><%= plan.era %></span>
-                    <span class="plan-rate">9% above threshold</span>
+                    <span class="plan-rate"><%= plan.rate || '9% above threshold' %></span>
                   </label>
                 </div>
               <% }); %>
+
+              <div class="plan-card plan-card-checkbox <%= locals.noUndergradLoan ? 'checked' : '' %>" id="no-ug-row" <%= locals.pglAvailable ? '' : 'hidden' %>>
+                <input type="checkbox" id="no-ug-check" name="noUndergradLoan" <%= locals.noUndergradLoan ? 'checked' : '' %> <%= locals.pglAvailable ? '' : 'disabled' %>>
+                <label for="no-ug-check">
+                  <span class="plan-name">No undergraduate loan</span>
+                  <span class="plan-era">Postgraduate Loan only</span>
+                  <span class="plan-rate">6% above threshold</span>
+                </label>
+              </div>
 
             </div>
           </div>
@@ -317,7 +326,7 @@
               <span class="graph-panel-title">Repayment projection</span>
             </div>
             <div class="graph-controls">
-              <div class="graph-control-row">
+              <div class="graph-control-row" id="ug-balance-row">
                 <label class="graph-label" for="loan-balance-input">UG loan balance</label>
                 <div class="graph-balance-wrap">
                   <span class="graph-balance-prefix">£</span>

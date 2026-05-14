@@ -13,6 +13,7 @@ const {
   sendPasswordReset,
   appBaseUrl,
   emailFrom,
+  resendTimeoutMs,
 } = require('../utils/email');
 
 function mockResend(statusCode = 200, responseBody = '{"id":"email-id"}') {
@@ -30,6 +31,8 @@ function mockResend(statusCode = 200, responseBody = '{"id":"email-id"}') {
     const req = new EventEmitter();
     req.write = chunk => writes.push(chunk);
     req.end = jest.fn();
+    req.setTimeout = jest.fn();
+    req.destroy = jest.fn((err) => req.emit('error', err));
     return req;
   });
   return writes;
@@ -45,6 +48,7 @@ describe('email utilities', () => {
     delete process.env.RESEND_API_KEY;
     delete process.env.APP_BASE_URL;
     delete process.env.EMAIL_FROM;
+    delete process.env.RESEND_TIMEOUT_MS;
   });
 
   afterEach(() => {
@@ -84,6 +88,7 @@ describe('email utilities', () => {
       headers: expect.objectContaining({ Authorization: 'Bearer test-key' }),
     }), expect.any(Function));
     expect(https.request.mock.calls[0][0].headers['User-Agent']).toBe('student-loan-repayment/1.0');
+    expect(https.request.mock.results[0].value.setTimeout).toHaveBeenCalledWith(10000, expect.any(Function));
     expect(JSON.parse(writes[0])).toMatchObject({
       from: 'Sender <sender@example.com>',
       to: 'user@example.com',
@@ -101,6 +106,28 @@ describe('email utilities', () => {
       html: '<p>Hello</p>',
       text: 'Hello',
     })).rejects.toThrow('Resend returned 401');
+  });
+
+  test('sendEmail rejects stalled Resend requests after the configured timeout', async () => {
+    process.env.RESEND_API_KEY = 'test-key';
+    process.env.RESEND_TIMEOUT_MS = '25';
+    https.request = jest.fn((_options, _callback) => {
+      const req = new EventEmitter();
+      req.write = jest.fn();
+      req.end = jest.fn();
+      req.destroy = jest.fn((err) => req.emit('error', err));
+      req.setTimeout = jest.fn((_ms, cb) => process.nextTick(cb));
+      return req;
+    });
+
+    await expect(sendEmail({
+      to: 'user@example.com',
+      subject: 'Subject',
+      html: '<p>Hello</p>',
+      text: 'Hello',
+    })).rejects.toThrow('Resend request timed out after 25ms');
+
+    expect(resendTimeoutMs()).toBe(25);
   });
 
   test('confirmation and reset helpers build links from configured base URL', async () => {

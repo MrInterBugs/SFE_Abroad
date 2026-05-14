@@ -296,6 +296,30 @@ function consumeAuthToken(token, purpose) {
   return { userId: row.user_id, email: row.email };
 }
 
+function resetPasswordWithToken(token, passwordHash) {
+  const tokenHash = hashAuthToken(token);
+  const resetPassword = db.transaction(() => {
+    const row = db.prepare(`
+      SELECT auth_tokens.id, auth_tokens.user_id, users.email
+      FROM auth_tokens
+      JOIN users ON users.id = auth_tokens.user_id
+      WHERE auth_tokens.token_hash = ?
+        AND auth_tokens.purpose = 'password-reset'
+        AND auth_tokens.used_at IS NULL
+        AND auth_tokens.expires_at > ?
+    `).get(tokenHash, Date.now());
+
+    if (!row) return null;
+
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, row.user_id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.user_id);
+    db.prepare('UPDATE auth_tokens SET used_at = ? WHERE id = ?').run(Date.now(), row.id);
+    return { userId: row.user_id, email: row.email };
+  });
+
+  return resetPassword();
+}
+
 function cleanupAuthTokens(now = Date.now()) {
   return db.prepare('DELETE FROM auth_tokens WHERE used_at IS NOT NULL OR expires_at <= ?').run(now).changes;
 }
@@ -387,6 +411,7 @@ module.exports = {
   revokeUserSessions,
   createAuthToken,
   consumeAuthToken,
+  resetPasswordWithToken,
   cleanupAuthTokens,
   revokeOutstandingAuthTokens,
   hasRecentAuthToken,

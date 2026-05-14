@@ -6,12 +6,12 @@ const {
   createUser,
   getUserByEmail,
   confirmUserEmail,
-  updateUserPassword,
-  revokeUserSessions,
   createAuthToken,
   consumeAuthToken,
+  resetPasswordWithToken,
   cleanupAuthTokens,
   hasRecentAuthToken,
+  revokeOutstandingAuthTokens,
 } = require('../utils/db');
 const { authRateLimit } = require('../utils/auth');
 const { sendEmailConfirmation, sendPasswordReset } = require('../utils/email');
@@ -43,14 +43,24 @@ function loginMessage(req) {
 async function sendConfirmationForUser(userId, email) {
   const token = newToken();
   createAuthToken(userId, 'email-confirmation', token, Date.now() + EMAIL_CONFIRM_TTL_MS);
-  await sendEmailConfirmation(email, token);
+  try {
+    await sendEmailConfirmation(email, token);
+  } catch (err) {
+    revokeOutstandingAuthTokens(userId, 'email-confirmation');
+    throw err;
+  }
   logger.info(`Email sent: type=email-confirmation userId=${userId}`);
 }
 
 async function sendPasswordResetForUser(user) {
   const token = newToken();
   createAuthToken(user.id, 'password-reset', token, Date.now() + PASSWORD_RESET_TTL_MS);
-  await sendPasswordReset(user.email, token);
+  try {
+    await sendPasswordReset(user.email, token);
+  } catch (err) {
+    revokeOutstandingAuthTokens(user.id, 'password-reset');
+    throw err;
+  }
   logger.info(`Email sent: type=password-reset userId=${user.id}`);
 }
 
@@ -249,14 +259,12 @@ router.post('/reset-password/:token', authRateLimit, verifyCsrfToken, async (req
 
   try {
     cleanupAuthTokens();
-    const consumed = consumeAuthToken(req.params.token, 'password-reset');
+    const hash = await argon2.hash(password, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 });
+    const consumed = resetPasswordWithToken(req.params.token, hash);
     if (!consumed) {
       return res.status(400).render('reset-password', { error: 'That reset link is invalid or has expired.', token: req.params.token, csrfToken: res.locals.csrfToken });
     }
 
-    const hash = await argon2.hash(password, { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 });
-    updateUserPassword(consumed.userId, hash);
-    revokeUserSessions(consumed.userId);
     logger.info(`Password reset: userId=${consumed.userId}`);
     res.redirect('/login?reset=1');
   } catch (err) {
