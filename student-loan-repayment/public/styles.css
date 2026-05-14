@@ -660,12 +660,25 @@ html, body {
 }
 .checkbox-row:hover { border-color: var(--blue-mid); }
 .checkbox-row.checked { border-color: var(--blue); background: var(--blue-light); }
+.checkbox-row.checked .cb-text { color: var(--blue-dark); }
+.checkbox-row.checked .cb-sub { color: var(--blue); }
 .checkbox-row input[type="checkbox"] {
   width: 18px; height: 18px;
   accent-color: var(--blue);
   flex-shrink: 0;
   margin-top: 1px;
   cursor: pointer;
+}
+#pgl-check {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+#pgl-row:has(#pgl-check:focus-visible) {
+  outline: 3px solid rgba(29,112,184,0.18);
+  outline-offset: 2px;
 }
 .checkbox-row .cb-text { font-size: 14px; font-weight: 500; color: var(--text); }
 .checkbox-row .cb-sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
