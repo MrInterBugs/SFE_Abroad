@@ -282,8 +282,8 @@
   // ─── FORMATTING ───────────────────────────────────────────────────────────
   function fmt(n) {
     const val = parseFloat(n);
-    if (val === 0) return '£0.00';
-    return '£' + val.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (val === 0) return '£0';
+    return '£' + Math.floor(val).toLocaleString('en-GB');
   }
 
   function fmtShort(n) {

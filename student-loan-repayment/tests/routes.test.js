@@ -596,7 +596,7 @@ describe('routes', () => {
       expect(res.body.effectivePlan).toBe('planPg');
       expect(res.body.noUndergradLoan).toBe(true);
       expect(res.body.monthlyRepayment).toBe('0.00');
-      expect(res.body.pglMonthlyRepayment).toBe('182.50');
+      expect(res.body.pglMonthlyRepayment).toBe('182.00');
       const setCookie = (res.headers['set-cookie'] || []).join(';');
       expect(setCookie).toContain('selectedPlan=;');
       expect(setCookie).toContain('noUndergradLoan=true');
@@ -1087,6 +1087,17 @@ describe('routes', () => {
       expect(res.body.pglThresholdGbp).toBeNull();
     });
 
+    test('rounds monthly repayment down to the nearest pound', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+        selectedPlan: 'plan1',
+        selectedYear: DEFAULT_YEAR,
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.monthlyRepayment).toBe('266.00');
+    });
+
     test('includes country-specific Plan 2 interest thresholds in JSON responses', async () => {
       const res = await postCalculateJson(app, {
         targetCountry: 'Germany',
@@ -1154,7 +1165,7 @@ describe('routes', () => {
       expect(res.body.selectedPlan).toBeNull();
       expect(res.body.effectivePlan).toBe('planPg');
       expect(res.body.monthlyRepayment).toBe('0.00');
-      expect(res.body.pglMonthlyRepayment).toBe('182.50');
+      expect(res.body.pglMonthlyRepayment).toBe('182.00');
       expect(res.body.noUndergradLoan).toBe(true);
     });
 

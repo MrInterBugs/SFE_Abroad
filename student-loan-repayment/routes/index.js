@@ -56,6 +56,10 @@ function repaymentRateForPlan(plan) {
   return plan === 'planPg' ? PGL_REPAYMENT_RATE : REPAYMENT_RATE;
 }
 
+function floorRepaymentPounds(value) {
+  return Math.floor(Math.max(0, value));
+}
+
 function formatNumber(value) {
   return new Intl.NumberFormat('en-GB', {
     maximumFractionDigits: 0,
@@ -583,7 +587,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
 
     const primaryRepaymentRate = repaymentRateForPlan(effectivePlan);
     const monthlyRepayment = !noUndergradLoan && amountOverThreshold > 0
-      ? (amountOverThreshold * primaryRepaymentRate) / MONTHS_PER_YEAR
+      ? floorRepaymentPounds((amountOverThreshold * primaryRepaymentRate) / MONTHS_PER_YEAR)
       : 0;
 
     // Postgraduate loan calculation (optional)
@@ -605,7 +609,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
 
       const pgAmountOver = salaryGbp - pglThresholdGbp;
       pglMonthlyRepayment = pgAmountOver > 0
-        ? (pgAmountOver * PGL_REPAYMENT_RATE) / MONTHS_PER_YEAR
+        ? floorRepaymentPounds((pgAmountOver * PGL_REPAYMENT_RATE) / MONTHS_PER_YEAR)
         : 0;
     }
 

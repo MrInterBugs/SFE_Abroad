@@ -501,13 +501,13 @@ describe('public/main.js frontend behavior', () => {
     await flushPromises();
 
     expect(document.getElementById('csrf-input').value).toBe('token-123');
-    expect(document.getElementById('res-monthly').textContent).toBe('£330.00');
+    expect(document.getElementById('res-monthly').textContent).toBe('£330');
     expect(document.getElementById('res-annual').textContent).toBe('£3,960/yr');
     expect(document.getElementById('res-threshold').textContent).toBe('£18,000');
     expect(document.getElementById('res-rate-sub').textContent).toBe('EUR per £1 GBP');
     expect(document.getElementById('breakdown-grid').classList.contains('show')).toBe(true);
-    expect(document.getElementById('bd-ug').textContent).toBe('£240.00');
-    expect(document.getElementById('bd-pgl').textContent).toBe('£90.00');
+    expect(document.getElementById('bd-ug').textContent).toBe('£240');
+    expect(document.getElementById('bd-pgl').textContent).toBe('£90');
     expect(document.getElementById('loan-balance-input').value).toBe(12000);
     expect(document.getElementById('pgl-balance-input').value).toBe(3000);
     expect(document.getElementById('plan2-rate-note').style.display).toBe('block');
