@@ -5,8 +5,11 @@ const path = require('path');
 const logDir = path.join(__dirname, '../data');
 fs.mkdirSync(logDir, { recursive: true });
 
+/* istanbul ignore next */
+const logLevel = process.env.LOG_LEVEL || 'info';
+
 const logger = winston.createLogger({
-  level: 'info',
+  level: logLevel,
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(({ level, message, timestamp }) => {

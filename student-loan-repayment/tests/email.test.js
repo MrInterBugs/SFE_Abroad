@@ -1,7 +1,10 @@
 'use strict';
 
 jest.mock('../utils/logger', () => ({
+  debug: jest.fn(),
+  info: jest.fn(),
   warn: jest.fn(),
+  error: jest.fn(),
 }));
 
 const { EventEmitter } = require('events');

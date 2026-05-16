@@ -484,6 +484,11 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
   const loanValuePglGbp = profile?.loan_value_pgl_gbp || null;
 
   function sendError(status, message) {
+    const countryForLog = typeof targetCountry === 'string' ? targetCountry : 'invalid';
+    const planForLog = selectedPlan || 'none';
+    const yearForLog = year || 'none';
+    const userForLog = req.session?.userId || 'anonymous';
+    logger.warn(`POST /calculate rejected: status=${status} reason="${message}" country=${countryForLog} plan=${planForLog} year=${yearForLog} includePg=${req.body.includePg === 'on'} noUndergradLoan=${req.body.noUndergradLoan === 'on'} userId=${userForLog}`);
     return res.status(status).json({ error: message });
   }
 

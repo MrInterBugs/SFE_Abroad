@@ -9,6 +9,7 @@ jest.mock('../utils/db', () => ({
   getCalculationsForUser: jest.fn(),
 }));
 jest.mock('../utils/logger', () => ({
+  debug: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),

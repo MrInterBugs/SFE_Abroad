@@ -200,7 +200,7 @@ function loadThresholds(plan, year) {
   for (const row of rows) {
     result[row.country_name] = JSON.parse(row.data);
   }
-  logger.info(`DB: loaded ${rows.length} countries for ${plan} ${year}`);
+  logger.debug(`DB: loaded ${rows.length} countries for ${plan} ${year}`);
   return result;
 }
 

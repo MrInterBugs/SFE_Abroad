@@ -12,9 +12,15 @@ const { SqliteSessionStore } = require('./utils/auth');
 const { db } = require('./utils/db');
 const { SUPPORTED_YEARS, CACHE_PLANS, urlsByYear } = require('./config/constants');
 
-const port = 3000;
+const DEFAULT_PORT = 3000;
 
 const rateLimiter = new RateLimiterMemory({ points: 15, duration: 1 });
+
+function resolvePort(rawPort = process.env.PORT) {
+  if (!rawPort) return DEFAULT_PORT;
+  const port = Number(rawPort);
+  return Number.isFinite(port) ? port : DEFAULT_PORT;
+}
 
 function isStaticRequest(req) {
   if (!['GET', 'HEAD'].includes(req.method)) return false;
@@ -32,6 +38,31 @@ function isPrivatePage(req) {
     || req.path.startsWith('/profile')
     || req.path.startsWith('/reset-password/')
     || req.path.startsWith('/confirm-email/');
+}
+
+function requestPath(req) {
+  const pathName = req.path || req.url || '/';
+  if (pathName.startsWith('/reset-password/')) return '/reset-password/:token';
+  if (pathName.startsWith('/confirm-email/')) return '/confirm-email/:token';
+  return pathName;
+}
+
+function requestLogLine(req, res, durationMs) {
+  return `HTTP ${req.method} ${requestPath(req)} ${res.statusCode} ${durationMs.toFixed(1)}ms`;
+}
+
+function requestLogger(req, res, next) {
+  const startedAt = process.hrtime.bigint();
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    const line = requestLogLine(req, res, durationMs);
+    if (res.statusCode >= 400) {
+      logger.warn(line);
+      return;
+    }
+    logger.info(line);
+  });
+  next();
 }
 
 function createApp() {
@@ -106,7 +137,10 @@ function createApp() {
     if (isStaticRequest(req)) return next();
     return rateLimiter.consume(req.ip)
       .then(() => next())
-      .catch(() => res.status(429).send('Too many requests, please try again later.'));
+      .catch(() => {
+        logger.warn(`Rate limit exceeded: method=${req.method} path=${requestPath(req)}`);
+        res.status(429).send('Too many requests, please try again later.');
+      });
   });
 
   // Body parsing with size limits to prevent oversized payloads
@@ -135,6 +169,8 @@ function createApp() {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   }));
+
+  app.use(requestLogger);
 
   app.use(csrfProtection);
 
@@ -184,8 +220,10 @@ async function prefetchAllData() {
 
 function startServer() {
   const app = createApp();
+  const port = resolvePort();
   const server = app.listen(port, () => {
-    logger.info(`Server running at http://localhost:${port}`);
+    const actualPort = server.address().port;
+    logger.info(`Server running at http://localhost:${actualPort}`);
     prefetchAllData();
   });
   return { app, server };
@@ -196,4 +234,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { createApp, startServer, prefetchAllData, isStaticRequest, isPrivatePage };
+module.exports = { createApp, startServer, prefetchAllData, isStaticRequest, isPrivatePage, requestLogLine, resolvePort };

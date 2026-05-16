@@ -1,12 +1,13 @@
 jest.mock('../utils/fetchCountryData');
 jest.mock('../utils/logger', () => ({
+  debug: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
 }));
 
 const request = require('supertest');
-const { createApp, startServer, prefetchAllData, isStaticRequest, isPrivatePage } = require('../app');
+const { createApp, startServer, prefetchAllData, isStaticRequest, isPrivatePage, requestLogLine, resolvePort } = require('../app');
 const { getThresholdData } = require('../utils/fetchCountryData');
 const logger = require('../utils/logger');
 const { DEFAULT_YEAR } = require('../config/constants');
@@ -86,6 +87,13 @@ describe('Express App', () => {
     expect(isStaticRequest({ method: 'GET', path: '/' })).toBe(false);
   });
 
+  it('resolves configured ports with a safe default', () => {
+    expect(resolvePort()).toBe(3000);
+    expect(resolvePort('0')).toBe(0);
+    expect(resolvePort('8080')).toBe(8080);
+    expect(resolvePort('not-a-port')).toBe(3000);
+  });
+
   it('identifies account pages as private for marketing scripts', () => {
     expect(isPrivatePage({ method: 'GET', path: '/profile' })).toBe(true);
     expect(isPrivatePage({ method: 'GET', path: '/profile/export' })).toBe(true);
@@ -96,6 +104,40 @@ describe('Express App', () => {
     expect(isPrivatePage({ method: 'GET', path: '/privacy' })).toBe(false);
     expect(isPrivatePage({ method: 'GET', path: '/about' })).toBe(false);
     expect(isPrivatePage({ method: 'GET', path: '/overseas-repayment-guides' })).toBe(false);
+  });
+
+  it('formats request log lines without IP addresses, user ids, or sensitive tokens', () => {
+    expect(requestLogLine({
+      method: 'GET',
+      path: '/profile',
+      url: '/profile?token=secret',
+      ip: '127.0.0.1',
+      session: { userId: 42 },
+    }, { statusCode: 200 }, 12.34)).toBe('HTTP GET /profile 200 12.3ms');
+
+    expect(requestLogLine({
+      method: 'POST',
+      url: '/calculate',
+      ip: '127.0.0.1',
+      session: {},
+    }, { statusCode: 400 }, 1)).toBe('HTTP POST /calculate 400 1.0ms');
+
+    expect(requestLogLine({
+      method: 'GET',
+      path: '/reset-password/secret-token',
+      ip: '127.0.0.1',
+    }, { statusCode: 200 }, 3)).toBe('HTTP GET /reset-password/:token 200 3.0ms');
+
+    expect(requestLogLine({
+      method: 'GET',
+      path: '/confirm-email/secret-token',
+      ip: '127.0.0.1',
+    }, { statusCode: 200 }, 3)).toBe('HTTP GET /confirm-email/:token 200 3.0ms');
+
+    expect(requestLogLine({
+      method: 'GET',
+      ip: '127.0.0.1',
+    }, { statusCode: 404 }, 0)).toBe('HTTP GET / 404 0.0ms');
   });
 
   it('loads Cookiebot on public pages but not private account pages', async () => {
@@ -167,6 +209,9 @@ describe('Express App', () => {
   it('should respond with a 404 status code for non-existing routes', async () => {
     const response = await request(app).get('/non-existent-route');
     expect(response.status).toBe(404);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringMatching(/^HTTP GET \/non-existent-route 404 \d+\.\dms$/)
+    );
   });
 
   // Rate-limiter: 15 concurrent requests from the same IP must trigger 429.
@@ -180,6 +225,9 @@ describe('Express App', () => {
         Array.from({ length: 20 }, () => request(app).get('/'))
       );
       expect(responses.some((r) => r.status === 429)).toBe(true);
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Rate limit exceeded: method=GET path=/')
+      );
     });
   });
 
@@ -219,20 +267,34 @@ describe('Express App', () => {
   describe('startServer', () => {
     it('starts the HTTP server and triggers prefetch', async () => {
       getThresholdData.mockResolvedValue(THRESHOLD_DATA);
-      const { app: serverApp, server } = startServer();
+      const originalPort = process.env.PORT;
+      process.env.PORT = '0';
+      let serverApp;
+      let server;
 
-      await new Promise((resolve) => server.once('listening', resolve));
-      await new Promise((resolve) => setImmediate(resolve));
+      try {
+        ({ app: serverApp, server } = startServer());
 
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('Server running at http://localhost:3000')
-      );
-      expect(getThresholdData).toHaveBeenCalled();
+        await new Promise((resolve) => server.once('listening', resolve));
+        await new Promise((resolve) => setImmediate(resolve));
 
-      await new Promise((resolve, reject) => {
-        server.close((err) => (err ? reject(err) : resolve()));
-      });
-      serverApp.locals.sessionStore.close();
+        expect(logger.info).toHaveBeenCalledWith(
+          expect.stringMatching(/^Server running at http:\/\/localhost:\d+$/)
+        );
+        expect(getThresholdData).toHaveBeenCalled();
+      } finally {
+        if (server?.listening) {
+          await new Promise((resolve, reject) => {
+            server.close((err) => (err ? reject(err) : resolve()));
+          });
+        }
+        serverApp?.locals.sessionStore.close();
+        if (originalPort === undefined) {
+          delete process.env.PORT;
+        } else {
+          process.env.PORT = originalPort;
+        }
+      }
     });
   });
 });

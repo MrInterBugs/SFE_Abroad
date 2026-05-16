@@ -3,6 +3,7 @@
 // Mock data utilities before any require() so the router gets the mocks.
 jest.mock('../utils/fetchCountryData');
 jest.mock('../utils/logger', () => ({
+  debug: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
@@ -1200,6 +1201,23 @@ describe('routes', () => {
       });
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('valid country');
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('POST /calculate rejected: status=400')
+      );
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('country=invalid')
+      );
+    });
+
+    test('logs missing calculation selectors without request payload values', async () => {
+      const res = await postCalculateJson(app, {
+        targetCountry: 'Germany',
+        salaryLocalCurrency: '50000',
+      });
+      expect(res.status).toBe(400);
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('plan=none year=none')
+      );
     });
 
     test('returns JSON 400 for boolean includePg', async () => {
@@ -1251,6 +1269,9 @@ describe('routes', () => {
       });
       expect(res.status).toBe(502);
       expect(res.body.error).toContain('Unexpected data format');
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('POST /calculate rejected: status=502')
+      );
     });
 
     test('returns JSON 500 when getThresholdData throws', async () => {

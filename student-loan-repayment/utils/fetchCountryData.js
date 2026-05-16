@@ -68,7 +68,7 @@ async function getThresholdData(plan, year) {
   const currentTaxYear = getCurrentTaxYear();
 
   if (cache[key] && (now - cacheTimestamp[key] < CACHE_DURATION)) {
-    logger.info(`Memory cache hit: ${plan} ${year}`);
+    logger.debug(`Memory cache hit: ${plan} ${year}`);
     return cache[key];
   }
 
@@ -77,7 +77,7 @@ async function getThresholdData(plan, year) {
   if (year !== currentTaxYear) {
     const dbData = db.loadThresholds(plan, year);
     if (dbData) {
-      logger.info(`DB cache hit (archived year): ${plan} ${year}`);
+      logger.debug(`DB cache hit (archived year): ${plan} ${year}`);
       cache[key] = dbData;
       cacheTimestamp[key] = now;
       return dbData;
@@ -110,7 +110,7 @@ async function fetchCountryData(plan, year) {
   if (year !== currentTaxYear) {
     const dbList = db.loadCountryList(plan, year);
     if (dbList.length > 0) {
-      logger.info(`DB country list hit (archived year): ${plan} ${year}`);
+      logger.debug(`DB country list hit (archived year): ${plan} ${year}`);
       return dbList;
     }
   }

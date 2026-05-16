@@ -6,6 +6,7 @@
 // is cleared between tests.
 jest.mock('axios');
 jest.mock('../utils/logger', () => ({
+  debug: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
@@ -49,7 +50,7 @@ const EMPTY_TABLE_HTML = `
 `;
 
 describe('fetchCountryData module', () => {
-  let axios, db, getThresholdData, fetchCountryData;
+  let axios, db, logger, getThresholdData, fetchCountryData;
 
   beforeEach(() => {
     // Reset the module registry so each test starts with an empty in-memory cache.
@@ -57,6 +58,7 @@ describe('fetchCountryData module', () => {
 
     axios = require('axios');
     db = require('../utils/db');
+    logger = require('../utils/logger');
 
     // Default mock behaviours — individual tests override as needed.
     db.saveThresholds.mockImplementation(() => {});
@@ -90,6 +92,7 @@ describe('fetchCountryData module', () => {
       // Same object reference means it came from the in-memory cache.
       expect(second).toBe(first);
       expect(axios.get).toHaveBeenCalledTimes(1);
+      expect(logger.debug).toHaveBeenCalledWith(`Memory cache hit: plan1 ${DEFAULT_YEAR}`);
     });
 
     test('returns DB data for an archived year without going to gov.uk', async () => {
@@ -102,6 +105,7 @@ describe('fetchCountryData module', () => {
 
       expect(result).toBe(dbData);
       expect(axios.get).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledWith(`DB cache hit (archived year): plan1 ${ARCHIVED_YEAR}`);
     });
 
     test('fetches from web for an archived year when the DB is empty', async () => {
@@ -176,6 +180,7 @@ describe('fetchCountryData module', () => {
 
       expect(result).toEqual(['France', 'Germany']);
       expect(axios.get).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledWith(`DB country list hit (archived year): plan1 ${ARCHIVED_YEAR}`);
     });
 
     test('falls back to full fetch for archived year when DB list is empty', async () => {
