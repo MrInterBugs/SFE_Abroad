@@ -9,7 +9,7 @@
   --green-light: #e6f5ed;
   --text: #0b0c0c;
   --text-secondary: #505a5f;
-  --text-muted: #8a9198;
+  --text-muted: #6b7280;
   --border: #d9dde1;
   --border-focus: #1d70b8;
   --bg: #f8f9fb;
@@ -29,7 +29,7 @@
   --green-light: #0d2218;
   --text: #e8eaed;
   --text-secondary: #9aa5b0;
-  --text-muted: #6b7786;
+  --text-muted: #8793a0;
   --border: #2d3748;
   --border-focus: #4d9de0;
   --bg: #0f1117;
@@ -112,6 +112,21 @@ html, body {
   white-space: nowrap;
 }
 .header-auth-link:hover { text-decoration: underline; }
+
+.footer-note a,
+.source-note a,
+.auth-card-link a,
+.auth-inline-link,
+.auth-inline-link-muted,
+.pp-content a,
+.home-info-links a,
+.home-section-header a,
+.seo-secondary-link,
+.guide-country-list a {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
 
 /* Header nav */
 .header-nav {
@@ -480,10 +495,7 @@ html, body {
   margin-top: 8px;
 }
 
-.source-note a {
-  color: var(--blue);
-  text-decoration: none;
-}
+.source-note a { color: var(--blue); }
 
 .container {
   width: 100%;
@@ -900,7 +912,7 @@ html, body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.92);
   margin-bottom: 4px;
 }
 .results-main-amount {
@@ -913,7 +925,7 @@ html, body {
 }
 .results-main-period {
   font-size: 14px;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.92);
   margin-top: 4px;
 }
 .results-badge {
@@ -923,7 +935,7 @@ html, body {
   padding: 8px 14px;
   text-align: right;
 }
-.results-badge-label { font-size: 11px; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.05em; }
+.results-badge-label { font-size: 11px; color: rgba(255,255,255,0.92); text-transform: uppercase; letter-spacing: 0.05em; }
 .results-badge-val { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 600; color: white; margin-top: 2px; }
 
 .results-body { padding: 24px 28px; }
@@ -1007,7 +1019,7 @@ html, body {
   color: var(--text-muted);
   display: flex; align-items: center; gap: 6px;
 }
-.footer-note a { color: var(--blue); text-decoration: none; }
+.footer-note a { color: var(--blue); }
 .footer-note a:hover { text-decoration: underline; }
 .footer-links {
   display: flex; gap: 16px;
@@ -1099,7 +1111,6 @@ html, body {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.4;
-  text-decoration: none;
 }
 .home-info-links a:hover {
   text-decoration: underline;
@@ -1129,7 +1140,6 @@ html, body {
   color: var(--blue);
   font-size: 14px;
   font-weight: 700;
-  text-decoration: none;
   white-space: nowrap;
 }
 .home-section-header a:hover {
@@ -1560,7 +1570,6 @@ html, body {
 .seo-secondary-link {
   color: var(--blue);
   font-weight: 700;
-  text-decoration: none;
 }
 .seo-source-note {
   margin-top: 22px;
@@ -1617,7 +1626,6 @@ html, body {
   font-weight: 700;
   line-height: 1.55;
   margin-bottom: 11px;
-  text-decoration: none;
 }
 .guide-country-list a:hover {
   text-decoration: underline;
