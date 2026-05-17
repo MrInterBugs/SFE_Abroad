@@ -2,9 +2,8 @@ const express = require('express');
 const logger = require('../utils/logger');
 const { verifyCsrfToken } = require('../utils/csrf');
 const {
-  DEFAULT_YEAR, SUPPORTED_YEARS, computeCurrentTaxYear, getDefaultTaxYear,
-  ALLOWED_PLANS, COOKIE_MAX_AGE, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
-  urlsByYear,
+  SUPPORTED_YEARS, getDefaultTaxYear,
+  ALLOWED_PLANS, REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR,
 } = require('../config/constants');
 const { getThresholdData } = require('../utils/fetchCountryData');
 const db = require('../utils/db');
@@ -17,27 +16,22 @@ const {
   getSeoPage,
   getSeoPagePaths,
 } = require('../config/seoPages');
-const { hasCookieConsent } = require('../utils/consent');
 const { buildSeoPageViewModel } = require('../utils/seoGuideBuilder');
 const legal = require('../config/legal');
+const {
+  COOKIE_OPTS,
+  CLEAR_COOKIE_OPTS,
+  hasPreferenceConsent,
+  clearPreferenceCookies,
+} = require('./preferenceCookies');
+const {
+  isPlanAvailableForYear,
+  buildHomeViewModel,
+} = require('./homeViewModel');
 
 const router = express.Router();
 
-const COOKIE_OPTS = {
-  maxAge: COOKIE_MAX_AGE,
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'Strict',
-};
 const MAX_CALCULATION_SALARY = 1_000_000_000;
-
-function hasPreferenceConsent(req) {
-  return hasCookieConsent(req, 'preferences');
-}
-
-function preferenceCookie(req, name) {
-  return hasPreferenceConsent(req) ? req.cookies[name] : undefined;
-}
 
 function parseRequiredNumber(value) {
   const raw = String(value ?? '').trim();
@@ -56,39 +50,6 @@ function repaymentRateForPlan(plan) {
 
 function floorRepaymentPounds(value) {
   return Math.floor(Math.max(0, value));
-}
-
-function buildCountriesList(fullData) {
-  return Object.entries(fullData).map(([name, data]) => {
-    const rawCurrency = (data['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
-    return {
-      name,
-      currency: currencySymbol.NAME_TO_ISO[rawCurrency] || '',
-      symbol: currencySymbol(data['Currency'] || ''),
-    };
-  }).sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function getAvailablePlansForYear(year) {
-  return ALLOWED_PLANS.filter((plan) => Boolean(urlsByYear[year]?.[plan]));
-}
-
-function isPlanAvailableForYear(plan, year) {
-  return Boolean(urlsByYear[year]?.[plan]);
-}
-
-function buildAvailablePlansByYear() {
-  return Object.fromEntries(
-    SUPPORTED_YEARS.map((year) => [year, Object.keys(urlsByYear[year])])
-  );
-}
-
-function resolveSelectedPlan(req, profile, year) {
-  const availablePlans = getAvailablePlansForYear(year);
-  const fallbackPlan = availablePlans[0];
-  if (profile?.default_plan && availablePlans.includes(profile.default_plan)) return profile.default_plan;
-  const cookiePlan = preferenceCookie(req, 'selectedPlan');
-  return availablePlans.includes(cookiePlan) ? cookiePlan : fallbackPlan;
 }
 
 router.get('/privacy', (req, res) => {
@@ -143,91 +104,10 @@ router.get('/', async (req, res) => {
   logger.info(`Handling GET request for '/'`);
 
   if (!hasPreferenceConsent(req)) {
-    const clearOpts = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' };
-    res.clearCookie('selectedPlan', clearOpts);
-    res.clearCookie('selectedCountry', clearOpts);
-    res.clearCookie('selectedYear', clearOpts);
-    res.clearCookie('includePg', clearOpts);
-    res.clearCookie('noUndergradLoan', clearOpts);
+    clearPreferenceCookies(res);
   }
 
-  const selectedYearCookie = preferenceCookie(req, 'selectedYear');
-  const realCurrentTaxYear = computeCurrentTaxYear();
-  const currentTaxYearSupported = SUPPORTED_YEARS.includes(realCurrentTaxYear);
-  const defaultTaxYear = currentTaxYearSupported ? realCurrentTaxYear : DEFAULT_YEAR;
-  const selectedYear = SUPPORTED_YEARS.includes(selectedYearCookie)
-    ? selectedYearCookie
-    : defaultTaxYear;
-  const taxYearNotice = currentTaxYearSupported
-    ? null
-    : `The ${realCurrentTaxYear} overseas thresholds are not available yet. Showing latest available data: ${DEFAULT_YEAR}.`;
-
-  try {
-    const fullData = await getThresholdData('plan1', selectedYear);
-    const countries = buildCountriesList(fullData);
-
-    const profile = req.session.userId ? db.getProfile(req.session.userId) : null;
-
-    const selectedPlan = resolveSelectedPlan(req, profile, selectedYear);
-    const selectedCountry = profile?.default_country || preferenceCookie(req, 'selectedCountry') || '';
-    const pglAvailable = isPlanAvailableForYear('planPg', selectedYear);
-    const noUndergradLoan = pglAvailable && preferenceCookie(req, 'noUndergradLoan') === 'true';
-    const includePg = pglAvailable && (noUndergradLoan || (profile ? !!profile.include_pg : preferenceCookie(req, 'includePg') === 'true'));
-
-    res.render('index', {
-      countries,
-      selectedPlan,
-      selectedCountry,
-      selectedYear,
-      includePg,
-      noUndergradLoan,
-      supportedYears: SUPPORTED_YEARS,
-      realCurrentTaxYear,
-      currentTaxYearSupported,
-      taxYearNotice,
-      availablePlans: getAvailablePlansForYear(selectedYear),
-      pglAvailable,
-      availablePlansByYear: buildAvailablePlansByYear(),
-      planGuidePages: PLAN_PAGES,
-      featuredCountryPages: FEATURED_COUNTRY_SLUGS
-        .map((slug) => COUNTRY_PAGES.find((page) => page.slug === slug))
-        .filter(Boolean),
-      graduationDate: profile?.graduation_date || null,
-      loanValueGbp: profile?.loan_value_gbp || null,
-      loanValuePglGbp: profile?.loan_value_pgl_gbp || null,
-      defaultSalary: profile?.default_salary || null,
-    });
-  } catch (error) {
-    logger.error(`Error loading data: ${error.message}`);
-    const selectedPlan = resolveSelectedPlan(req, null, selectedYear);
-    const selectedCountry = preferenceCookie(req, 'selectedCountry') || '';
-    const pglAvailable = isPlanAvailableForYear('planPg', selectedYear);
-    const noUndergradLoan = pglAvailable && preferenceCookie(req, 'noUndergradLoan') === 'true';
-    const includePg = pglAvailable && (noUndergradLoan || preferenceCookie(req, 'includePg') === 'true');
-    res.render('index', {
-      countries: [],
-      selectedPlan,
-      selectedCountry,
-      selectedYear,
-      includePg,
-      noUndergradLoan,
-      supportedYears: SUPPORTED_YEARS,
-      realCurrentTaxYear,
-      currentTaxYearSupported,
-      taxYearNotice,
-      availablePlans: getAvailablePlansForYear(selectedYear),
-      pglAvailable,
-      availablePlansByYear: buildAvailablePlansByYear(),
-      planGuidePages: PLAN_PAGES,
-      featuredCountryPages: FEATURED_COUNTRY_SLUGS
-        .map((slug) => COUNTRY_PAGES.find((page) => page.slug === slug))
-        .filter(Boolean),
-      graduationDate: null,
-      loanValueGbp: null,
-      loanValuePglGbp: null,
-      defaultSalary: null,
-    });
-  }
+  res.render('index', await buildHomeViewModel(req, getThresholdData));
 });
 
 // Handle POST calculate request
@@ -338,7 +218,7 @@ router.post('/calculate', verifyCsrfToken, async (req, res) => {
       if (selectedUndergradPlan) {
         res.cookie('selectedPlan', selectedUndergradPlan, COOKIE_OPTS);
       } else {
-        res.clearCookie('selectedPlan', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+        res.clearCookie('selectedPlan', CLEAR_COOKIE_OPTS);
       }
       res.cookie('selectedCountry', targetCountry, COOKIE_OPTS);
       res.cookie('selectedYear', year, COOKIE_OPTS);

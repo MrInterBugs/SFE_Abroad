@@ -510,6 +510,7 @@ describe('public/main.js frontend behavior', () => {
     expect(document.getElementById('bd-pgl').textContent).toBe('£90');
     expect(document.getElementById('loan-balance-input').value).toBe(12000);
     expect(document.getElementById('pgl-balance-input').value).toBe(3000);
+    expect(document.getElementById('pgl-balance-row').style.display).toBe('flex');
     expect(document.getElementById('plan2-rate-note').style.display).toBe('block');
     expect(document.getElementById('pgl-rate-note').style.display).toBe('block');
     expect(document.getElementById('results-placeholder').style.display).toBe('none');
