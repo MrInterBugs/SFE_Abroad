@@ -80,6 +80,14 @@ describe('Express App', () => {
     expect(response.text).toContain('PLAN_RULES');
   });
 
+  it('serves Chart.js without a source map reference', async () => {
+    const response = await request(app).get('/vendor/chart.js/chart.umd.min.js');
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toMatch(/javascript/);
+    expect(response.text).toContain('Chart');
+    expect(response.text).not.toContain('sourceMappingURL=chart.umd.min.js.map');
+  });
+
   it('should serve ads.txt from the app host', async () => {
     const response = await request(app).get('/ads.txt');
     expect(response.status).toBe(200);

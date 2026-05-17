@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
@@ -13,6 +14,9 @@ const { db } = require('./utils/db');
 const { SUPPORTED_YEARS, CACHE_PLANS, urlsByYear } = require('./config/constants');
 
 const DEFAULT_PORT = 3000;
+const chartBundlePath = path.join(__dirname, 'node_modules/chart.js/dist/chart.umd.min.js');
+const chartBundle = fs.readFileSync(chartBundlePath, 'utf8')
+  .replace(/\n\/\/# sourceMappingURL=chart\.umd\.min\.js\.map\s*$/, '');
 
 const rateLimiter = new RateLimiterMemory({ points: 15, duration: 1 });
 
@@ -130,6 +134,10 @@ function createApp() {
   });
 
   app.use(express.static(path.join(__dirname, 'public')));
+  app.get('/vendor/chart.js/chart.umd.min.js', (req, res) => {
+    res.type('application/javascript');
+    res.send(chartBundle);
+  });
   app.use('/vendor/chart.js', express.static(path.join(__dirname, 'node_modules/chart.js/dist')));
   app.get('/calculator-domain.js', (req, res) => {
     res.setHeader('Content-Type', 'application/javascript');
