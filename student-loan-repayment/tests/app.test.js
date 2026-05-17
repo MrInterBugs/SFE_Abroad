@@ -161,6 +161,18 @@ describe('Express App', () => {
     expect(login.text).not.toContain('id="Cookiebot"');
   });
 
+  it('allows Google ad verification iframes only on public pages', async () => {
+    const publicPage = await request(app).get('/');
+    const privatePage = await request(app).get('/login');
+
+    expect(publicPage.status).toBe(200);
+    expect(publicPage.headers['content-security-policy']).toContain('frame-src');
+    expect(publicPage.headers['content-security-policy']).toContain('https://www.google.com');
+    expect(privatePage.status).toBe(200);
+    expect(privatePage.headers['content-security-policy']).toContain("frame-src 'none'");
+    expect(privatePage.headers['content-security-policy']).not.toContain('https://www.google.com');
+  });
+
   it('should not rate limit static asset paths', async () => {
     const responses = await Promise.all(
       Array.from({ length: 20 }, () => request(app).get('/styles.css'))

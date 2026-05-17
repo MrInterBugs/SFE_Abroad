@@ -108,6 +108,7 @@ function createApp() {
       directives['frame-src'] = [
         "'self'",
         'https://googleads.g.doubleclick.net',
+        'https://www.google.com',
         'https://tpc.googlesyndication.com',
         'https://pagead2.googlesyndication.com',
         'https://*.adtrafficquality.google',
