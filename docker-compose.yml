@@ -26,6 +26,12 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM: ${EMAIL_FROM}
       APP_BASE_URL: ${APP_BASE_URL:-https://sfe.aedanl.com}
+      LEGAL_OPERATOR_NAME: ${LEGAL_OPERATOR_NAME}
+      LEGAL_OPERATOR_ADDRESS: ${LEGAL_OPERATOR_ADDRESS}
+      LEGAL_CONTACT_EMAIL: ${LEGAL_CONTACT_EMAIL:-admin@mrinterbugs.uk}
+      LEGAL_CONTACT_PHONE: ${LEGAL_CONTACT_PHONE:-}
+      LEGAL_HOST_NAME: ${LEGAL_HOST_NAME:-Self-hosted server infrastructure and Cloudflare}
+      LEGAL_HOST_PRIVACY_URL: ${LEGAL_HOST_PRIVACY_URL:-https://www.cloudflare.com/privacypolicy/}
     volumes:
       - ./data:/usr/src/app/data
     networks:
