@@ -11,7 +11,7 @@ const {
   primaryPlansForYear,
   availablePlansForYear,
   isPlanAvailableForYear: domainIsPlanAvailableForYear,
-} = require('../public/calculator-domain');
+} = require('../shared/calculator-domain');
 const {
   PLAN_PAGES,
   COUNTRY_PAGES,

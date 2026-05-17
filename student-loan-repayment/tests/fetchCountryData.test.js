@@ -5,6 +5,7 @@
 // jest.resetModules() call in beforeEach so the module cache (cache/cacheTimestamp)
 // is cleared between tests.
 jest.mock('axios');
+jest.mock('fs', () => ({ readFileSync: jest.fn(() => '{}') }));
 jest.mock('../utils/logger', () => ({
   debug: jest.fn(),
   info: jest.fn(),
@@ -49,18 +50,63 @@ const EMPTY_TABLE_HTML = `
 </body></html>
 `;
 
+// HTML with rows but the Exchange rate column has been renamed.
+const MISSING_EXCHANGE_RATE_HTML = `
+<html><body>
+<table>
+  <tr>
+    <th>Country</th>
+    <th>Local rate</th>
+    <th>Earnings threshold (GBP)</th>
+  </tr>
+  <tr><td>Germany</td><td>1.15</td><td>£22,000</td></tr>
+</table>
+</body></html>
+`;
+
+// HTML with rows but the plan-specific threshold column has been renamed.
+const MISSING_THRESHOLD_HTML = `
+<html><body>
+<table>
+  <tr>
+    <th>Country</th>
+    <th>Exchange rate</th>
+    <th>Some other field</th>
+  </tr>
+  <tr><td>Germany</td><td>1.15</td><td>something</td></tr>
+</table>
+</body></html>
+`;
+
+// HTML where the first country row is valid but a later row is missing data.
+const PARTIAL_MISSING_THRESHOLD_HTML = `
+<html><body>
+<table>
+  <tr>
+    <th>Country</th>
+    <th>Exchange rate</th>
+    <th>Earnings threshold (GBP)</th>
+  </tr>
+  <tr><td>Germany</td><td>1.15</td><td>£22,000</td></tr>
+  <tr><td>France</td><td>1.1</td></tr>
+</table>
+</body></html>
+`;
+
 describe('fetchCountryData module', () => {
-  let axios, db, logger, getThresholdData, fetchCountryData;
+  let axios, fs, db, logger, getThresholdData, fetchCountryData;
 
   beforeEach(() => {
     // Reset the module registry so each test starts with an empty in-memory cache.
     jest.resetModules();
 
     axios = require('axios');
+    fs = require('fs');
     db = require('../utils/db');
     logger = require('../utils/logger');
 
     // Default mock behaviours — individual tests override as needed.
+    fs.readFileSync.mockReturnValue('{}');
     db.saveThresholds.mockImplementation(() => {});
     db.loadThresholds.mockReturnValue(null);
     db.loadCountryList.mockReturnValue([]);
@@ -151,6 +197,110 @@ describe('fetchCountryData module', () => {
       await expect(getThresholdData('plan1', DEFAULT_YEAR))
         .rejects.toThrow('Data unavailable');
     });
+
+    test('throws when the Exchange rate column is missing from parsed data', async () => {
+      db.loadThresholds.mockReturnValue(null);
+      axios.get.mockResolvedValue({ status: 200, data: MISSING_EXCHANGE_RATE_HTML });
+
+      await expect(getThresholdData('plan1', DEFAULT_YEAR))
+        .rejects.toThrow('Data unavailable');
+    });
+
+    test('throws when the plan threshold column is missing from parsed data', async () => {
+      db.loadThresholds.mockReturnValue(null);
+      axios.get.mockResolvedValue({ status: 200, data: MISSING_THRESHOLD_HTML });
+
+      await expect(getThresholdData('plan1', DEFAULT_YEAR))
+        .rejects.toThrow('Data unavailable');
+    });
+
+    test('throws when a later country row is missing a required column', async () => {
+      db.loadThresholds.mockReturnValue(null);
+      axios.get.mockResolvedValue({ status: 200, data: PARTIAL_MISSING_THRESHOLD_HTML });
+
+      await expect(getThresholdData('plan1', DEFAULT_YEAR))
+        .rejects.toThrow('Data unavailable');
+    });
+
+    test('returns override data and skips gov.uk when an entry exists in overrides.json', async () => {
+      const overrideData = {
+        Germany: { 'Exchange rate': '1.2', Currency: 'Euro', 'Earnings threshold (GBP)': '£25,000' },
+      };
+      fs.readFileSync.mockReturnValue(JSON.stringify({ [`plan1:${DEFAULT_YEAR}`]: overrideData }));
+
+      const result = await getThresholdData('plan1', DEFAULT_YEAR);
+
+      expect(result).toStrictEqual(overrideData);
+      expect(axios.get).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Override in use'));
+    });
+
+    test('throws when override data is missing required columns', async () => {
+      const overrideData = {
+        Germany: { 'Exchange rate': '1.2', Currency: 'Euro', 'Earnings threshold (GBP)': '£25,000' },
+        France: { Currency: 'Euro', 'Earnings threshold (GBP)': '£24,000' },
+      };
+      fs.readFileSync.mockReturnValue(JSON.stringify({ [`plan1:${DEFAULT_YEAR}`]: overrideData }));
+
+      await expect(getThresholdData('plan1', DEFAULT_YEAR))
+        .rejects.toThrow('Expected "Exchange rate" column not found for France in overrides.json for plan1');
+      expect(axios.get).not.toHaveBeenCalled();
+      expect(db.loadThresholds).not.toHaveBeenCalled();
+    });
+
+    test('throws when override data has an invalid shape', async () => {
+      fs.readFileSync.mockReturnValue(JSON.stringify({ [`plan1:${DEFAULT_YEAR}`]: [] }));
+
+      await expect(getThresholdData('plan1', DEFAULT_YEAR))
+        .rejects.toThrow('Invalid overrides.json for plan1');
+      expect(axios.get).not.toHaveBeenCalled();
+      expect(db.loadThresholds).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      ['null data', null, 'Invalid overrides.json for plan1'],
+      ['string data', 'bad data', 'Invalid overrides.json for plan1'],
+      ['null country row', { Germany: null }, 'Invalid row for Germany in overrides.json for plan1'],
+      ['string country row', { Germany: 'bad row' }, 'Invalid row for Germany in overrides.json for plan1'],
+      ['array country row', { Germany: [] }, 'Invalid row for Germany in overrides.json for plan1'],
+      [
+        'blank exchange rate',
+        { Germany: { 'Exchange rate': ' ', Currency: 'Euro', 'Earnings threshold (GBP)': '£25,000' } },
+        'Expected "Exchange rate" column not found for Germany in overrides.json for plan1',
+      ],
+      [
+        'blank threshold',
+        { Germany: { 'Exchange rate': '1.2', Currency: 'Euro', 'Earnings threshold (GBP)': ' ' } },
+        'Expected "Earnings threshold (GBP)" column not found for Germany in overrides.json for plan1',
+      ],
+    ])('throws when override data has %s', async (_label, overrideData, message) => {
+      fs.readFileSync.mockReturnValue(JSON.stringify({ [`plan1:${DEFAULT_YEAR}`]: overrideData }));
+
+      await expect(getThresholdData('plan1', DEFAULT_YEAR)).rejects.toThrow(message);
+      expect(axios.get).not.toHaveBeenCalled();
+      expect(db.loadThresholds).not.toHaveBeenCalled();
+    });
+
+    test('allows override data without a threshold column for unknown plans', async () => {
+      const overrideData = {
+        Germany: { 'Exchange rate': '1.2', Currency: 'Euro' },
+      };
+      fs.readFileSync.mockReturnValue(JSON.stringify({ [`unknownPlan:${DEFAULT_YEAR}`]: overrideData }));
+
+      const result = await getThresholdData('unknownPlan', DEFAULT_YEAR);
+
+      expect(result).toStrictEqual(overrideData);
+      expect(axios.get).not.toHaveBeenCalled();
+    });
+
+    test('falls through to normal fetch when overrides.json is corrupt', async () => {
+      fs.readFileSync.mockReturnValue('not valid json {{{');
+      axios.get.mockResolvedValue({ status: 200, data: SAMPLE_HTML });
+
+      const result = await getThresholdData('plan1', DEFAULT_YEAR);
+
+      expect(result).toHaveProperty('Germany');
+    });
   });
 
   // ─── fetchCountryData ───────────────────────────────────────────────────────
@@ -167,8 +317,8 @@ describe('fetchCountryData module', () => {
     test('returns from in-memory cache on second call without re-fetching', async () => {
       axios.get.mockResolvedValue({ status: 200, data: SAMPLE_HTML });
 
-      await fetchCountryData('plan2', DEFAULT_YEAR);
-      await fetchCountryData('plan2', DEFAULT_YEAR);
+      await fetchCountryData('plan1', DEFAULT_YEAR);
+      await fetchCountryData('plan1', DEFAULT_YEAR);
 
       expect(axios.get).toHaveBeenCalledTimes(1);
     });

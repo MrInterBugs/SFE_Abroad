@@ -130,6 +130,10 @@ function createApp() {
 
   app.use(express.static(path.join(__dirname, 'public')));
   app.use('/vendor/chart.js', express.static(path.join(__dirname, 'node_modules/chart.js/dist')));
+  app.get('/calculator-domain.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(__dirname, 'shared', 'calculator-domain.js'));
+  });
 
   // Rate limiter: 15 dynamic requests/second per IP. Static assets are served
   // before this middleware and also explicitly bypassed if they fall through.

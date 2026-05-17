@@ -2,7 +2,7 @@ const logger = require('./logger');
 const { MONTHS_PER_YEAR } = require('../config/constants');
 const { SITE_URL } = require('../config/seoPages');
 const { getThresholdData } = require('./fetchCountryData');
-const domain = require('../public/calculator-domain');
+const domain = require('../shared/calculator-domain');
 const {
   parseGbpAmount,
   parseExchangeRate,

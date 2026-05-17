@@ -73,6 +73,13 @@ describe('Express App', () => {
     expect(response.status).toBe(200);
   });
 
+  it('serves calculator-domain.js from shared/ with a JavaScript content-type', async () => {
+    const response = await request(app).get('/calculator-domain.js');
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toMatch(/javascript/);
+    expect(response.text).toContain('PLAN_RULES');
+  });
+
   it('should serve ads.txt from the app host', async () => {
     const response = await request(app).get('/ads.txt');
     expect(response.status).toBe(200);

@@ -1,6 +1,6 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./calculator-domain'));
+    module.exports = factory(require('../shared/calculator-domain'));
   } else {
     root.SFECalculatorHelpers = factory(root.SFECalculatorDomain);
   }

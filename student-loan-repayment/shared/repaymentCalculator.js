@@ -3,7 +3,7 @@ const {
   PRIMARY_PLAN_KEYS,
   repaymentRateForPlan,
   isPlanAvailableForYear,
-} = require('../public/calculator-domain');
+} = require('./calculator-domain');
 const {
   normalizeThresholdRow,
   isUsablePrimaryThreshold,

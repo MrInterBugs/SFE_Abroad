@@ -31,7 +31,7 @@ const {
   CACHE_PLAN_KEYS,
   MONTHS_PER_YEAR,
   repaymentRateForPlan,
-} = require('../public/calculator-domain');
+} = require('../shared/calculator-domain');
 
 const ALLOWED_PLANS = PRIMARY_PLAN_KEYS.slice();
 const CACHE_PLANS = CACHE_PLAN_KEYS.slice();

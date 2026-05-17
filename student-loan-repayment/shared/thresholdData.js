@@ -1,5 +1,5 @@
 const currencySymbol = require('../utils/currencySymbol');
-const domain = require('../public/calculator-domain');
+const domain = require('./calculator-domain');
 
 function parseGbpAmount(value) {
   if (typeof value !== 'string') return NaN;
