@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
-<script nonce="<%= locals.cspNonce || '' %>">document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+<%- include('partials/theme-boot') %>
 </head>
 <body>
 <div class="page">
@@ -19,7 +19,7 @@
   }) %>
 
   <main class="main">
-    <div class="container" style="max-width:480px;">
+    <div class="container auth-container">
       <div class="page-heading">
         <h1>Check your email</h1>
         <% if (email) { %>
@@ -36,16 +36,16 @@
         <div class="alert-success" role="status"><%= message %></div>
       <% } %>
 
-      <div class="card" style="padding:28px;">
+      <div class="card">
         <% if (email) { %>
-          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">
+          <p class="auth-note">
             Email address: <strong><%= email %></strong>
           </p>
 
           <form method="POST" action="/resend-confirmation" novalidate>
             <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
             <input type="hidden" name="email" value="<%= email %>">
-            <button type="submit" class="btn-calculate" style="margin-top:8px;">Resend confirmation email</button>
+            <button type="submit" class="btn-calculate btn-form-submit">Resend confirmation email</button>
           </form>
         <% } else { %>
           <form method="POST" action="/resend-confirmation" novalidate>
@@ -58,12 +58,12 @@
               </div>
             </div>
 
-            <button type="submit" class="btn-calculate" style="margin-top:8px;">Resend confirmation email</button>
+            <button type="submit" class="btn-calculate btn-form-submit">Resend confirmation email</button>
           </form>
         <% } %>
 
-        <p style="margin-top:20px;font-size:13px;color:var(--text-secondary);text-align:center;">
-          Already confirmed? <a href="/login" style="color:var(--blue);">Sign in</a>
+        <p class="auth-card-link">
+          Already confirmed? <a href="/login">Sign in</a>
         </p>
       </div>
     </div>

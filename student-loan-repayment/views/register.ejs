@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
-<script nonce="<%= locals.cspNonce || '' %>">document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+<%- include('partials/theme-boot') %>
 </head>
 <body>
 <div class="page">
@@ -19,7 +19,7 @@
   }) %>
 
   <main class="main">
-    <div class="container" style="max-width:480px;">
+    <div class="container auth-container">
       <div class="page-heading">
         <h1>Create an account</h1>
         <p>Save your loan details to speed up future calculations.</p>
@@ -29,7 +29,7 @@
         <div class="alert-error" role="alert"><%= error %></div>
       <% } %>
 
-      <div class="card" style="padding:28px;">
+      <div class="card">
         <form method="POST" action="/register" novalidate>
           <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
 
@@ -55,11 +55,11 @@
             </div>
           </div>
 
-          <button type="submit" class="btn-calculate" style="margin-top:8px;">Create account</button>
+          <button type="submit" class="btn-calculate btn-form-submit">Create account</button>
         </form>
 
-        <p style="margin-top:20px;font-size:13px;color:var(--text-secondary);text-align:center;">
-          Already have an account? <a href="/login" style="color:var(--blue);">Sign in</a>
+        <p class="auth-card-link">
+          Already have an account? <a href="/login">Sign in</a>
         </p>
       </div>
     </div>

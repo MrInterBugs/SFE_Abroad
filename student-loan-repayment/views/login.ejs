@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
-<script nonce="<%= locals.cspNonce || '' %>">document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+<%- include('partials/theme-boot') %>
 </head>
 <body>
 <div class="page">
@@ -19,7 +19,7 @@
   }) %>
 
   <main class="main">
-    <div class="container" style="max-width:480px;">
+    <div class="container auth-container">
       <div class="page-heading">
         <h1>Sign in</h1>
         <p>Access your saved loan profile.</p>
@@ -31,14 +31,14 @@
       <% if (locals.unconfirmedEmailError) { %>
         <div class="alert-error" role="alert">
           Please confirm your email address before signing in.
-          <a href="/check-email" style="color:inherit;font-weight:600;">Resend confirmation email.</a>
+          <a href="/check-email" class="auth-inline-link-muted">Resend confirmation email.</a>
         </div>
       <% } %>
       <% if (message) { %>
         <div class="alert-success" role="status"><%= message %></div>
       <% } %>
 
-      <div class="card" style="padding:28px;">
+      <div class="card">
         <form method="POST" action="/login" novalidate>
           <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
 
@@ -56,14 +56,14 @@
             </div>
           </div>
 
-          <button type="submit" class="btn-calculate" style="margin-top:8px;">Sign in</button>
+          <button type="submit" class="btn-calculate btn-form-submit">Sign in</button>
         </form>
 
-        <p style="margin-top:20px;font-size:13px;color:var(--text-secondary);text-align:center;">
-          <a href="/forgot-password" style="color:var(--blue);">Forgot password?</a>
+        <p class="auth-card-link">
+          <a href="/forgot-password">Forgot password?</a>
         </p>
-        <p style="margin-top:10px;font-size:13px;color:var(--text-secondary);text-align:center;">
-          No account yet? <a href="/register" style="color:var(--blue);">Create one</a>
+        <p class="auth-card-copy">
+          No account yet? <a href="/register" class="auth-inline-link">Create one</a>
         </p>
       </div>
     </div>

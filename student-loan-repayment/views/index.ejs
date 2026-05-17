@@ -79,7 +79,7 @@
 </script>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
-<script nonce="<%= locals.cspNonce || '' %>">document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+<%- include('partials/theme-boot') %>
 <% if (locals.allowMarketingScripts) { %>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4989908161831974" crossorigin="anonymous"></script>
 <% } %>
@@ -219,7 +219,7 @@
 
       <!-- Empty state -->
       <div class="results-placeholder" id="results-placeholder">
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true" style="margin-bottom:12px;opacity:0.35;">
+        <svg class="results-placeholder-icon" width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
           <rect x="4" y="4" width="28" height="28" rx="4" stroke="#1d70b8" stroke-width="2"/>
           <path d="M11 18h14M11 13h8M11 23h5" stroke="#1d70b8" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
@@ -289,8 +289,8 @@
           </div>
 
           <!-- Write-off notice -->
-          <div class="writeoff-notice" id="writeoff-notice" style="display:none;" aria-live="polite">
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true" style="flex-shrink:0;margin-top:1px;">
+          <div class="writeoff-notice" id="writeoff-notice" aria-live="polite">
+            <svg class="writeoff-icon" width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
               <circle cx="7.5" cy="7.5" r="6.75" stroke="currentColor" stroke-width="1.3"/>
               <path d="M7.5 4.5v3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
               <circle cx="7.5" cy="10.5" r="0.7" fill="currentColor"/>
@@ -299,7 +299,7 @@
           </div>
 
           <!-- Repayment projection graph -->
-          <div class="graph-panel" id="repayment-graph-panel" style="display:none;">
+          <div class="graph-panel" id="repayment-graph-panel">
             <div class="graph-panel-header">
               <span class="graph-panel-title">Repayment projection</span>
             </div>
@@ -311,7 +311,7 @@
                   <input type="number" id="loan-balance-input" class="graph-balance-input" placeholder="e.g. 45000" min="0" step="100">
                 </div>
               </div>
-              <div class="graph-control-row" id="pgl-balance-row" style="display:none;">
+              <div class="graph-control-row" id="pgl-balance-row">
                 <label class="graph-label" for="pgl-balance-input">PGL balance</label>
                 <div class="graph-balance-wrap">
                   <span class="graph-balance-prefix">£</span>
@@ -326,8 +326,8 @@
                 <label class="graph-label" for="payrise-slider">Annual Pay Rise: <strong id="payrise-display">2.0%</strong></label>
                 <input type="range" id="payrise-slider" class="graph-slider" min="0" max="10" step="0.1" value="2">
               </div>
-              <div id="plan2-rate-note" class="plan2-rate-note" style="display:none;"></div>
-              <div id="pgl-rate-note" class="plan2-rate-note" style="display:none;"></div>
+              <div id="plan2-rate-note" class="plan2-rate-note"></div>
+              <div id="pgl-rate-note" class="plan2-rate-note"></div>
             </div>
             <div class="graph-canvas-wrap">
               <canvas id="repayment-chart"></canvas>
@@ -429,7 +429,6 @@
       <!-- Ad unit -->
       <div class="ad-unit ad-unit-home">
         <ins class="adsbygoogle"
-            style="display:block"
             data-ad-client="ca-pub-4989908161831974"
             data-ad-slot="8240706849"
             data-ad-format="auto"
@@ -463,10 +462,9 @@
       <br>
       
       <!-- Footer note -->
-      <p style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:8px;">
+      <p class="source-note">
         Thresholds and rates sourced from
-        <a href="https://www.gov.uk/repaying-your-student-loan" target="_blank" rel="noopener"
-           style="color:var(--blue);text-decoration:none;">GOV.UK</a>.
+        <a href="https://www.gov.uk/repaying-your-student-loan" target="_blank" rel="noopener">GOV.UK</a>.
         Exchange rates are indicative — SLC may use different rates for official notices.
       </p>
 
@@ -477,6 +475,9 @@
 
 </div>
 
+<script src="/calculator-helpers.js"></script>
+<script src="/calculator-consent.js"></script>
+<script src="/calculator-graph.js"></script>
 <script src="/main.js"></script>
 <script src="/theme.js" defer></script>
 </body>

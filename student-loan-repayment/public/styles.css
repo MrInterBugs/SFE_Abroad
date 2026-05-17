@@ -469,6 +469,21 @@ html, body {
 .ad-unit-home {
   margin: 28px 0 0;
 }
+.ad-unit-home ins {
+  display: block;
+}
+
+.source-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 8px;
+}
+
+.source-note a {
+  color: var(--blue);
+  text-decoration: none;
+}
 
 .container {
   width: 100%;
@@ -509,6 +524,10 @@ html, body {
 }
 .results-placeholder p { max-width: 240px; }
 .results-placeholder strong { color: var(--text-secondary); }
+.results-placeholder-icon {
+  margin-bottom: 12px;
+  opacity: 0.35;
+}
 
 .page-heading {
   margin-bottom: 28px;
@@ -535,6 +554,69 @@ html, body {
   box-shadow: var(--card-shadow);
   padding: 28px;
   margin-bottom: 16px;
+}
+
+.auth-container {
+  max-width: 480px;
+}
+
+.auth-card-copy,
+.auth-card-link {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.auth-card-copy {
+  margin-top: 10px;
+}
+
+.auth-card-link {
+  margin-top: 20px;
+}
+
+.auth-card-link a,
+.auth-inline-link {
+  color: var(--blue);
+}
+
+.auth-inline-link-muted {
+  color: inherit;
+  font-weight: 600;
+}
+
+.auth-note {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.profile-container {
+  max-width: 520px;
+}
+
+.profile-card {
+  margin-bottom: 12px;
+}
+
+.form-group-compact {
+  margin-bottom: 0;
+}
+
+.profile-defaults-label {
+  margin-top: 0;
+}
+
+.btn-form-submit {
+  margin-top: 8px;
+}
+
+.btn-profile-save {
+  margin-top: 24px;
+}
+
+.header-logout-form {
+  margin: 0;
 }
 
 /* Section labels */
@@ -950,7 +1032,7 @@ html, body {
 
 /* Write-off notice */
 .writeoff-notice {
-  display: flex;
+  display: none;
   align-items: flex-start;
   gap: 9px;
   background: var(--blue-light);
@@ -961,6 +1043,10 @@ html, body {
   font-size: 13px;
   color: var(--blue-dark);
   line-height: 1.5;
+}
+.writeoff-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 /* Animate in */
@@ -1247,6 +1333,7 @@ html, body {
 
 /* ─── Repayment graph panel ─────────────────────────────────────────────── */
 .graph-panel {
+  display: none;
   margin-top: 16px;
   padding: 16px;
   background: var(--bg);
@@ -1274,6 +1361,9 @@ html, body {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+#pgl-balance-row {
+  display: none;
 }
 .graph-control-row--slider {
   flex-direction: column;
@@ -1328,6 +1418,7 @@ html, body {
   margin: 0;
 }
 .plan2-rate-note {
+  display: none;
   font-size: 12px;
   color: var(--text-secondary);
   background: var(--blue-light);

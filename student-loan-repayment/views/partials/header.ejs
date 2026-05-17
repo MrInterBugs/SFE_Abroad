@@ -36,7 +36,7 @@ const signOutCsrfToken = typeof csrfToken !== 'undefined' ? csrfToken : (locals.
       <% } %>
       <% if (showProfileActions && profileUser) { %>
         <span class="header-nav-email"><%= profileUser.email %></span>
-        <form method="POST" action="/logout" style="margin:0;">
+        <form method="POST" action="/logout" class="header-logout-form">
           <input type="hidden" name="csrfToken" value="<%= signOutCsrfToken %>">
           <button type="submit" class="header-nav-link">Sign out</button>
         </form>

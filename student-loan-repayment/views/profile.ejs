@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/styles.css">
-<script nonce="<%= locals.cspNonce || '' %>">document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+<%- include('partials/theme-boot') %>
 </head>
 <body>
 <div class="page">
@@ -18,7 +18,7 @@
   }) %>
 
   <main class="main">
-    <div class="container" style="max-width:520px;">
+    <div class="container profile-container">
 
       <!-- User hero -->
       <div class="profile-hero">
@@ -47,7 +47,7 @@
       <% } %>
 
       <!-- Loan details card -->
-      <div class="card" style="padding:28px;margin-bottom:12px;">
+      <div class="card profile-card">
         <div class="profile-section-label">Loan details</div>
 
         <form method="POST" action="/profile" novalidate>
@@ -77,7 +77,7 @@
 
           <hr class="form-divider">
 
-          <div class="form-group" style="margin-bottom:0;">
+          <div class="form-group form-group-compact">
             <label class="profile-field-label" for="loanValuePglGbp">Postgraduate loan balance</label>
             <span class="profile-field-hint">Leave blank if you don't have a Postgraduate Loan</span>
             <div class="input-wrap input-with-currency">
@@ -89,7 +89,7 @@
 
           <hr class="form-divider">
 
-          <div class="profile-section-label" style="margin-top:0;">Calculator defaults</div>
+          <div class="profile-section-label profile-defaults-label">Calculator defaults</div>
 
           <div class="form-group">
             <label class="profile-field-label" for="defaultCountry">Default country</label>
@@ -129,7 +129,7 @@
             </div>
           </div>
 
-          <div class="form-group" style="margin-bottom:0;">
+          <div class="form-group form-group-compact">
             <label class="checkbox-row <%= profile.include_pg ? 'checked' : '' %>" id="profile-pgl-row" for="includePg">
               <input type="checkbox" id="includePg" name="includePg" <%= profile.include_pg ? 'checked' : '' %>>
               <div>
@@ -139,7 +139,7 @@
             </label>
           </div>
 
-          <button type="submit" class="btn-calculate" style="margin-top:24px;">Save profile</button>
+          <button type="submit" class="btn-calculate btn-profile-save">Save profile</button>
         </form>
 
         <% if (profile.updated_at) { %>
