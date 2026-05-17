@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impressum — Student Finance Overseas Calculator</title>
+<meta name="robots" content="noindex">
+<%- include('partials/cookiebot') %>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+<script nonce="<%= locals.cspNonce || '' %>">document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+</head>
+<body>
+<div class="page">
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-crown" href="/">
+        <span class="header-title">Student Finance Overseas Repayment Calculator</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/terms" class="header-nav-link">Terms</a>
+        <a href="/" class="header-nav-pill">Calculator</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container pp-container">
+      <div class="page-heading">
+        <h1>Impressum</h1>
+        <p>Legal notice and provider information.</p>
+      </div>
+
+      <div class="card pp-content legal-content">
+        <% if (!legal.hasCompleteImpressum) { %>
+          <div class="alert-error" role="alert">
+            Production note: add a complete legal name and postal address via <code>LEGAL_OPERATOR_NAME</code> and <code>LEGAL_OPERATOR_ADDRESS</code> before publishing this page.
+          </div>
+        <% } %>
+
+        <h2>Information according to § 5 DDG</h2>
+        <address>
+          <strong><%= legal.operatorName %></strong><br>
+          <% if (legal.addressLines.length) { %>
+            <% legal.addressLines.forEach(function(line) { %>
+              <%= line %><br>
+            <% }); %>
+          <% } else { %>
+            Full postal address to be added before publication.<br>
+          <% } %>
+        </address>
+
+        <h2>Contact</h2>
+        <p>
+          Email: <a href="mailto:<%= legal.contactEmail %>"><%= legal.contactEmail %></a>
+          <% if (legal.contactPhone) { %><br>Phone: <%= legal.contactPhone %><% } %>
+        </p>
+
+        <% if (legal.vatId) { %>
+          <h2>VAT identification number</h2>
+          <p><%= legal.vatId %></p>
+        <% } %>
+
+        <h2>Responsible for content</h2>
+        <address>
+          <strong><%= legal.contentResponsibleName %></strong><br>
+          <% if (legal.contentResponsibleAddressLines.length) { %>
+            <% legal.contentResponsibleAddressLines.forEach(function(line) { %>
+              <%= line %><br>
+            <% }); %>
+          <% } else { %>
+            Same as operator address above.<br>
+          <% } %>
+        </address>
+
+        <h2>Independence</h2>
+        <p>
+          This website is independent and not affiliated with Student Finance England, Student Finance Wales, SAAS, Student Finance Northern Ireland, GOV.UK, or the Student Loans Company.
+        </p>
+
+        <h2>Dispute resolution</h2>
+        <p>
+          We are not willing or obliged to participate in dispute resolution proceedings before a consumer arbitration board.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</div>
+<script src="/theme.js" defer></script>
+</body>
+</html>

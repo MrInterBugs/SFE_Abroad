@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Use — Student Finance Overseas Calculator</title>
+<meta name="robots" content="noindex">
+<%- include('partials/cookiebot') %>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/styles.css">
+<script nonce="<%= locals.cspNonce || '' %>">document.documentElement.dataset.theme=localStorage.getItem('sfeDarkTheme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');</script>
+</head>
+<body>
+<div class="page">
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-crown" href="/">
+        <span class="header-title">Student Finance Overseas Repayment Calculator</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/impressum" class="header-nav-link">Impressum</a>
+        <a href="/" class="header-nav-pill">Calculator</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container pp-container">
+      <div class="page-heading">
+        <h1>Terms of Use</h1>
+        <p>Last updated: 17 May 2026</p>
+      </div>
+
+      <div class="card pp-content">
+        <p>
+          These terms apply when you use <strong><%= legal.serviceName %></strong>. If you do not agree with them, please do not use the service.
+        </p>
+
+        <h2>1. What the service provides</h2>
+        <p>
+          The calculator estimates UK student loan repayments for graduates living overseas, using public threshold data and the information you enter. It is a planning tool only.
+        </p>
+
+        <h2>2. No official, legal, financial, or tax advice</h2>
+        <p>
+          Results are estimates and are not a decision, bill, repayment notice, legal opinion, financial advice, or tax advice. Always verify your actual repayment position with the Student Loans Company or the relevant student finance body.
+        </p>
+
+        <h2>3. Your account</h2>
+        <p>
+          You are responsible for keeping your sign-in details secure and for entering accurate information. You must notify us immediately if you suspect any unauthorized use of your account. You can delete your account from your profile page, which removes your saved account data.
+        </p>
+
+        <h2>4. Acceptable use</h2>
+        <p>
+          Do not misuse the service, attempt to bypass security controls, overload the site, scrape it at high volume, interfere with other users, or use it for unlawful purposes.
+        </p>
+
+        <h2>5. Intellectual property</h2>
+        <p>
+          The source code for this project is made available under the Apache License 2.0, where that license applies. These terms do not limit any rights granted by that open-source license. The service name, branding, page content, and visual design remain owned by us, except where third-party materials are used under their own licenses. You may not use them in a way that suggests affiliation, endorsement, or creates a misleading copy of this service.
+        </p>
+
+        <h2>6. Availability and service changes</h2>
+        <p>
+          The service is provided free of charge and may change, pause, or stop at any time. We try to keep threshold data and calculations accurate, but we cannot guarantee uninterrupted access or error-free results.
+        </p>
+
+        <h2>7. Changes to these terms</h2>
+        <p>
+          We may update these terms from time to time. Continued use of the service after changes are posted constitutes acceptance of the updated terms. If we make significant changes that affect registered users, we may also notify them by email.
+        </p>
+
+        <h2>8. Third-party services and links</h2>
+        <p>
+          The site may link to GOV.UK, the Student Loans Company, Google, Resend, Cookiebot, and other third parties. Their services and websites are governed by their own terms and policies.
+        </p>
+
+        <h2>9. Liability</h2>
+        <p>
+          Nothing in these terms excludes liability where it cannot legally be excluded. Otherwise, the service is provided as-is, and you should not rely on it as the sole basis for financial, legal, tax, or repayment decisions.
+        </p>
+
+        <h2>10. Governing law</h2>
+        <p>
+          These terms are governed by the laws of Germany, unless mandatory consumer protection rules in your country provide otherwise.
+        </p>
+
+        <h2>11. Contact</h2>
+        <p>
+          Questions about these terms? Email <a href="mailto:<%= legal.contactEmail %>"><%= legal.contactEmail %></a>.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</div>
+<script src="/theme.js" defer></script>
+</body>
+</html>

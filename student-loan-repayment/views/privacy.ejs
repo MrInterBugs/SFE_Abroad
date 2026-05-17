@@ -46,7 +46,7 @@
 
       <div class="page-heading">
         <h1>Privacy Policy</h1>
-        <p>Last updated: 4 May 2026</p>
+        <p>Last updated: 17 May 2026</p>
       </div>
 
       <div class="card pp-content">
@@ -54,10 +54,21 @@
           We keep this short and plain. Here&rsquo;s what <strong>Student Finance Overseas Repayment Calculator</strong> collects, why we need it, and what you can do with it.
         </p>
         <p>
-          <strong>The short version:</strong> we only collect what&rsquo;s needed to run the calculator. We don&rsquo;t sell your data. Third parties are limited to account email delivery through Resend and Google AdSense if you opt in.
+          <strong>The short version:</strong> we collect the data needed to run the calculator and optional account features. We don&rsquo;t sell your data. Third parties are limited to hosting, consent management, account email delivery through Resend, and Google AdSense if you opt in.
+        </p>
+
+        <h2>Controller</h2>
+        <p>
+          The controller for this service is <strong><%= legal.operatorName %></strong>.
+          <% if (legal.addressLines.length) { %>
+            <% legal.addressLines.forEach(function(line) { %><br><%= line %><% }); %>
+          <% } else { %>
+            <br>Full postal address to be added before publication.
+          <% } %>
+          <br>Email: <a href="mailto:<%= legal.contactEmail %>"><%= legal.contactEmail %></a>.
         </p>
         <p>
-          Operated by an individual based in Bayern, Germany &mdash; <a href="mailto:admin@mrinterbugs.uk">admin@mrinterbugs.uk</a>.
+          You can also find provider details in the <a href="/impressum">Impressum</a>.
         </p>
 
         <hr class="form-divider">
@@ -66,7 +77,7 @@
         <p><strong>Account data</strong> (registered users only):</p>
         <ul>
           <li><strong>Email address</strong> &mdash; identifies your account and lets you sign in.</li>
-          <li><strong>Account email delivery</strong> &mdash; your email address is sent to Resend so we can send confirmation and password reset links.</li>
+          <li><strong>Account email delivery</strong> &mdash; your email address is sent to Resend so we can send confirmation links, password reset links, and important account, service, or legal notices.</li>
           <li><strong>Graduation date</strong> (optional) &mdash; pre-fills the calculator.</li>
           <li><strong>Outstanding loan values</strong> (optional) &mdash; undergraduate and postgraduate loan balances you choose to save.</li>
           <li><strong>Calculator defaults</strong> (optional) &mdash; country, repayment plan, salary, and whether to include a Postgraduate Loan by default.</li>
@@ -79,6 +90,9 @@
 
         <p><strong>IP address</strong> (all visitors): used only to rate-limit requests and block abuse. Never written to a persistent log.</p>
         <p><strong>Legal basis:</strong> Legitimate interest (Art.&nbsp;6(1)(f) GDPR) &mdash; rate limiting keeps the service available and secure.</p>
+
+        <p><strong>Server and security metadata</strong> (all visitors): your browser necessarily sends technical request data such as IP address, URL, user agent, referrer, and time of request to the hosting infrastructure so the website can be delivered securely.</p>
+        <p><strong>Legal basis:</strong> Legitimate interest (Art.&nbsp;6(1)(f) GDPR) &mdash; providing, securing, and debugging the service.</p>
 
         <p><strong>Strictly necessary cookies:</strong></p>
         <ul>
@@ -96,15 +110,20 @@
         <p><strong>Advertising cookies</strong> (Google AdSense): ads are served by Google AdSense. Advertising and tracking cookies are <strong>only set after you give consent</strong> via the banner on your first visit. You can change or withdraw consent at any time using Cookiebot&rsquo;s floating consent control.</p>
         <p><strong>Legal basis:</strong> Consent (Art.&nbsp;6(1)(a) GDPR) &mdash; withdrawing consent doesn&rsquo;t affect anything that happened before.</p>
 
+        <p><strong>Local theme preference:</strong> the light or dark theme selection is stored in your browser&rsquo;s local storage. It stays on your device and is not sent to our server as an account preference.</p>
+
         <hr class="form-divider">
 
         <h2>2. Who we share data with</h2>
         <p>We share data only where needed to run the service:</p>
         <ul>
+          <li><strong><%= legal.hostName %></strong> &mdash; website hosting and delivery. Technical request data is processed so pages, static files, and security controls can work.<% if (legal.hostPrivacyUrl) { %> See <a href="<%= legal.hostPrivacyUrl %>" target="_blank" rel="noopener">the host&rsquo;s privacy information</a>.<% } %></li>
+          <li><strong>Usercentrics A/S (Cookiebot)</strong> &mdash; consent banner and consent records. Cookiebot stores your consent choices and helps block optional scripts until you give consent.</li>
           <li><strong>Resend</strong> &mdash; transactional account emails, such as confirmation and password reset links. Resend receives the recipient email address and email content needed to deliver those messages.</li>
           <li><strong>Google LLC (AdSense)</strong> &mdash; advertising cookies, consented via the banner. Google may transfer data to the US under Standard Contractual Clauses. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google&rsquo;s Privacy Policy</a>.</li>
         </ul>
         <p>We do not sell your data. Your account data is never shared with advertisers.</p>
+        <p>Where personal data is transferred outside the UK or EEA, we rely on appropriate safeguards such as Standard Contractual Clauses, adequacy decisions, or another lawful transfer mechanism provided by the relevant service provider.</p>
 
         <hr class="form-divider">
 
@@ -117,6 +136,7 @@
           <li><strong>Session data</strong> &mdash; 30 days from last activity.</li>
           <li><strong>Preference cookies</strong> &mdash; 30 days, if you give preference consent.</li>
           <li><strong>IP addresses</strong> &mdash; not stored (in-memory only).</li>
+          <li><strong>Consent records</strong> &mdash; retained by Cookiebot according to its consent log settings.</li>
         </ul>
 
         <hr class="form-divider">
@@ -130,11 +150,21 @@
           <li><strong>Restriction</strong> &mdash; ask us to pause processing in certain circumstances.</li>
           <li><strong>Object</strong> &mdash; object to processing based on legitimate interest.</li>
         </ul>
-        <p>You can use the profile page for rectification, erasure, and portability. To exercise any other right, email <a href="mailto:admin@mrinterbugs.uk">admin@mrinterbugs.uk</a>. We will respond within one month.</p>
+        <p>You can use the profile page for rectification, erasure, and portability. To exercise any other right, email <a href="mailto:<%= legal.contactEmail %>"><%= legal.contactEmail %></a>. We will respond within one month.</p>
 
         <hr class="form-divider">
 
-        <h2>5. Right to complain</h2>
+        <h2>5. Is account data required?</h2>
+        <p>You can use the calculator without an account. If you choose to register, an email address and password are required so we can create and secure your account. Optional profile fields can be left blank.</p>
+
+        <hr class="form-divider">
+
+        <h2>6. Automated decision-making</h2>
+        <p>We do not use your personal data for automated decision-making with legal or similarly significant effects. Calculator results are generated from the figures you enter and public threshold data; they are not official decisions.</p>
+
+        <hr class="form-divider">
+
+        <h2>7. Right to complain</h2>
         <p>If you&rsquo;re not happy with how we handle your data, you can contact the relevant regulator:</p>
         <ul>
           <li><strong>Germany (Bayern):</strong> <a href="https://www.lda.bayern.de" target="_blank" rel="noopener">Bayerisches Landesamt f&uuml;r Datenschutzaufsicht (BayLDA)</a>.</li>
@@ -144,18 +174,18 @@
 
         <hr class="form-divider">
 
-        <h2>6. Children</h2>
+        <h2>8. Children</h2>
         <p>This service is not directed at anyone under 18. We do not knowingly collect data from children. If you believe a child has created an account, contact us and we will delete it promptly.</p>
 
         <hr class="form-divider">
 
-        <h2>7. Changes to this policy</h2>
+        <h2>9. Changes to this policy</h2>
         <p>If we make significant changes, we&rsquo;ll update the &ldquo;Last updated&rdquo; date at the top and email registered users to let them know.</p>
 
         <hr class="form-divider">
 
-        <h2>8. Contact</h2>
-        <p>Questions about this policy, or want to exercise one of your rights? Drop us an email at <a href="mailto:admin@mrinterbugs.uk">admin@mrinterbugs.uk</a>.</p>
+        <h2>10. Contact</h2>
+        <p>Questions about this policy, or want to exercise one of your rights? Drop us an email at <a href="mailto:<%= legal.contactEmail %>"><%= legal.contactEmail %></a>.</p>
       </div>
     </div>
   </main>

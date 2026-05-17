@@ -1230,6 +1230,15 @@ html, body {
   color: var(--text);
   margin-bottom: 6px;
 }
+.legal-content h2:not(:first-child) { margin-top: 24px; }
+.legal-content address {
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+.legal-content p { margin: 0 0 14px; }
 .pp-content code {
   font-family: monospace;
   font-size: 13px;

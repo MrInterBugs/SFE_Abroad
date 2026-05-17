@@ -152,13 +152,42 @@ describe('routes', () => {
       const res = await request(app).get('/privacy');
       expect(res.status).toBe(200);
       expect(res.text).toContain('Privacy');
-      expect(res.text).toContain('Last updated: 4 May 2026');
+      expect(res.text).toContain('Last updated: 17 May 2026');
       expect(res.text).toContain('machine-readable JSON file');
       expect(res.text).toContain('Calculator defaults');
       expect(res.text).toContain('Anonymous calculation statistics');
+      expect(res.text).toContain('important account, service, or legal notices');
+      expect(res.text).toContain('Controller');
+      expect(res.text).toContain('Usercentrics A/S (Cookiebot)');
+      expect(res.text).toContain('Automated decision-making');
       expect(res.text).toContain('Cookiebot&rsquo;s floating consent control');
       expect(res.text).toContain('Preference cookies are only set after you give preference consent');
       expect(res.text).toContain('<strong>Preference cookies</strong> &mdash; 30 days, if you give preference consent');
+    });
+
+    test('GET /terms renders the terms of use page', async () => {
+      const res = await request(app).get('/terms');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Terms of Use');
+      expect(res.text).toContain('Last updated: 17 May 2026');
+      expect(res.text).toContain('No official, legal, financial, or tax advice');
+      expect(res.text).toContain('unauthorized use of your account');
+      expect(res.text).toContain('Intellectual property');
+      expect(res.text).toContain('Apache License 2.0');
+      expect(res.text).toContain('do not limit any rights granted by that open-source license');
+      expect(res.text).toContain('Continued use of the service after changes are posted');
+      expect(res.text).toContain('Governing law');
+      expect(res.text).toContain('noindex');
+    });
+
+    test('GET /impressum renders provider information', async () => {
+      const res = await request(app).get('/impressum');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Information according to § 5 DDG');
+      expect(res.text).toContain('Production note');
+      expect(res.text).toContain('Responsible for content');
+      expect(res.text).toContain('not affiliated with Student Finance England');
+      expect(res.text).toContain('noindex');
     });
 
     test('GET /about renders an indexable trust page', async () => {

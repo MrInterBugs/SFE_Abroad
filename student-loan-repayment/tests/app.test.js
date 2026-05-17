@@ -102,6 +102,8 @@ describe('Express App', () => {
     expect(isPrivatePage({ method: 'POST', path: '/' })).toBe(true);
     expect(isPrivatePage({ method: 'GET', path: '/' })).toBe(false);
     expect(isPrivatePage({ method: 'GET', path: '/privacy' })).toBe(false);
+    expect(isPrivatePage({ method: 'GET', path: '/terms' })).toBe(false);
+    expect(isPrivatePage({ method: 'GET', path: '/impressum' })).toBe(false);
     expect(isPrivatePage({ method: 'GET', path: '/about' })).toBe(false);
     expect(isPrivatePage({ method: 'GET', path: '/overseas-repayment-guides' })).toBe(false);
   });
@@ -146,6 +148,8 @@ describe('Express App', () => {
 
     expect(privacy.status).toBe(200);
     expect(privacy.text).toContain('id="Cookiebot"');
+    expect(privacy.text).toContain('data-framework="TCFv2.2"');
+    expect(privacy.text).toContain('window.gtag_enable_tcf_support = true');
     expect(login.status).toBe(200);
     expect(login.text).not.toContain('id="Cookiebot"');
   });

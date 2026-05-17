@@ -18,6 +18,7 @@ const {
   getSeoPagePaths,
 } = require('../config/seoPages');
 const { hasCookieConsent } = require('../utils/consent');
+const legal = require('../config/legal');
 
 const router = express.Router();
 
@@ -318,7 +319,15 @@ function serializeJsonForHtml(value) {
 }
 
 router.get('/privacy', (req, res) => {
-  res.render('privacy');
+  res.render('privacy', { legal });
+});
+
+router.get('/terms', (req, res) => {
+  res.render('terms', { legal });
+});
+
+router.get('/impressum', (req, res) => {
+  res.render('impressum', { legal });
 });
 
 router.get('/about', (req, res) => {
