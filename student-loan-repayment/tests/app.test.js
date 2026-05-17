@@ -154,11 +154,30 @@ describe('Express App', () => {
     const login = await request(app).get('/login');
 
     expect(privacy.status).toBe(200);
-    expect(privacy.text).toContain('id="Cookiebot"');
+    expect(privacy.text).toMatch(/<script id="Cookiebot" nonce="[^"]+"/);
     expect(privacy.text).toContain('data-framework="TCFv2.2"');
     expect(privacy.text).toContain('window.gtag_enable_tcf_support = true');
     expect(login.status).toBe(200);
     expect(login.text).not.toContain('id="Cookiebot"');
+  });
+
+  it('adds nonce-backed marketing scripts and CSP sources only on public pages', async () => {
+    const home = await request(app).get('/');
+    const login = await request(app).get('/login');
+    const publicCsp = home.headers['content-security-policy'];
+    const privateCsp = login.headers['content-security-policy'];
+
+    expect(home.status).toBe(200);
+    expect(home.text).toMatch(/<script async nonce="[^"]+" src="https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\/adsbygoogle\.js\?client=ca-pub-4989908161831974"/);
+    expect(publicCsp).toContain('https://pagead2.googlesyndication.com');
+    expect(publicCsp).toContain('https://consent.cookiebot.com');
+    expect(publicCsp).toContain('https://static.cloudflareinsights.com');
+
+    expect(login.status).toBe(200);
+    expect(login.text).not.toContain('adsbygoogle.js');
+    expect(privateCsp).not.toContain('https://pagead2.googlesyndication.com');
+    expect(privateCsp).not.toContain('https://consent.cookiebot.com');
+    expect(privateCsp).not.toContain('https://static.cloudflareinsights.com');
   });
 
   it('should not rate limit static asset paths', async () => {

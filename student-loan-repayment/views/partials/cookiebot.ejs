@@ -1,4 +1,4 @@
 <% if (locals.allowMarketingScripts) { %>
 <script nonce="<%= locals.cspNonce || '' %>">window.gtag_enable_tcf_support = true;</script>
-<script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="e556bd88-52ac-451e-bb8c-7e9a69fa2193" data-blockingmode="auto" data-framework="TCFv2.2" type="text/javascript" async></script>
+<script id="Cookiebot" nonce="<%= locals.cspNonce || '' %>" src="https://consent.cookiebot.com/uc.js" data-cbid="e556bd88-52ac-451e-bb8c-7e9a69fa2193" data-blockingmode="auto" data-framework="TCFv2.2" type="text/javascript" async></script>
 <% } %>
