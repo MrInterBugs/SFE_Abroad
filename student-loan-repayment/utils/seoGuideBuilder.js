@@ -1,25 +1,23 @@
 const logger = require('./logger');
-const { REPAYMENT_RATE, PGL_REPAYMENT_RATE, MONTHS_PER_YEAR } = require('../config/constants');
+const { MONTHS_PER_YEAR } = require('../config/constants');
 const { SITE_URL } = require('../config/seoPages');
 const { getThresholdData } = require('./fetchCountryData');
-const currencySymbol = require('./currencySymbol');
+const domain = require('../public/calculator-domain');
+const {
+  parseGbpAmount,
+  parseExchangeRate,
+  currencyCodeForRow,
+} = require('../shared/thresholdData');
 
-const SEO_THRESHOLD_PLANS = [
-  { key: 'plan1', label: 'Plan 1', field: 'Earnings threshold (GBP)', rate: REPAYMENT_RATE },
-  { key: 'plan2', label: 'Plan 2', field: 'Lower earnings threshold (GBP)', rate: REPAYMENT_RATE },
-  { key: 'plan4', label: 'Plan 4', field: 'Earnings threshold (GBP)', rate: REPAYMENT_RATE },
-  { key: 'plan5', label: 'Plan 5', field: 'Earnings threshold (GBP)', rate: REPAYMENT_RATE },
-  { key: 'planPg', label: 'Postgraduate Loan', field: 'Earnings threshold (GBP)', rate: PGL_REPAYMENT_RATE },
-];
-
-function parseGbpAmount(value) {
-  if (typeof value !== 'string') return NaN;
-  return parseFloat(value.replace(/[£,]/g, ''));
-}
-
-function parseExchangeRate(value) {
-  return parseFloat(String(value ?? '').replace(/,/g, ''));
-}
+const SEO_THRESHOLD_PLANS = domain.CACHE_PLAN_KEYS.map((key) => {
+  const rule = domain.planRule(key);
+  return {
+    key,
+    label: rule.label,
+    field: rule.thresholdField,
+    rate: rule.repaymentRate,
+  };
+});
 
 function formatNumber(value) {
   return new Intl.NumberFormat('en-GB', {
@@ -52,8 +50,7 @@ async function buildCountryThresholdExamples(country, year) {
       if (!countryData || !countryData[plan.field]) return null;
       const exchangeRate = parseExchangeRate(countryData['Exchange rate']);
       const thresholdGbp = parseGbpAmount(countryData[plan.field]);
-      const rawCurrency = (countryData['Currency'] || '').replace(/[\s ]+/g, ' ').trim();
-      const currencyCode = currencySymbol.NAME_TO_ISO[rawCurrency] || '';
+      const currencyCode = currencyCodeForRow(countryData);
       const exampleSalaryGbp = Number.isFinite(thresholdGbp) ? thresholdGbp + 10000 : NaN;
       const exampleSalaryLocal = Number.isFinite(exampleSalaryGbp) && Number.isFinite(exchangeRate) && exchangeRate > 0
         ? exampleSalaryGbp / exchangeRate

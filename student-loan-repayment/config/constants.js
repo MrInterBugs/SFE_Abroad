@@ -26,12 +26,17 @@ const urlsByYear = {
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 
-const REPAYMENT_RATE = 0.09;     // 9% above threshold (all undergraduate plans)
-const PGL_REPAYMENT_RATE = 0.06; // 6% above threshold (postgraduate loan)
-const MONTHS_PER_YEAR = 12;
+const {
+  PRIMARY_PLAN_KEYS,
+  CACHE_PLAN_KEYS,
+  MONTHS_PER_YEAR,
+  repaymentRateForPlan,
+} = require('../public/calculator-domain');
 
-const ALLOWED_PLANS = ['plan1', 'plan2', 'plan4', 'plan5'];
-const CACHE_PLANS = [...ALLOWED_PLANS, 'planPg'];
+const ALLOWED_PLANS = PRIMARY_PLAN_KEYS.slice();
+const CACHE_PLANS = CACHE_PLAN_KEYS.slice();
+const REPAYMENT_RATE = repaymentRateForPlan('plan1');
+const PGL_REPAYMENT_RATE = repaymentRateForPlan('planPg');
 const SUPPORTED_YEARS = Object.keys(urlsByYear);
 
 // Latest supported year — used when the real current year is not configured yet.

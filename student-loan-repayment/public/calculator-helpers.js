@@ -1,17 +1,15 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('./calculator-domain'));
   } else {
-    root.SFECalculatorHelpers = factory();
+    root.SFECalculatorHelpers = factory(root.SFECalculatorDomain);
   }
-})(typeof window !== 'undefined' ? window : globalThis, function () {
-  const WRITE_OFF_YEARS = { plan1: 25, plan2: 30, plan4: 30, plan5: 40, planPg: 30 };
-  const FALLBACK_AVAILABLE_PLANS = ['plan1', 'plan2', 'plan4', 'plan5', 'planPg'];
-  const PLAN_LABELS = { plan1: 'Plan 1', plan2: 'Plan 2', plan4: 'Plan 4', plan5: 'Plan 5', planPg: 'Postgraduate Loan' };
+})(typeof window !== 'undefined' ? window : globalThis, function (domain) {
+  const WRITE_OFF_YEARS = domain.WRITE_OFF_YEARS;
+  const PLAN_LABELS = domain.PLAN_LABELS;
 
   function availablePlansForYear(availablePlansByYear, year) {
-    const configured = availablePlansByYear[year];
-    return Array.isArray(configured) ? configured : FALLBACK_AVAILABLE_PLANS;
+    return domain.availablePlansForYear(availablePlansByYear, year);
   }
 
   function plan2InterestThresholds(result) {

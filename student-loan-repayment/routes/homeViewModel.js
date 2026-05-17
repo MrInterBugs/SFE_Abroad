@@ -5,9 +5,13 @@ const {
   DEFAULT_YEAR,
   SUPPORTED_YEARS,
   computeCurrentTaxYear,
-  ALLOWED_PLANS,
   urlsByYear,
 } = require('../config/constants');
+const {
+  primaryPlansForYear,
+  availablePlansForYear,
+  isPlanAvailableForYear: domainIsPlanAvailableForYear,
+} = require('../public/calculator-domain');
 const {
   PLAN_PAGES,
   COUNTRY_PAGES,
@@ -27,16 +31,16 @@ function buildCountriesList(fullData) {
 }
 
 function getAvailablePlansForYear(year) {
-  return ALLOWED_PLANS.filter((plan) => Boolean(urlsByYear[year]?.[plan]));
+  return primaryPlansForYear(urlsByYear, year);
 }
 
 function isPlanAvailableForYear(plan, year) {
-  return Boolean(urlsByYear[year]?.[plan]);
+  return domainIsPlanAvailableForYear(urlsByYear, plan, year);
 }
 
 function buildAvailablePlansByYear() {
   return Object.fromEntries(
-    SUPPORTED_YEARS.map((year) => [year, Object.keys(urlsByYear[year])])
+    SUPPORTED_YEARS.map((year) => [year, availablePlansForYear(urlsByYear, year)])
   );
 }
 
