@@ -1200,9 +1200,6 @@ html, body {
   .header-nav-pill { padding-left: 8px; padding-right: 8px; }
 }
 
-/* Privacy policy page */
-.header-title-link { text-decoration: none; color: inherit; }
-
 .pp-container { max-width: 700px; }
 
 .pp-content h2 {

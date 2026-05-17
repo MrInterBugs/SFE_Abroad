@@ -1,0 +1,46 @@
+<%
+const navItems = typeof headerNavItems !== 'undefined' ? headerNavItems : [];
+const showAuth = typeof headerShowAuth !== 'undefined' ? headerShowAuth : false;
+const showProfileActions = typeof headerShowProfileActions !== 'undefined' ? headerShowProfileActions : false;
+const profileUser = typeof headerProfileUser !== 'undefined' ? headerProfileUser : null;
+const signOutCsrfToken = typeof csrfToken !== 'undefined' ? csrfToken : (locals.csrfToken || '');
+%>
+<header class="header">
+  <div class="header-inner">
+    <a class="header-crown" href="/">
+      <svg class="crown-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="22" cy="22" r="12" fill="#e8f0fb" stroke="#1d70b8" stroke-width="1.5"/>
+        <ellipse cx="22" cy="22" rx="5.5" ry="12" stroke="#1d70b8" stroke-width="1" opacity="0.5"/>
+        <line x1="10" y1="22" x2="34" y2="22" stroke="#1d70b8" stroke-width="1" opacity="0.5"/>
+        <rect x="4" y="11" width="18" height="3" rx="1.5" fill="#1d70b8"/>
+        <polygon points="13,5 4,11 22,11" fill="#1d70b8"/>
+        <line x1="22" y1="11" x2="22" y2="17" stroke="#1d70b8" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="22" cy="18" r="1.5" fill="#1d70b8"/>
+      </svg>
+      <span class="header-title">Student Finance Overseas Repayment Calculator</span>
+    </a>
+    <nav class="header-nav">
+      <% navItems.forEach(function(item) { %>
+        <a href="<%= item.href %>" class="<%= item.className || 'header-nav-link' %>"><%= item.label %></a>
+      <% }); %>
+      <% if (showAuth) { %>
+        <% if (locals.userId) { %>
+          <a href="/profile" class="header-nav-user">
+            <span class="header-nav-avatar-sm"><%= (locals.userEmail || '?').charAt(0).toUpperCase() %></span>
+            My profile
+          </a>
+        <% } else { %>
+          <a href="/login" class="header-nav-link">Sign in</a>
+          <a href="/register" class="header-nav-pill">Register</a>
+        <% } %>
+      <% } %>
+      <% if (showProfileActions && profileUser) { %>
+        <span class="header-nav-email"><%= profileUser.email %></span>
+        <form method="POST" action="/logout" style="margin:0;">
+          <input type="hidden" name="csrfToken" value="<%= signOutCsrfToken %>">
+          <button type="submit" class="header-nav-link">Sign out</button>
+        </form>
+      <% } %>
+    </nav>
+  </div>
+</header>

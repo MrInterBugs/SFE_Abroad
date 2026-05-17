@@ -178,6 +178,7 @@ describe('routes', () => {
       expect(res.text).toContain('Continued use of the service after changes are posted');
       expect(res.text).toContain('Governing law');
       expect(res.text).toContain('noindex');
+      expect(res.text).toContain('class="crown-icon"');
     });
 
     test('GET /impressum renders provider information', async () => {
@@ -188,6 +189,7 @@ describe('routes', () => {
       expect(res.text).toContain('Responsible for content');
       expect(res.text).toContain('not affiliated with Student Finance England');
       expect(res.text).toContain('noindex');
+      expect(res.text).toContain('class="crown-icon"');
     });
 
     test('GET /about renders an indexable trust page', async () => {

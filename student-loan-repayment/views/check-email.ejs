@@ -12,16 +12,11 @@
 <body>
 <div class="page">
 
-  <header class="header">
-    <div class="header-inner">
-      <div class="header-crown">
-        <a href="/" style="text-decoration:none;color:inherit;"><span class="header-title">Student Finance Overseas Repayment Calculator</span></a>
-      </div>
-      <nav class="header-nav">
-        <a href="/login" class="header-nav-link">Sign in</a>
-      </nav>
-    </div>
-  </header>
+  <%- include('partials/header', {
+    headerNavItems: [
+      { href: '/login', label: 'Sign in', className: 'header-nav-link' }
+    ]
+  }) %>
 
   <main class="main">
     <div class="container" style="max-width:480px;">

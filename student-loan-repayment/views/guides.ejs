@@ -31,17 +31,12 @@
 </head>
 <body>
 <div class="page">
-  <header class="header">
-    <div class="header-inner">
-      <a class="header-crown" href="/">
-        <span class="header-title">Student Finance Overseas Repayment Calculator</span>
-      </a>
-      <nav class="header-nav">
-        <a href="/methodology" class="header-nav-link">Methodology</a>
-        <a href="/" class="header-nav-pill">Calculator</a>
-      </nav>
-    </div>
-  </header>
+  <%- include('partials/header', {
+    headerNavItems: [
+      { href: '/methodology', label: 'Methodology', className: 'header-nav-link' },
+      { href: '/', label: 'Calculator', className: 'header-nav-pill' }
+    ]
+  }) %>
 
   <main class="main">
     <div class="container seo-container guide-container">
